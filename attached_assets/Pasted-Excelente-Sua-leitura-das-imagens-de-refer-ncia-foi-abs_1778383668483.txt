@@ -1,0 +1,41 @@
+Excelente! Sua leitura das imagens de referência foi absolutamente perfeita. Você captou com exatidão a essência visual do "Luxo Sombrio" e os componentes.
+
+Como você já dominou o padrão de design, vamos construir a página pública (Landing Page) inteira de uma vez. Aplique fielmente os estilos que você listou para cada seção.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ PARTE 3 — A LANDING PAGE PÚBLICA ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Construa as seções abaixo em /src/components/sections/ e monte a página principal em /src/pages/Home.jsx.
+
+1. Hero (Hero.jsx)
+
+Design: Aplique o padrão que você leu (foto full-screen, overlay escuro, título grande, badge "Agenda em fase final", botão dourado e scroll hint).
+Lógica (Backend): Crie um endpoint no Express (/api/hero) que busca do Prisma o model HeroImage. O componente deve fazer um fetch nessa rota. Se o banco estiver vazio, exiba a imagem estática de fallback com fundo preto.
+2. Experiências (Experiences.jsx)
+
+Design: Aplique seu padrão (3 cards escuros com linha dourada no topo, títulos brancos, corpo cinza).
+Conteúdo: 1. Chegada da Noiva, 2. Ensaios Fotográficos, 3. Fuga dos Noivos.
+3. Sobre a Joia (AboutCar.jsx)
+
+Design: Aplique seu padrão (layout 50/50 texto e foto, lista com bullets dourados, botão CTA outline).
+Conteúdo: Destaque a inspiração no MP Lafer britânico 1950, bancos em couro creme e detalhes em madeira de lei.
+4. Galeria (Gallery.jsx)
+
+Design: Aplique seu padrão (grid assimétrico de 3 colunas).
+Lógica (Backend): Crie um endpoint (/api/gallery) que busca do Prisma o model GalleryImage. Renderize dinamicamente. Se o banco estiver vazio, não exiba erros, apenas um texto elegante "Nenhuma memória registrada ainda."
+5. Depoimentos (Testimonials.jsx)
+
+Design: Aplique seu padrão (3 cards com ★★★★★, aspas, nome em dourado, data em cinza). Pode usar 3 textos estáticos/mockados elogiando a pontualidade e o motorista.
+6. Investimento e Calendário (Investment.jsx)
+
+Esta é a seção que qualifica a noiva.
+Investimento: Crie um box sofisticado destacando o texto âncora: "A partir de R$ 2.600".
+Calendário (Lógica Backend): Crie um componente de calendário visual. Crie um endpoint (/api/dates) que busca os BlockedDate do Prisma. As datas bloqueadas devem aparecer marcadas/riscadas em vermelho escuro ou dourado opaco. Destaque os sábados no calendário.
+7. FAQ (Faq.jsx)
+
+Um acordeão minimalista. Perguntas: Política de chuva (temos capota), área de cobertura (Serra Gaúcha), e tolerância de atraso.
+8. CTA Final e Footer (Footer.jsx)
+
+Design: Aplique seu padrão (fundo com textura ou gradiente escuro, título dourado grande, rodapé com logo).
+⚠️ REGRA CRÍTICA DE CONVERSÃO (SEM FORMULÁRIOS): O fechamento é exclusivo via WhatsApp. Todos os botões da página devem disparar a função que abre o link: https://wa.me/{WHATSAPP_NUMBER}?text=Olá! Gostaria de verificar a disponibilidade do MP Lafer para o meu casamento.
+
+Crie a página, garanta que as rotas da API no Express estejam funcionando conectadas ao Prisma e pare. Me avise quando terminar para irmos para a Parte 4 (Área Admin).
