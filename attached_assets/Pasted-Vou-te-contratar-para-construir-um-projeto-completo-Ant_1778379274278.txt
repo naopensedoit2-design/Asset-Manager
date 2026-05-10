@@ -1,0 +1,83 @@
+Vou te contratar para construir um projeto completo. Antes de escrever qualquer código, quero que você entenda exatamente o que estamos construindo e por quê.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+O NEGÓCIO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+"Casei de Lafer" é um serviço premium de aluguel de carro clássico para casamentos na Serra Gaúcha, Brasil. O veículo é um MP Lafer — conversível clássico inspirado no MG TD britânico de 1950, com interior em couro creme e acabamentos em madeira de lei.
+
+O serviço oferece três experiências:
+- Chegada da noiva à cerimônia no carro clássico
+- Locação do veículo para ensaios fotográficos pré-wedding
+- Fuga dos noivos após a cerimônia
+
+O dono opera sozinho: ele é o motorista, o comercial e o administrador do negócio.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+O PÚBLICO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Quem decide a contratação é a noiva. Ela pesquisa fornecedores no Instagram, toma decisões visuais e emocionais, e fecha via WhatsApp. Ela tem orçamento mas exige confiança antes de entrar em contato. O ticket médio do serviço começa em R$ 2.600.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+O OBJETIVO DO PROJETO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Construir uma landing page de alta conversão que:
+
+1. Gere confiança imediata — através de fotos reais do carro, depoimentos de noivas com foto, identidade visual premium e prova social visual.
+
+2. Qualifique o lead antes do contato — mostrando preço âncora (a partir de R$ 2.600), área de cobertura (Serra Gaúcha) e política de chuva/deslocamento no FAQ. Quem chega ao WhatsApp já sabe o que esperar.
+
+3. Crie urgência real — calendário visual com datas bloqueadas. A noiva vê os sábados ocupados e age.
+
+4. Converta direto para o WhatsApp — sem formulários complexos, sem cadastro, sem fricção. O CTA principal abre o WhatsApp com mensagem pré-preenchida.
+
+5. Permita que o dono gerencie tudo sozinho — área administrativa protegida por senha onde ele faz upload de fotos do hero (desktop e mobile separados), gerencia a galeria de casamentos realizados, bloqueia datas no calendário e atualiza configurações básicas do site.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+O QUE NÃO EXISTE AINDA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- Não há sistema de pagamento — o fechamento é 100% via WhatsApp
+- Não há cadastro de usuários — só um admin (o dono)
+- Não há painel de leads ou CRM — o dono gerencia pelo próprio WhatsApp
+- Não há integração com redes sociais além de links simples
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+IDENTIDADE VISUAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Luxo sombrio. Cinematográfico. Premium sem ser frio.
+
+- Fundos: preto (#0a0a0a) e cinza escuro (#111111)
+- Destaque: dourado (#C9A84C)
+- Títulos: Playfair Display (serifado elegante)
+- Corpo: Inter (limpo, legível)
+- Botões CTA: fundo dourado, texto preto, uppercase
+- Botões secundários: borda dourada, texto dourado, fundo transparente
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ESTRUTURA DO PROJETO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+O projeto terá:
+
+PÁGINA PÚBLICA (/)
+Seções em ordem: Hero → Experiências → Sobre o Carro → Motorista → Galeria → Depoimentos → Calendário de Disponibilidade → Preço → Formulário rápido → FAQ → CTA Final → Footer
+
+PÁGINA OCULTA (/orcamento/detalhado)
+Formulário completo de briefing sem link público — o dono envia o link pro cliente após a primeira conversa no WhatsApp.
+
+ÁREA ADMINISTRATIVA (/admin)
+Login por senha + dashboard para gerenciar: imagem do hero (desktop/mobile), galeria de fotos, calendário de datas bloqueadas e configurações básicas.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ANTES DE COMEÇAR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Não escreva código ainda. Confirme que entendeu o projeto e me diga:
+1. Se tem alguma dúvida sobre o objetivo ou o público
+2. Se identificou algum ponto que pode gerar problema técnico antes de começarmos
+
+Quando eu confirmar, te passo as instruções técnicas detalhadas.
