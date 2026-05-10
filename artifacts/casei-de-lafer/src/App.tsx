@@ -3,16 +3,67 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
+import ButtonPrimary from "@/components/ui/ButtonPrimary";
+import ButtonOutline from "@/components/ui/ButtonOutline";
+import SectionWrapper from "@/components/ui/SectionWrapper";
 
 const queryClient = new QueryClient();
 
-function Home() {
+function DesignSystemPreview() {
   return (
-    <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold text-gray-900">Replit Agent is building...</h1>
-        <p className="mt-2 text-sm text-gray-600">Your app will appear here once it's ready.</p>
-      </div>
+    <div className="min-h-screen bg-bg-primary">
+      {/* Typography preview */}
+      <SectionWrapper>
+        <p className="text-gold font-serif tracking-[0.3em] uppercase text-sm mb-4">
+          Casei de Lafer
+        </p>
+        <h1 className="font-serif text-5xl md:text-7xl font-medium text-text-primary leading-tight mb-4">
+          Um Momento<br />
+          <span className="text-gold-gradient italic">Inesquecível</span>
+        </h1>
+        <p className="text-text-secondary text-lg max-w-xl mb-2">
+          MP Lafer conversível clássico para casamentos na Serra Gaúcha.
+          Chegada da noiva, ensaios fotográficos e fuga dos noivos.
+        </p>
+        <p className="text-gold font-semibold text-xl mb-10">
+          A partir de R$ 2.600
+        </p>
+
+        <div className="flex flex-wrap gap-4 mb-16">
+          <ButtonPrimary>Verificar Disponibilidade</ButtonPrimary>
+          <ButtonOutline>Ver Galeria</ButtonOutline>
+        </div>
+
+        <div className="divider-gold my-8" />
+
+        {/* Color palette */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-12">
+          {[
+            { bg: "bg-bg-primary border border-border-subtle", label: "#0a0a0a — bg-primary" },
+            { bg: "bg-bg-secondary", label: "#111111 — bg-secondary" },
+            { bg: "bg-bg-card", label: "#161616 — bg-card" },
+            { bg: "bg-gold", label: "#C9A84C — gold" },
+          ].map(({ bg, label }) => (
+            <div key={label}>
+              <div className={`h-16 rounded ${bg}`} />
+              <p className="text-text-muted text-xs mt-2 font-mono">{label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* Font preview */}
+        <div className="mt-12 space-y-4">
+          <p className="font-serif text-3xl text-text-primary">
+            Playfair Display — Títulos
+          </p>
+          <p className="font-sans text-base text-text-secondary">
+            Inter — Corpo e interface. Limpo, legível, premium.
+          </p>
+          <p className="font-sans text-sm text-text-muted tracking-widest uppercase">
+            Tracking widest — CTAs e labels
+          </p>
+        </div>
+      </SectionWrapper>
     </div>
   );
 }
@@ -20,7 +71,7 @@ function Home() {
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Home} />
+      <Route path="/" component={DesignSystemPreview} />
       <Route component={NotFound} />
     </Switch>
   );
