@@ -1,0 +1,54 @@
+Confirmo o alinhamento. Suas observações foram excelentes. Aqui estão as respostas aos seus pontos:
+
+Armazenamento de imagens: NÃO use o object storage nativo do Replit. Quero uma arquitetura desacoplada. Vamos usar o Cloudinary porque preciso do CDN e das ferramentas de otimização automática de imagem deles para garantir velocidade máxima de carregamento, independentemente de onde a aplicação for hospedada no futuro.
+Senha do admin: Exatamente. Sem banco de dados para usuários. Apenas uma senha forte definida em uma variável de ambiente, validada (com bcrypt) via rota de login que gera um cookie httpOnly para manter a sessão ativa.
+A foto: Usa a foto que enviei como imagem desktop no banco assim que o sistema de upload estiver funcionando. Para o mobile, deixa fundo preto sólido (#111111) como fallback até eu fazer upload de uma versão vertical pelo admin.
+Calendário: Correto. É exatamente essa a lógica.
+Agora que estamos alinhados, vamos à execução técnica. Quero que você construa isso de forma incremental. Vamos por partes — não construa tudo de uma vez.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ PARTE 1 — CONFIGURAÇÃO BASE ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Configure o projeto com:
+
+Next.js 14 (App Router)
+TypeScript
+Tailwind CSS
+Prisma ORM
+Banco de dados: Neon PostgreSQL (via DATABASE_URL no .env)
+Pacote de upload de imagens: Cloudinary (CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET)
+Autenticação admin simples: bcrypt + cookie httpOnly
+Crie o arquivo .env.example com todas as variáveis necessárias.
+
+Crie o schema Prisma (schema.prisma) com os seguintes models:
+
+prisma
+model HeroImage {
+  id        Int      @id @default(autoincrement())
+  type      String
+  url       String
+  videoUrl  String   @default("")
+  updatedAt DateTime @updatedAt
+}
+model GalleryImage {
+  id        Int      @id @default(autoincrement())
+  url       String
+  alt       String   @default("")
+  coupleTag String   @default("")
+  location  String   @default("")
+  createdAt DateTime @default(now())
+}
+model BlockedDate {
+  id    Int      @id @default(autoincrement())
+  date  DateTime
+  label String   @default("Reservado")
+}
+model SiteConfig {
+  id           Int    @id @default(autoincrement())
+  weddingCount Int    @default(0)
+  driverQuote  String @default("")
+}
+Crie também um arquivo lib/config.ts que exporta todas as variáveis de ambiente do projeto em um único lugar. Nenhuma API route deve acessar process.env diretamente — sempre via esse arquivo.
+
+Crie um arquivo lib/storage.ts com uma função exportada uploadImage(file: File): Promise<string> que faz upload para o Cloudinary e retorna a URL. Toda lógica de upload fica isolada aqui.
+
+Quando terminar essa parte 1, pare e me liste a estrutura de pastas e arquivos criados para eu validar, antes de irmos para a criação do layout.
