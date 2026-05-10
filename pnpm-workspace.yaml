@@ -70,8 +70,11 @@ autoInstallPeers: false
 
 onlyBuiltDependencies:
   - '@swc/core'
+  - '@prisma/engines'
+  - bcrypt
   - esbuild
   - msw
+  - prisma
   - unrs-resolver
 
 overrides:

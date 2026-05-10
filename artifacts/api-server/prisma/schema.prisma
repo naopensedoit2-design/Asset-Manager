@@ -1,0 +1,38 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model HeroImage {
+  id        Int      @id @default(autoincrement())
+  type      String
+  url       String
+  videoUrl  String   @default("")
+  updatedAt DateTime @updatedAt
+}
+
+model GalleryImage {
+  id        Int      @id @default(autoincrement())
+  url       String
+  alt       String   @default("")
+  coupleTag String   @default("")
+  location  String   @default("")
+  createdAt DateTime @default(now())
+}
+
+model BlockedDate {
+  id    Int      @id @default(autoincrement())
+  date  DateTime
+  label String   @default("Reservado")
+}
+
+model SiteConfig {
+  id           Int    @id @default(autoincrement())
+  weddingCount Int    @default(0)
+  driverQuote  String @default("")
+}
