@@ -17,16 +17,12 @@ function DesignSystemPreview() {
         <p className="text-gold font-serif tracking-[0.3em] uppercase text-sm mb-4">
           Casei de Lafer
         </p>
-        <h1 className="font-serif text-5xl md:text-7xl font-medium text-text-primary leading-tight mb-4">
-          Um Momento<br />
-          <span className="text-gold-gradient italic">Inesquecível</span>
+        <h1 className="font-serif text-5xl md:text-7xl font-medium text-text-primary leading-tight mb-6">
+          Uma chegada à altura do seu casamento
         </h1>
-        <p className="text-text-secondary text-lg max-w-xl mb-2">
+        <p className="text-text-secondary text-lg max-w-xl mb-10">
           MP Lafer conversível clássico para casamentos na Serra Gaúcha.
           Chegada da noiva, ensaios fotográficos e fuga dos noivos.
-        </p>
-        <p className="text-gold font-semibold text-xl mb-10">
-          A partir de R$ 2.600
         </p>
 
         <div className="flex flex-wrap gap-4 mb-16">
