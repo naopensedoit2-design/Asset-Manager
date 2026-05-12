@@ -1,3 +1,5 @@
+"use client";
+
 import SectionWrapper from "@/components/ui/SectionWrapper";
 import { useSiteConfig } from "@/hooks/useSiteConfig";
 import { getWhatsAppUrl } from "@/lib/whatsapp";

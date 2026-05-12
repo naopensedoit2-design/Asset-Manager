@@ -1,3 +1,5 @@
+"use client";
+
 import { useSiteConfig } from "@/hooks/useSiteConfig";
 import { getWhatsAppUrl } from "@/lib/whatsapp";
 import { FaWhatsapp } from "react-icons/fa";

@@ -1,3 +1,5 @@
+"use client";
+
 import { useQuery } from "@tanstack/react-query";
 import SectionWrapper from "@/components/ui/SectionWrapper";
 import { useSiteConfig } from "@/hooks/useSiteConfig";

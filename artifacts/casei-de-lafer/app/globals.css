@@ -1,0 +1,179 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  /* ─── Brand Colors ─────────────────────────────────── */
+  --color-gold:        #C9A84C;
+  --color-gold-light:  #DFC070;
+  --color-gold-dark:   #A8862E;
+  --color-gold-muted:  rgba(201, 168, 76, 0.15);
+
+  /* ─── Background Scale ──────────────────────────────── */
+  --color-bg-primary:   #0a0a0a;
+  --color-bg-secondary: #111111;
+  --color-bg-card:      #161616;
+  --color-bg-elevated:  #1c1c1c;
+
+  /* ─── Text Scale ────────────────────────────────────── */
+  --color-text-primary:   #f5f0e8;
+  --color-text-secondary: #b0a898;
+  --color-text-muted:     #6b6560;
+
+  /* ─── Borders ───────────────────────────────────────── */
+  --color-border-subtle:  rgba(255, 255, 255, 0.06);
+  --color-border-gold:    rgba(201, 168, 76, 0.35);
+
+  /* ─── Semantic mappings (Shadcn compatibility) ───────── */
+  --color-background:        #0a0a0a;
+  --color-foreground:        #f5f0e8;
+  --color-border:            rgba(255, 255, 255, 0.08);
+  --color-input:             rgba(255, 255, 255, 0.10);
+  --color-ring:              #C9A84C;
+
+  --color-card:              #161616;
+  --color-card-foreground:   #f5f0e8;
+  --color-card-border:       rgba(255, 255, 255, 0.06);
+
+  --color-popover:           #1c1c1c;
+  --color-popover-foreground: #f5f0e8;
+  --color-popover-border:    rgba(255, 255, 255, 0.08);
+
+  --color-primary:           #C9A84C;
+  --color-primary-foreground: #0a0a0a;
+
+  --color-secondary:         #161616;
+  --color-secondary-foreground: #f5f0e8;
+
+  --color-muted:             #1c1c1c;
+  --color-muted-foreground:  #6b6560;
+
+  --color-accent:            rgba(201, 168, 76, 0.12);
+  --color-accent-foreground: #C9A84C;
+
+  --color-destructive:       #c0392b;
+  --color-destructive-foreground: #f5f0e8;
+
+  /* ─── Sidebar ────────────────────────────────────────── */
+  --color-sidebar:                  #111111;
+  --color-sidebar-foreground:       #f5f0e8;
+  --color-sidebar-border:           rgba(255, 255, 255, 0.06);
+  --color-sidebar-primary:          #C9A84C;
+  --color-sidebar-primary-foreground: #0a0a0a;
+  --color-sidebar-accent:           rgba(201, 168, 76, 0.12);
+  --color-sidebar-accent-foreground: #C9A84C;
+  --color-sidebar-ring:             #C9A84C;
+
+  /* ─── Typography ─────────────────────────────────────── */
+  --font-sans:  'Inter', system-ui, sans-serif;
+  --font-serif: 'Playfair Display', Georgia, serif;
+  --font-mono:  'JetBrains Mono', 'Fira Code', monospace;
+
+  /* ─── Radius ─────────────────────────────────────────── */
+  --radius:    0.25rem;
+  --radius-sm: 0.125rem;
+  --radius-md: 0.25rem;
+  --radius-lg: 0.375rem;
+  --radius-xl: 0.5rem;
+
+  /* ─── Spacing ────────────────────────────────────────── */
+  --spacing: 0.25rem;
+
+  /* ─── Shadows (gold glow) ────────────────────────────── */
+  --shadow-gold-sm: 0 0 12px rgba(201, 168, 76, 0.25);
+  --shadow-gold:    0 0 24px rgba(201, 168, 76, 0.35);
+  --shadow-gold-lg: 0 0 48px rgba(201, 168, 76, 0.20);
+}
+
+/* ─── Global Base ────────────────────────────────────────── */
+@layer base {
+  * {
+    @apply border-border box-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: #0a0a0a;
+    color: #f5f0e8;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: 1rem;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-weight: 500;
+    line-height: 1.25;
+    color: #f5f0e8;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #0a0a0a;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #C9A84C;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #DFC070;
+  }
+
+  /* Selection */
+  ::selection {
+    background-color: rgba(201, 168, 76, 0.25);
+    color: #f5f0e8;
+  }
+}
+
+/* ─── Elevation System ───────────────────────────────────── */
+@layer utilities {
+  input[type="search"]::-webkit-search-cancel-button {
+    @apply hidden;
+  }
+
+  [contenteditable][data-placeholder]:empty::before {
+    content: attr(data-placeholder);
+    color: #6b6560;
+    pointer-events: none;
+  }
+
+  /* Gold divider utility */
+  .divider-gold {
+    height: 1px;
+    background: linear-gradient(
+      to right,
+      transparent,
+      rgba(201, 168, 76, 0.5),
+      transparent
+    );
+  }
+
+  /* Gold text gradient */
+  .text-gold-gradient {
+    background: linear-gradient(135deg, #DFC070 0%, #C9A84C 50%, #A8862E 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Fade in animation */
+  .animate-fade-in {
+    animation: fadeIn 0.6s ease-out forwards;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+}

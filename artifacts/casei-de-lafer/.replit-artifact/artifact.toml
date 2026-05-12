@@ -19,13 +19,7 @@ run = "pnpm --filter @workspace/casei-de-lafer run dev"
 
 [services.production]
 build = [ "pnpm", "--filter", "@workspace/casei-de-lafer", "run", "build" ]
-publicDir = "artifacts/casei-de-lafer/dist/public"
-serve = "static"
-
-[[services.production.rewrites]]
-from = "/*"
-to = "/index.html"
+run = [ "pnpm", "--filter", "@workspace/casei-de-lafer", "run", "start" ]
 
 [services.env]
 PORT = "23059"
-BASE_PATH = "/"
