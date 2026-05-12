@@ -10,7 +10,10 @@ export async function GET() {
       siteConfig = await prisma.siteConfig.create({ data: {} });
     }
     return NextResponse.json({
-      whatsappNumber: process.env["WHATSAPP_NUMBER"] ?? "5554999999999",
+      whatsappNumber:
+        siteConfig.whatsappNumber ||
+        process.env["WHATSAPP_NUMBER"] ||
+        "5554999999999",
       weddingCount: siteConfig.weddingCount,
       driverQuote: siteConfig.driverQuote,
     });

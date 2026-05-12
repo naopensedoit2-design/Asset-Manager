@@ -10,6 +10,7 @@ model HeroImage {
   id        Int      @id @default(autoincrement())
   type      String
   url       String
+  publicId  String   @default("")
   videoUrl  String   @default("")
   updatedAt DateTime @updatedAt
 }
@@ -17,6 +18,7 @@ model HeroImage {
 model GalleryImage {
   id        Int      @id @default(autoincrement())
   url       String
+  publicId  String   @default("")
   alt       String   @default("")
   coupleTag String   @default("")
   location  String   @default("")
@@ -30,7 +32,8 @@ model BlockedDate {
 }
 
 model SiteConfig {
-  id           Int    @id @default(autoincrement())
-  weddingCount Int    @default(0)
-  driverQuote  String @default("")
+  id             Int    @id @default(autoincrement())
+  whatsappNumber String @default("")
+  weddingCount   Int    @default(0)
+  driverQuote    String @default("")
 }

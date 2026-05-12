@@ -1,7 +1,4 @@
 {
-  "/api/hero/route": "app/api/hero/route.js",
-  "/api/gallery/route": "app/api/gallery/route.js",
-  "/api/site-config/route": "app/api/site-config/route.js",
-  "/api/dates/route": "app/api/dates/route.js",
-  "/page": "app/page.js"
+  "/page": "app/page.js",
+  "/admin/login/page": "app/admin/login/page.js"
 }
