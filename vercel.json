@@ -1,0 +1,21 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "pnpm run build",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "outputDirectory": "./artifacts/casei-de-lafer/.next",
+  "public": "./artifacts/casei-de-lafer/public",
+  "git": {
+    "deploymentEnabled": {
+      "main": true
+    }
+  },
+  "env": {
+    "DATABASE_URL": "@database_url",
+    "CLOUDINARY_CLOUD_NAME": "@cloudinary_cloud_name",
+    "CLOUDINARY_API_KEY": "@cloudinary_api_key",
+    "CLOUDINARY_API_SECRET": "@cloudinary_api_secret",
+    "ADMIN_PASSWORD_HASH": "@admin_password_hash",
+    "SESSION_SECRET": "@session_secret",
+    "WHATSAPP_NUMBER": "@whatsapp_number"
+  }
+}
