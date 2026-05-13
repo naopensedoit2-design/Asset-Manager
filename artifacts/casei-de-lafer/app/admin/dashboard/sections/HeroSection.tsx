@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Upload, Trash2, ImageIcon } from "lucide-react";
 import AdminSection from "../AdminSection";
@@ -52,6 +52,7 @@ function HeroColumn({ type, label }: { type: "desktop" | "mobile"; label: string
     fd.append("videoUrl", videoUrl);
     await fetch("/api/admin/hero", { method: "POST", body: fd });
     queryClient.invalidateQueries({ queryKey: ["admin-hero"] });
+    queryClient.invalidateQueries({ queryKey: ["hero"] });
     setSaving(false);
   }
 
@@ -87,7 +88,7 @@ function HeroColumn({ type, label }: { type: "desktop" | "mobile"; label: string
         <button
           onClick={() => fileRef.current?.click()}
           disabled={uploading}
-          className="flex-1 flex items-center justify-center gap-2 bg-bg-elevated hover:bg-border-subtle border border-border-subtle text-text-secondary hover:text-text-primary font-sans text-xs py-2.5 rounded transition-colors cursor-pointer disabled:opacity-40"
+          className="flex-1 flex items-center justify-center gap-2 bg-bg-elevated hover:bg-border-subtle border border-border-subtle text-text-secondary hover:text-text-primary font-sans text-xs py-2 px-3 rounded transition-colors cursor-pointer disabled:opacity-40"
         >
           <Upload className="w-4 h-4" />
           {uploading ? "Enviando..." : "Selecionar imagem"}
