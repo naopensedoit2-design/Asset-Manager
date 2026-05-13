@@ -2,7 +2,7 @@
   "framework": "nextjs",
   "buildCommand": "pnpm run build",
   "installCommand": "pnpm install --frozen-lockfile",
-  "outputDirectory": "artifacts/casei-de-lafer/.next",
+  "outputDirectory": ".next",
   "git": {
     "deploymentEnabled": {
       "main": true
