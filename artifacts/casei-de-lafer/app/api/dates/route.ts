@@ -9,7 +9,7 @@ export async function GET() {
       orderBy: { date: "asc" },
     });
     return NextResponse.json(
-      blockedDates.map((d) => ({
+      blockedDates.map((d: any) => ({
         id: d.id,
         date: d.date.toISOString().split("T")[0],
         label: d.label,
