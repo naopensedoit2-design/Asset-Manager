@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { FaWhatsapp } from "react-icons/fa";
 import { useSiteConfig } from "@/hooks/useSiteConfig";
@@ -28,10 +29,25 @@ function useHeroImage() {
 export default function Hero() {
   const { data: hero } = useHeroImage();
   const { data: siteConfig } = useSiteConfig();
+  const [isMobile, setIsMobile] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   const whatsappUrl = getWhatsAppUrl(siteConfig?.whatsappNumber ?? "");
 
-  const desktopUrl = hero?.desktop?.url ?? "/hero-desktop.jpg";
+  // Select appropriate image based on screen size
+  const heroImage = isMobile ? hero?.mobile : hero?.desktop;
+  const backgroundUrl = heroImage?.url ?? (isMobile ? "/hero-mobile.jpg" : "/hero-desktop.jpg");
+  const videoId = heroImage?.videoUrl;
 
   const scrollToNext = () => {
     const next = document.getElementById("experiences");
@@ -43,8 +59,20 @@ export default function Hero() {
       {/* Background image */}
       <div
         className="absolute inset-0 bg-center bg-cover bg-no-repeat"
-        style={{ backgroundImage: `url(${desktopUrl})` }}
+        style={{ backgroundImage: `url(${backgroundUrl})` }}
       />
+
+      {/* YouTube Video Overlay (if available) */}
+      {mounted && videoId && (
+        <iframe
+          className="absolute inset-0 w-full h-full"
+          src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&modestbranding=1`}
+          title="Hero Video"
+          allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
+          allowFullScreen
+          style={{ border: "none" }}
+        />
+      )}
 
       {/* Gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-black/30" />
@@ -78,7 +106,7 @@ export default function Hero() {
             href={whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-3 bg-gold text-black font-semibold uppercase tracking-widest text-sm px-10 py-4 transition-all duration-300 hover:bg-gold-light hover:shadow-[0_0_32px_rgba(201,168,76,0.5)] active:scale-[0.97]"
+            className="inline-flex items-center gap-3 bg-gold text-black font-semibold uppercase tracking-widest text-sm px-10 py-4 transition-all duration-300 hover:bg-gold-light hover:shadow-[0_20px_25px_-5px_rgba(201,168,76,0.3)] cursor-pointer"
           >
             <FaWhatsapp size={18} />
             Consultar Disponibilidade
