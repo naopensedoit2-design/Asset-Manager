@@ -60,3 +60,4 @@ out/
 # Build outputs
 dist/
 build/
+.vercel
