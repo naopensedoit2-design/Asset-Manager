@@ -21,7 +21,7 @@ export default function DatesSection() {
   const queryClient = useQueryClient();
 
   const { data: blockedDates = [] } = useQuery<BlockedDate[]>({
-    queryKey: ["admin-dates"],
+    queryKey: ["blocked-dates"],
     queryFn: () => fetch("/api/dates").then((r) => r.json()),
   });
 
@@ -53,7 +53,6 @@ export default function DatesSection() {
         label,
       }),
     });
-    queryClient.invalidateQueries({ queryKey: ["admin-dates"] });
     queryClient.invalidateQueries({ queryKey: ["blocked-dates"] });
     setPendingDate(null);
     setLabel("Reservado");
@@ -62,7 +61,6 @@ export default function DatesSection() {
 
   async function handleUnblock(id: number) {
     await fetch(`/api/admin/dates/${id}`, { method: "DELETE" });
-    queryClient.invalidateQueries({ queryKey: ["admin-dates"] });
     queryClient.invalidateQueries({ queryKey: ["blocked-dates"] });
   }
 
