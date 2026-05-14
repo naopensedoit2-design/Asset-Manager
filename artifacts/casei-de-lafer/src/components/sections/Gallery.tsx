@@ -5,6 +5,13 @@ import SectionWrapper from "@/components/ui/SectionWrapper";
 import { useSiteConfig } from "@/hooks/useSiteConfig";
 import { getWhatsAppUrl } from "@/lib/whatsapp";
 import { FaWhatsapp } from "react-icons/fa";
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselNext,
+  CarouselPrevious,
+} from "@/components/ui/carousel";
 
 interface GalleryImage {
   id: number;
@@ -68,22 +75,35 @@ export default function Gallery() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-3 md:gap-4">
-          {images.slice(0, 6).map((img, i) => (
-            <div
-              key={img.id}
-              className={`overflow-hidden bg-bg-elevated group ${
-                i === 1 ? "row-span-2" : ""
-              }`}
-            >
-              <img
-                src={img.url}
-                alt={img.alt || `Casamento com MP Lafer — ${img.coupleTag}`}
-                className="w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
-                style={{ minHeight: i === 1 ? "400px" : "200px" }}
-              />
+        <div className="relative w-full">
+          <Carousel
+            opts={{
+              align: "start",
+              loop: true,
+            }}
+            className="w-full"
+          >
+            <CarouselContent className="-ml-3 md:-ml-4">
+              {images.map((img) => (
+                <CarouselItem
+                  key={img.id}
+                  className="pl-3 md:pl-4 basis-[85%] sm:basis-1/2 md:basis-1/3 lg:basis-1/4"
+                >
+                  <div className="overflow-hidden bg-bg-elevated group aspect-[3/4] w-full">
+                    <img
+                      src={img.url}
+                      alt={img.alt || `Casamento com MP Lafer — ${img.coupleTag}`}
+                      className="w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
+                    />
+                  </div>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            <div className="hidden md:flex justify-end gap-3 mt-8">
+              <CarouselPrevious className="static translate-x-0 translate-y-0 h-12 w-12 border-gold text-gold hover:bg-gold hover:text-black transition-colors" />
+              <CarouselNext className="static translate-x-0 translate-y-0 h-12 w-12 border-gold text-gold hover:bg-gold hover:text-black transition-colors" />
             </div>
-          ))}
+          </Carousel>
         </div>
       )}
     </SectionWrapper>
