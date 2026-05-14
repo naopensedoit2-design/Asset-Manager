@@ -62,16 +62,17 @@ export default function Hero() {
         style={{ backgroundImage: `url(${backgroundUrl})` }}
       />
 
-      {/* YouTube Video Overlay (if available) */}
+      {/* YouTube: 16:9 cover (crop overflow) so viewport fills without letterboxing */}
       {mounted && videoId && (
-        <iframe
-          className="absolute inset-0 w-full h-full"
-          src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&modestbranding=1`}
-          title="Hero Video"
-          allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
-          allowFullScreen
-          style={{ border: "none" }}
-        />
+        <div className="pointer-events-none absolute inset-0 overflow-hidden">
+          <iframe
+            className="absolute top-1/2 left-1/2 h-[56.25vw] min-h-screen w-screen min-w-[177.78vh] -translate-x-1/2 -translate-y-1/2 border-0"
+            src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&modestbranding=1&playsinline=1&rel=0&fs=0`}
+            title="Hero Video"
+            allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
+            allowFullScreen
+          />
+        </div>
       )}
 
       {/* Gradient overlay */}
