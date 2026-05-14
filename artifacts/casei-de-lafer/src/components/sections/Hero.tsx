@@ -55,7 +55,7 @@ export default function Hero() {
   };
 
   return (
-    <section className="relative w-full h-screen min-h-[600px] flex items-center justify-center overflow-hidden">
+    <section className="relative w-full h-[100dvh] min-h-[650px] flex items-center justify-center overflow-hidden pb-16 md:pb-0">
       {/* Background image */}
       <div
         className="absolute inset-0 bg-center bg-cover bg-no-repeat"
@@ -79,34 +79,34 @@ export default function Hero() {
       <div className="absolute inset-0 bg-black/20" />
 
       {/* Content */}
-      <div className="relative z-10 w-full max-w-5xl mx-auto px-6 md:px-8 text-center">
+      <div className="relative z-10 w-full max-w-5xl mx-auto px-6 md:px-8 text-center mt-8 md:mt-0">
         {/* Badge */}
-        <p className="text-gold font-sans tracking-[0.35em] uppercase text-xs mb-8 opacity-90">
+        <p className="text-gold font-sans tracking-[0.35em] uppercase text-[10px] md:text-xs mb-4 md:mb-8 opacity-90">
           MP Lafer &bull; Experiência para Casamentos
         </p>
 
         {/* Title */}
-        <h1 className="font-serif text-5xl md:text-7xl lg:text-8xl font-medium text-text-primary leading-tight mb-6">
+        <h1 className="font-serif text-5xl md:text-7xl lg:text-8xl font-medium text-text-primary leading-tight mb-4 md:mb-6">
           Uma chegada à altura<br className="hidden md:block" /> do seu casamento
         </h1>
 
         {/* Subtitle */}
-        <p className="font-sans text-text-secondary text-lg md:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
+        <p className="font-sans text-text-secondary text-base md:text-xl max-w-2xl mx-auto mb-6 md:mb-10 leading-relaxed">
           Um clássico que valoriza o momento mais esperado do seu dia com elegância, presença e naturalidade.
         </p>
 
         {/* Urgency badge */}
-        <p className="text-gold font-sans text-sm font-medium mb-8 tracking-wide">
+        <p className="text-gold font-sans text-sm font-medium mb-6 md:mb-8 tracking-wide">
           Agenda 2026 em fase final
         </p>
 
         {/* CTA buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8 md:mb-8">
           <a
             href={whatsappUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-3 bg-gold text-black font-semibold uppercase tracking-widest text-sm px-10 py-4 transition-all duration-300 hover:bg-gold-light hover:shadow-[0_20px_25px_-5px_rgba(201,168,76,0.3)] cursor-pointer"
+            className="inline-flex items-center gap-3 bg-gold text-black font-semibold uppercase tracking-widest text-sm px-8 py-3.5 md:px-10 md:py-4 transition-all duration-300 hover:bg-gold-light hover:shadow-[0_20px_25px_-5px_rgba(201,168,76,0.3)] cursor-pointer"
           >
             <FaWhatsapp size={18} />
             Consultar Disponibilidade
@@ -120,7 +120,7 @@ export default function Hero() {
         </div>
 
         {/* Footer info */}
-        <p className="font-sans text-text-muted text-xs tracking-widest uppercase">
+        <p className="font-sans text-text-muted text-[10px] md:text-xs tracking-widest uppercase">
           Região Sul &bull; 3 anos de experiência em casamentos
         </p>
       </div>
@@ -128,10 +128,10 @@ export default function Hero() {
       {/* Scroll hint */}
       <button
         onClick={scrollToNext}
-        className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-text-muted hover:text-gold transition-colors duration-200 group cursor-pointer"
+        className="absolute bottom-4 md:bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-text-muted hover:text-gold transition-colors duration-200 group cursor-pointer"
       >
-        <span className="font-sans tracking-[0.3em] uppercase text-xs">Descubra</span>
-        <span className="block w-px h-10 bg-gradient-to-b from-gold/60 to-transparent group-hover:h-14 transition-all duration-500" />
+        <span className="font-sans tracking-[0.3em] uppercase text-[10px] md:text-xs">Descubra</span>
+        <span className="block w-px h-8 md:h-10 bg-gradient-to-b from-gold/60 to-transparent group-hover:h-12 md:group-hover:h-14 transition-all duration-500" />
       </button>
     </section>
   );
