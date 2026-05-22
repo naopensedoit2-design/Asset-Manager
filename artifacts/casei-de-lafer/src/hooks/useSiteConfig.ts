@@ -5,6 +5,7 @@ interface SiteConfig {
   weddingCount: number;
   driverQuote: string;
   showCalendar: boolean;
+  heroOpacity: number;
 }
 
 async function fetchSiteConfig(): Promise<SiteConfig> {

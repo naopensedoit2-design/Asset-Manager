@@ -17,6 +17,7 @@ export async function GET() {
       weddingCount: siteConfig.weddingCount,
       driverQuote: siteConfig.driverQuote,
       showCalendar: siteConfig.showCalendar ?? true,
+      heroOpacity: siteConfig.heroOpacity ?? 60,
     });
   } catch {
     return NextResponse.json({
@@ -24,6 +25,7 @@ export async function GET() {
       weddingCount: 0,
       driverQuote: "",
       showCalendar: true,
+      heroOpacity: 60,
     });
   }
 }

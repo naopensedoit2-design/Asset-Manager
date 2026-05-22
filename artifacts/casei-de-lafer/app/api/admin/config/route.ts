@@ -20,6 +20,7 @@ export async function POST(request: NextRequest) {
       }),
       ...(body.driverQuote !== undefined && { driverQuote: body.driverQuote }),
       ...(body.showCalendar !== undefined && { showCalendar: Boolean(body.showCalendar) }),
+      ...(body.heroOpacity !== undefined && { heroOpacity: Number(body.heroOpacity) }),
     },
   });
 

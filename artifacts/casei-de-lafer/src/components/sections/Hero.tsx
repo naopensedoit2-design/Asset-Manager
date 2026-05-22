@@ -77,7 +77,10 @@ export default function Hero() {
 
       {/* Gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-black/30" />
-      <div className="absolute inset-0 bg-black/20" />
+      <div
+        className="absolute inset-0"
+        style={{ backgroundColor: `rgba(0, 0, 0, ${((siteConfig?.heroOpacity ?? 60) / 100).toFixed(2)})` }}
+      />
 
       {/* Content */}
       <div className="relative z-10 w-full max-w-5xl mx-auto px-6 md:px-8 text-center mt-8 md:mt-0">
