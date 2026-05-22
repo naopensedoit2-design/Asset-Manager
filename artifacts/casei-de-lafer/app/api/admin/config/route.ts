@@ -19,6 +19,7 @@ export async function POST(request: NextRequest) {
         weddingCount: Number(body.weddingCount),
       }),
       ...(body.driverQuote !== undefined && { driverQuote: body.driverQuote }),
+      ...(body.showCalendar !== undefined && { showCalendar: Boolean(body.showCalendar) }),
     },
   });
 

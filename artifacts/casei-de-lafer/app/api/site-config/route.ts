@@ -16,12 +16,14 @@ export async function GET() {
         "5554999999999",
       weddingCount: siteConfig.weddingCount,
       driverQuote: siteConfig.driverQuote,
+      showCalendar: siteConfig.showCalendar ?? true,
     });
   } catch {
     return NextResponse.json({
       whatsappNumber: process.env["WHATSAPP_NUMBER"] ?? "5554999999999",
       weddingCount: 0,
       driverQuote: "",
+      showCalendar: true,
     });
   }
 }

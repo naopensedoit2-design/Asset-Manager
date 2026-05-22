@@ -166,7 +166,7 @@ export default function Investment() {
         </h2>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-10 items-start">
+      <div className={`grid ${siteConfig?.showCalendar !== false ? "md:grid-cols-2" : "max-w-xl mx-auto"} gap-10 items-start`}>
         {/* Pricing */}
         <div className="flex flex-col gap-6">
           <div className="bg-bg-card border border-border-gold p-8">
@@ -200,15 +200,19 @@ export default function Investment() {
             </a>
           </div>
 
-          <p className="font-sans text-text-muted text-xs text-center leading-relaxed">
-            Os sábados marcados no calendário já estão reservados.
-            <br />
-            Verifique sua data e entre em contato para garantir.
-          </p>
+          {siteConfig?.showCalendar !== false && (
+            <p className="font-sans text-text-muted text-xs text-center leading-relaxed">
+              Os sábados marcados no calendário já estão reservados.
+              <br />
+              Verifique sua data e entre em contato para garantir.
+            </p>
+          )}
         </div>
 
         {/* Calendar */}
-        <CalendarWidget blockedDates={blockedDates} />
+        {siteConfig?.showCalendar !== false && (
+          <CalendarWidget blockedDates={blockedDates} />
+        )}
       </div>
     </SectionWrapper>
   );

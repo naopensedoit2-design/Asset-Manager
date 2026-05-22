@@ -32,8 +32,9 @@ model BlockedDate {
 }
 
 model SiteConfig {
-  id             Int    @id @default(autoincrement())
-  whatsappNumber String @default("")
-  weddingCount   Int    @default(0)
-  driverQuote    String @default("")
+  id             Int      @id @default(autoincrement())
+  whatsappNumber String   @default("")
+  weddingCount   Int      @default(0)
+  driverQuote    String   @default("")
+  showCalendar   Boolean  @default(true)
 }

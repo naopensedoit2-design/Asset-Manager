@@ -4,6 +4,7 @@ interface SiteConfig {
   whatsappNumber: string;
   weddingCount: number;
   driverQuote: string;
+  showCalendar: boolean;
 }
 
 async function fetchSiteConfig(): Promise<SiteConfig> {
