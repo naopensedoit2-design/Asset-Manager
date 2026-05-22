@@ -18,12 +18,33 @@ export default function DatesSection() {
   const [pendingDate, setPendingDate] = useState<Date | null>(null);
   const [label, setLabel] = useState("Reservado");
   const [blocking, setBlocking] = useState(false);
+  const [showCalendar, setShowCalendar] = useState<boolean>(true);
   const queryClient = useQueryClient();
+
+  const { data: config } = useQuery({
+    queryKey: ["site-config"],
+    queryFn: () => fetch("/api/site-config").then((r) => r.json()),
+  });
 
   const { data: blockedDates = [] } = useQuery<BlockedDate[]>({
     queryKey: ["blocked-dates"],
     queryFn: () => fetch("/api/dates").then((r) => r.json()),
   });
+
+  // Sync config
+  if (config && showCalendar !== config.showCalendar && showCalendar === true && config.showCalendar === false) {
+    setShowCalendar(false);
+  }
+
+  async function handleToggleCalendar(checked: boolean) {
+    setShowCalendar(checked);
+    await fetch("/api/admin/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ showCalendar: checked }),
+    });
+    queryClient.invalidateQueries({ queryKey: ["site-config"] });
+  }
 
   const blockedDateStrings = new Set(blockedDates.map((d) => d.date));
   const blockedDayObjects = blockedDates.map(
@@ -69,8 +90,24 @@ export default function DatesSection() {
 
   return (
     <AdminSection title="Calendário">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div>
+      <div className="space-y-8">
+        <div className="bg-bg-elevated border border-border-subtle p-6 rounded max-w-xl">
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="showCalendar"
+              checked={config?.showCalendar ?? true}
+              onChange={(e) => handleToggleCalendar(e.target.checked)}
+              className="w-4 h-4 accent-gold"
+            />
+            <label htmlFor="showCalendar" className="font-sans text-sm text-text-secondary cursor-pointer select-none">
+              Exibir calendário de disponibilidade publicamente no site
+            </label>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div>
           <p className="font-sans text-xs text-text-muted mb-4">
             Clique em uma data para bloquear. Clique em uma data bloqueada (
             <span className="text-gold">dourada</span>) para desbloquear.
@@ -167,6 +204,7 @@ export default function DatesSection() {
                 ))}
             </ul>
           )}
+        </div>
         </div>
       </div>
     </AdminSection>

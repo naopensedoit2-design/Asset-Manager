@@ -129,11 +129,66 @@ function HeroColumn({ type, label }: { type: "desktop" | "mobile"; label: string
 }
 
 export default function HeroSection() {
+  const queryClient = useQueryClient();
+  const [heroOpacity, setHeroOpacity] = useState<number>(60);
+  const [savingOpacity, setSavingOpacity] = useState(false);
+
+  const { data: config } = useQuery({
+    queryKey: ["site-config"],
+    queryFn: () => fetch("/api/site-config").then((r) => r.json()),
+  });
+
+  useEffect(() => {
+    if (config) {
+      setHeroOpacity(config.heroOpacity ?? 60);
+    }
+  }, [config]);
+
+  async function handleSaveOpacity() {
+    setSavingOpacity(true);
+    await fetch("/api/admin/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ heroOpacity }),
+    });
+    queryClient.invalidateQueries({ queryKey: ["site-config"] });
+    setSavingOpacity(false);
+  }
+
   return (
     <AdminSection title="Hero">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <HeroColumn type="desktop" label="Desktop" />
-        <HeroColumn type="mobile" label="Mobile" />
+      <div className="space-y-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <HeroColumn type="desktop" label="Desktop" />
+          <HeroColumn type="mobile" label="Mobile" />
+        </div>
+
+        <div className="bg-bg-elevated border border-border-subtle p-6 rounded max-w-xl">
+          <div className="space-y-4">
+            <label className="font-sans text-sm text-text-secondary flex justify-between">
+              <span>Escurecimento da imagem/vídeo principal</span>
+              <span>{heroOpacity}%</span>
+            </label>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              value={heroOpacity}
+              onChange={(e) => setHeroOpacity(Number(e.target.value))}
+              className="w-full accent-gold"
+            />
+            <div className="flex justify-end">
+              <button
+                onClick={handleSaveOpacity}
+                disabled={savingOpacity}
+                className="bg-gold hover:bg-gold-light disabled:opacity-40 text-bg-primary font-sans font-semibold text-xs tracking-widest px-6 py-2.5 rounded transition-colors uppercase cursor-pointer"
+              >
+                {savingOpacity ? "Salvando..." : "Salvar Opacidade"}
+              </button>
+            </div>
+          </div>
+        </div>
       </div>
     </AdminSection>
   );
