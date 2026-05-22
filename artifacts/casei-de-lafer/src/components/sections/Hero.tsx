@@ -81,49 +81,89 @@ export default function Hero() {
 
       {/* Content */}
       <div className="relative z-10 w-full max-w-5xl mx-auto px-6 md:px-8 text-center mt-8 md:mt-0">
-        {/* Badge */}
-        <p className="text-gold font-sans tracking-[0.35em] uppercase text-[10px] md:text-xs mb-4 md:mb-8 opacity-90">
-          MP Lafer &bull; Experiência para Casamentos
-        </p>
+        {/* Desktop Content */}
+        <div className="hidden md:block">
+          {/* Badge */}
+          <p className="text-gold font-sans tracking-[0.35em] uppercase text-xs mb-8 opacity-90">
+            MP Lafer &bull; Experiência para Casamentos
+          </p>
 
-        {/* Title */}
-        <h1 className="font-serif text-5xl md:text-7xl lg:text-8xl font-medium text-text-primary leading-tight mb-4 md:mb-6">
-          Uma chegada à altura<br className="hidden md:block" /> do seu casamento
-        </h1>
+          {/* Title */}
+          <h1 className="font-serif text-7xl lg:text-8xl font-medium text-text-primary leading-tight mb-6">
+            Uma chegada à altura<br /> do seu casamento
+          </h1>
 
-        {/* Subtitle */}
-        <p className="font-sans text-text-secondary text-base md:text-xl max-w-2xl mx-auto mb-6 md:mb-10 leading-relaxed">
-          Um clássico que valoriza o momento mais esperado do seu dia com elegância, presença e naturalidade.
-        </p>
+          {/* Subtitle */}
+          <p className="font-sans text-text-secondary text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
+            Um clássico que valoriza o momento mais esperado do seu dia com elegância, presença e naturalidade.
+          </p>
 
-        {/* Urgency badge */}
-        <p className="text-gold font-sans text-sm font-medium mb-6 md:mb-8 tracking-wide">
-          Agenda 2026 em fase final
-        </p>
+          {/* Urgency badge */}
+          <p className="text-gold font-sans text-sm font-medium mb-8 tracking-wide">
+            Agenda 2026 em fase final
+          </p>
 
-        {/* CTA buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8 md:mb-8">
-          <a
-            href={whatsappUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-3 bg-gold text-black font-semibold uppercase tracking-widest text-sm px-8 py-3.5 md:px-10 md:py-4 transition-all duration-300 hover:bg-gold-light hover:shadow-[0_20px_25px_-5px_rgba(201,168,76,0.3)] cursor-pointer"
-          >
-            <FaWhatsapp size={18} />
-            Consultar Disponibilidade
-          </a>
-          <a
-            href="/orcamento/detalhado"
-            className="font-sans text-text-secondary text-sm hover:text-gold transition-colors duration-200 underline underline-offset-4"
-          >
-            &rsaquo; Fazer orçamento detalhado
-          </a>
+          {/* CTA buttons */}
+          <div className="flex flex-row items-center justify-center gap-4 mb-8">
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-3 bg-gold text-black font-semibold uppercase tracking-widest text-sm px-10 py-4 transition-all duration-300 hover:bg-gold-light hover:shadow-[0_20px_25px_-5px_rgba(201,168,76,0.3)] cursor-pointer"
+            >
+              <FaWhatsapp size={18} />
+              Consultar Disponibilidade
+            </a>
+            <a
+              href="/orcamento/detalhado"
+              className="font-sans text-text-secondary text-sm hover:text-gold transition-colors duration-200 underline underline-offset-4"
+            >
+              &rsaquo; Fazer orçamento detalhado
+            </a>
+          </div>
+
+          {/* Footer info */}
+          <p className="font-sans text-text-muted text-xs tracking-widest uppercase">
+            Região Sul &bull; 3 anos de experiência em casamentos
+          </p>
         </div>
 
-        {/* Footer info */}
-        <p className="font-sans text-text-muted text-[10px] md:text-xs tracking-widest uppercase">
-          Região Sul &bull; 3 anos de experiência em casamentos
-        </p>
+        {/* Mobile Content */}
+        <div className="block md:hidden flex flex-col mt-12">
+          {/* Eyebrow */}
+          <p className="text-gold font-sans tracking-[0.35em] uppercase text-[10px] mb-5 opacity-90 font-medium">
+            CASEI DE LAFER
+          </p>
+
+          {/* Title */}
+          <h1 className="font-serif text-[2.75rem] leading-[1.1] text-text-primary mb-5">
+            <span className="font-bold">A chegada que</span><br />
+            <span className="italic text-gold font-medium">todos vão lembrar</span>
+          </h1>
+
+          {/* Subtitle */}
+          <p className="font-sans text-text-secondary text-[15px] leading-relaxed mb-8 px-2">
+            Um clássico elegante para o momento mais importante do seu casamento.
+          </p>
+
+          {/* CTA button */}
+          <div className="w-full mb-6">
+            <a
+              href={whatsappUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full flex items-center justify-center gap-3 bg-gold text-black font-bold uppercase tracking-widest text-[11px] py-4 rounded-[2px] active:bg-gold-light transition-colors"
+            >
+              <FaWhatsapp size={18} />
+              Consultar disponibilidade no WhatsApp
+            </a>
+          </div>
+
+          {/* Below CTA */}
+          <p className="font-sans text-text-muted text-[11px] leading-relaxed px-4">
+            Disponível para chegada da noiva e ensaios pré-wedding.
+          </p>
+        </div>
       </div>
 
       {/* Scroll hint */}
