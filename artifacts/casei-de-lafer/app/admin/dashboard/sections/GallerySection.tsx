@@ -78,6 +78,8 @@ function GalleryItem({ image }: { image: GalleryImage }) {
 
 export default function GallerySection() {
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
 
@@ -87,21 +89,59 @@ export default function GallerySection() {
   });
 
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(e.target.files ?? []);
+    const files = Array.from(e.target.files ?? []).slice(0, 20);
     if (!files.length) return;
+
     setUploading(true);
-    const fd = new FormData();
-    files.slice(0, 20).forEach((f) => fd.append("files", f));
-    await fetch("/api/admin/gallery", { method: "POST", body: fd });
+    setUploadError(null);
+    setUploadProgress(null);
+
+    let successCount = 0;
+    const failures: string[] = [];
+
+    // One request per file — avoids Vercel’s ~4.5MB body limit when
+    // multiple photos are packed into a single multipart POST.
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      setUploadProgress(`Enviando ${i + 1} de ${files.length}...`);
+      const fd = new FormData();
+      fd.append("files", file);
+      try {
+        const res = await fetch("/api/admin/gallery", {
+          method: "POST",
+          body: fd,
+        });
+        if (!res.ok) {
+          const message = await res.text().catch(() => "");
+          failures.push(
+            `${file.name}: ${message || `erro ${res.status}`}`,
+          );
+          continue;
+        }
+        successCount += 1;
+      } catch {
+        failures.push(`${file.name}: falha de rede`);
+      }
+    }
+
     queryClient.invalidateQueries({ queryKey: ["admin-gallery"] });
     queryClient.invalidateQueries({ queryKey: ["gallery"] });
     setUploading(false);
+    setUploadProgress(null);
     e.target.value = "";
+
+    if (failures.length) {
+      setUploadError(
+        successCount
+          ? `${successCount} enviada(s). Falhas: ${failures.join("; ")}`
+          : `Falha no upload: ${failures.join("; ")}`,
+      );
+    }
   }
 
   return (
     <AdminSection title="Galeria">
-      <div className="mb-6">
+      <div className="mb-6 space-y-2">
         <input
           ref={fileRef}
           type="file"
@@ -116,8 +156,13 @@ export default function GallerySection() {
           className="flex items-center gap-2 bg-bg-elevated hover:bg-border-subtle border border-border-subtle border-dashed text-text-secondary hover:text-text-primary font-sans text-sm px-6 py-3 rounded transition-colors cursor-pointer disabled:opacity-40"
         >
           <Upload className="w-4 h-4" />
-          {uploading ? "Enviando fotos..." : "Selecionar fotos (até 20)"}
+          {uploading
+            ? uploadProgress ?? "Enviando fotos..."
+            : "Selecionar fotos (até 20)"}
         </button>
+        {uploadError && (
+          <p className="font-sans text-xs text-destructive">{uploadError}</p>
+        )}
       </div>
 
       {images.length === 0 ? (
