@@ -155,3 +155,24 @@ model OrderHistory {
   note       String   @default("")
   createdAt  DateTime @default(now())
 }
+
+// ─── Financeiro ──────────────────────────────────────────────
+model Expense {
+  id          Int       @id @default(autoincrement())
+  date        DateTime  @db.Date // data do gasto (ou do orçamento/serviço)
+  description String
+  category    String    @default("outros")
+  supplier    String    @default("")
+  amountCents Int
+  status      String    @default("pago") // pago | a_pagar
+  dueDate     DateTime? @db.Date
+  paidAt      DateTime? @db.Date
+  notes       String    @default("")
+  orderId     Int? // gasto ligado a um evento específico (ex.: combustível de um casamento)
+  createdBy   String    @default("admin")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([date])
+  @@index([status])
+}

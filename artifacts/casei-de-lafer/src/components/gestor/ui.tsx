@@ -24,12 +24,13 @@ export async function api<T = any>(url: string, init?: { method?: string; body?:
 // ─── Cabeçalho do admin ──────────────────────────────────────
 
 const NAV = [
-  { href: "/admin/dashboard", label: "Gestão" },
-  { href: "/admin/dashboard?aba=site", label: "Site" },
-  { href: "/admin/regras", label: "Regras" },
+  { key: "gestao", href: "/admin/dashboard", label: "Gestão" },
+  { key: "financeiro", href: "/admin/financeiro", label: "Financeiro" },
+  { key: "regras", href: "/admin/regras", label: "Regras" },
+  { key: "site", href: "/admin/dashboard?aba=site", label: "Site" },
 ];
 
-export function AdminHeader({ active }: { active: "gestao" | "site" | "regras" | "pedido" }) {
+export function AdminHeader({ active }: { active: "gestao" | "site" | "regras" | "pedido" | "financeiro" }) {
   const router = useRouter();
   const current = active === "pedido" ? "gestao" : active;
 
@@ -41,13 +42,12 @@ export function AdminHeader({ active }: { active: "gestao" | "site" | "regras" |
   return (
     <header className="sticky top-0 z-40 bg-bg-secondary/95 backdrop-blur border-b border-border-subtle">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-2 sm:gap-4">
-        <Link href="/admin/dashboard" className="font-serif text-base sm:text-lg text-text-primary whitespace-nowrap">
+        <Link href="/admin/dashboard" className="hidden sm:inline font-serif text-lg text-text-primary whitespace-nowrap">
           Casei de Lafer
         </Link>
         <nav className="flex gap-1 overflow-x-auto" aria-label="Seções do painel">
           {NAV.map((item) => {
-            const key = item.label === "Gestão" ? "gestao" : item.label === "Site" ? "site" : "regras";
-            const on = key === current;
+            const on = item.key === current;
             return (
               <Link
                 key={item.href}

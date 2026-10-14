@@ -33,6 +33,7 @@ Instagram ou indicação (fotógrafos, cerimonialistas como Celebre Gramado) →
 - Os pacotes `lib/*` (Drizzle, Orval) e `artifacts/mockup-sandbox` são restos do template do Replit e **não são usados pelo site**.
 - Admin: `/admin` protegido por `middleware.ts` (cookie `admin-session`). Rotas de API do admin ficam em `/api/admin/*`.
 - Módulo de gestão (Fase 1): regras puras em `src/lib/gestor/rules.ts` (com testes), acesso ao banco em `src/lib/gestor/service.ts`, telas em `src/components/gestor`, `app/admin/dashboard`, `app/admin/pedidos` e `app/admin/regras`.
+- Financeiro: regras puras em `src/lib/gestor/finance.ts` (com testes), banco em `src/lib/gestor/finance-service.ts`, tela em `app/admin/financeiro`. Entradas vêm dos pagamentos recebidos; despesas no modelo `Expense` (caixa = data do pagamento; custo do carro = data do gasto).
 - Margot no site: chat em `/orcamento/detalhado` → `POST /api/margot` → `src/lib/margot/agent.ts` (API do Claude via fetch, ferramentas que usam `src/lib/gestor/service.ts`). Instruções dela em `src/lib/margot/prompt.ts`; preços e regras vêm do banco, nunca do prompt.
 - API para agentes externos (Margot via n8n): `/api/v1/*`, autenticada por `Authorization: Bearer <AGENT_API_TOKEN>`. Documentação em `docs/api.md`.
 
