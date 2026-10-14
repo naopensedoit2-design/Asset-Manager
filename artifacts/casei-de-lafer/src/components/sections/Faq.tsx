@@ -22,7 +22,7 @@ const faqs = [
   {
     question: "Como funciona o agendamento e confirmação da data?",
     answer:
-      "O agendamento é feito diretamente via WhatsApp. Para confirmar a data, solicitamos um sinal de 50% do valor total. O restante é pago na semana do evento. A data só é bloqueada na agenda após a confirmação do sinal.",
+      "O agendamento é feito diretamente via WhatsApp. Para confirmar a data, solicitamos um sinal de 40% do valor total via Pix. O restante é pago até 1 dia antes do evento. A data só é bloqueada na agenda após a confirmação do sinal.",
   },
   {
     question: "É possível utilizar o MP Lafer para ensaio fotográfico?",

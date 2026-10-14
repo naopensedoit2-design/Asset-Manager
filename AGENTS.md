@@ -15,10 +15,12 @@ Uma data só comporta um evento (existe um único carro).
 | Adicional "Saída dos Noivos" (carro permanece após a chegada da noiva para um segundo deslocamento no mesmo local) | + R$ 500,00 |
 
 ### Regras comerciais (editáveis em /admin → Regras)
-- Sinal de **50%** para reservar a data; a data só é bloqueada no calendário público depois que o sinal é pago.
-- Saldo pago na semana do evento (padrão: até 7 dias antes).
+- Sinal de **40%** via Pix para reservar a data; a data só é bloqueada no calendário público depois que o sinal é pago.
+- Saldo de 60% até 1 dia antes do evento.
 - Reserva provisória sem sinal expira em 48h (padrão).
-- Política de cancelamento e raio de atendimento: **ainda não definidos** pelo dono.
+- Cancelamento: sinal não reembolsável (reserva de data). Ensaios: chuva forte permite remarcar sem custo em até 60 dias.
+- Ensaio Pré-Wedding: R$ 1.900, até 3h em um ponto de ensaio; o motorista a rigor é do dia do casamento.
+- Raio de atendimento: Serra Gaúcha; fora dela, deslocamento avaliado caso a caso.
 
 ### Jornada do cliente
 Instagram ou indicação (fotógrafos, cerimonialistas como Celebre Gramado) → landing page → WhatsApp → data, local e serviço → checagem de agenda → orçamento em PDF → aprovação → Termo Simplificado → Pix do sinal → data bloqueada → confirmações → evento → saldo e pós-venda.
