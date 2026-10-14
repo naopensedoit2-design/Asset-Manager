@@ -14,6 +14,7 @@ import {
   computeKpis,
   dateToISO,
   DEFAULT_SERVICES,
+  DEFAULT_SERVICES_VERSION,
   isDateString,
   isOpenStatus,
   isOrderStatus,
@@ -77,9 +78,26 @@ export async function saveSettings(input: Record<string, unknown>): Promise<Sett
   return getSettings();
 }
 
+const SERVICES_VERSION_KEY = "servicosPadraoVersao";
+
+/**
+ * Cria os serviços padrão que ainda não existem. Roda uma vez por versão, então
+ * um serviço que o dono renomear ou desativar não é recriado depois.
+ */
 export async function ensureDefaultServices() {
-  const count = await prisma.service.count();
-  if (count === 0) await prisma.service.createMany({ data: DEFAULT_SERVICES });
+  const flag = await prisma.setting.findUnique({ where: { key: SERVICES_VERSION_KEY } });
+  if (Number(flag?.value ?? 0) >= DEFAULT_SERVICES_VERSION) return;
+  const existing = await prisma.service.findMany({ select: { name: true } });
+  const names = new Set(existing.map((s) => s.name.trim().toLowerCase()));
+  const missing = DEFAULT_SERVICES.filter((s) => !names.has(s.name.toLowerCase()));
+  // Bancos criados antes do controle de versão já têm os serviços da versão 1.
+  const toCreate = existing.length > 0 && !flag ? missing.filter((s) => s.sortOrder > 2) : missing;
+  if (toCreate.length) await prisma.service.createMany({ data: toCreate });
+  await prisma.setting.upsert({
+    where: { key: SERVICES_VERSION_KEY },
+    create: { key: SERVICES_VERSION_KEY, value: String(DEFAULT_SERVICES_VERSION) },
+    update: { value: String(DEFAULT_SERVICES_VERSION) },
+  });
 }
 
 export async function listServices(opts: { activeOnly?: boolean } = {}) {

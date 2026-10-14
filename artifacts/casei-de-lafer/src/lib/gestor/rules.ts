@@ -158,7 +158,18 @@ export const DEFAULT_SERVICES = [
     isAddon: true,
     sortOrder: 2,
   },
+  {
+    name: "Ensaio Pré-Wedding",
+    description:
+      "Ensaio fotográfico com o MP Lafer nas paisagens que vocês escolherem na Serra (mínimo de 2 horas). Clima mais leve e descontraído: o motorista a rigor fica reservado para o grande dia.",
+    priceCents: 190000,
+    isAddon: false,
+    sortOrder: 3,
+  },
 ];
+
+/** Sobe quando um serviço novo entra em DEFAULT_SERVICES, para ser criado em bancos existentes. */
+export const DEFAULT_SERVICES_VERSION = 2;
 
 // ─── Dinheiro ────────────────────────────────────────────────
 
