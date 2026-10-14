@@ -39,3 +39,119 @@ model SiteConfig {
   showCalendar   Boolean  @default(true)
   heroOpacity    Int      @default(60)
 }
+
+// ─── Gestão (Fase 1) ─────────────────────────────────────────
+// Todos os modelos abaixo são aditivos. Valores em centavos.
+// Datas de evento são "date" (sem hora) para não haver ambiguidade de fuso.
+
+model Client {
+  id         Int      @id @default(autoincrement())
+  name       String
+  phone      String   @unique // só dígitos, com DDI (ex.: 5554999999999)
+  email      String   @default("")
+  source     String   @default("outro") // instagram | indicacao | site | cerimonialista | outro
+  referredBy String   @default("")
+  notes      String   @default("")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  orders     Order[]
+}
+
+model Order {
+  id           Int            @id @default(autoincrement())
+  clientId     Int
+  client       Client         @relation(fields: [clientId], references: [id])
+  eventDate    DateTime?      @db.Date
+  eventTime    String         @default("")
+  venue        String         @default("")
+  city         String         @default("")
+  serviceIds   Int[]          @default([])
+  notes        String         @default("")
+  status       String         @default("novo")
+  lostReason   String         @default("")
+  createdBy    String         @default("admin") // admin | margot
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  quotes       Quote[]
+  reservations Reservation[]
+  payments     Payment[]
+  history      OrderHistory[]
+
+  @@index([status])
+  @@index([eventDate])
+}
+
+model Quote {
+  id            Int       @id @default(autoincrement())
+  orderId       Int
+  order         Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  items         Json      // [{ serviceId, name, priceCents }]
+  discountCents Int       @default(0)
+  totalCents    Int
+  depositCents  Int
+  validUntil    DateTime? @db.Date
+  pdfUrl        String    @default("")
+  sentAt        DateTime?
+  createdAt     DateTime  @default(now())
+}
+
+model Reservation {
+  id            Int       @id @default(autoincrement())
+  orderId       Int
+  order         Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  date          DateTime  @db.Date
+  // Igual a "date" enquanto a reserva está ativa; null quando liberada.
+  // O índice único garante uma única reserva ativa por data.
+  activeDate    DateTime? @unique @db.Date
+  kind          String    @default("provisoria") // provisoria | confirmada
+  expiresAt     DateTime?
+  blockedDateId Int?
+  releasedAt    DateTime?
+  createdAt     DateTime  @default(now())
+}
+
+model Payment {
+  id          Int       @id @default(autoincrement())
+  orderId     Int
+  order       Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  kind        String    @default("sinal") // sinal | saldo | outro
+  amountCents Int
+  dueDate     DateTime? @db.Date
+  status      String    @default("a_receber") // a_receber | recebido | atrasado | cancelado
+  paidAt      DateTime?
+  method      String    @default("pix")
+  externalId  String    @default("")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status])
+}
+
+model Service {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String   @default("")
+  priceCents  Int
+  isAddon     Boolean  @default(false)
+  active      Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Setting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model OrderHistory {
+  id         Int      @id @default(autoincrement())
+  orderId    Int
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  fromStatus String   @default("")
+  toStatus   String
+  actor      String   @default("admin") // admin | margot | sistema
+  note       String   @default("")
+  createdAt  DateTime @default(now())
+}
