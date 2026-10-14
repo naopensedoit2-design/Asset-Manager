@@ -109,6 +109,13 @@ Lista o que precisa de atenção, urgentes primeiro:
 ```
 Tipos: `data_em_conflito`, `reserva_expirando`, `pagamento_atrasado`, `pagamento_vencendo`, `orcamento_sem_resposta`, `pedido_novo`, `evento_proximo`.
 
+### `POST /despesas`
+Lança um gasto da empresa (ex.: o Leonardo manda pelo WhatsApp "gastei R$ 120 de gasolina").
+```json
+{ "description": "Gasolina para o casamento da Ana", "amountCents": 12000, "category": "combustivel", "date": "2026-10-14", "status": "pago", "supplier": "Posto X" }
+```
+`category`: `manutencao`, `guincho`, `combustivel`, `seguro`, `estetica`, `marketing`, `sistemas`, `outros`. `status`: `pago` ou `a_pagar` (com `dueDate`). Aparece no painel como "lançado pela Margot".
+
 ## Funil de status
 
 ```
