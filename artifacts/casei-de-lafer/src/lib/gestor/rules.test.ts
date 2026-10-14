@@ -156,3 +156,10 @@ test("indicadores somam o mês corrente e a conversão", () => {
   assert.equal(k.aReceberCents, 150000);
   assert.equal(k.atrasadoCents, 20000);
 });
+
+test("padrão atual: sinal de 40% e saldo 1 dia antes (como nos termos)", () => {
+  const t = calcQuote([carro, saida], 0, DEFAULT_SETTINGS.depositPercent);
+  assert.equal(t.depositCents, 124000); // R$ 1.240 de R$ 3.100
+  assert.equal(t.balanceCents, 186000);
+  assert.equal(balanceDueDate("2026-12-05", DEFAULT_SETTINGS.balanceDaysBefore, "2026-10-14"), "2026-12-04");
+});

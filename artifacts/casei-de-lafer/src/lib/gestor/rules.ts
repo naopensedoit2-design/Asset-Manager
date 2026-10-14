@@ -79,11 +79,12 @@ export interface Settings {
 }
 
 export const DEFAULT_SETTINGS: Settings = {
-  depositPercent: 50,
-  balanceDaysBefore: 7,
+  depositPercent: 40,
+  balanceDaysBefore: 1,
   provisionalHours: 48,
   followUpDays: 3,
-  cancellationPolicy: "",
+  cancellationPolicy:
+    "Em caso de cancelamento pelo contratante, o sinal não é reembolsável, por se tratar de reserva de data. Em ensaios, chuva forte permite remarcar sem custo em até 60 dias, conforme a agenda.",
   serviceArea: "",
 };
 
@@ -158,7 +159,18 @@ export const DEFAULT_SERVICES = [
     isAddon: true,
     sortOrder: 2,
   },
+  {
+    name: "Ensaio Pré-Wedding",
+    description:
+      "Ensaio fotográfico com o MP Lafer em um ponto de ensaio na Serra, com até 3 horas no local. Clima mais leve e descontraído: o motorista a rigor fica reservado para o grande dia.",
+    priceCents: 190000,
+    isAddon: false,
+    sortOrder: 3,
+  },
 ];
+
+/** Sobe quando um serviço novo entra em DEFAULT_SERVICES, para ser criado em bancos existentes. */
+export const DEFAULT_SERVICES_VERSION = 2;
 
 // ─── Dinheiro ────────────────────────────────────────────────
 

@@ -15,10 +15,12 @@ Uma data só comporta um evento (existe um único carro).
 | Adicional "Saída dos Noivos" (carro permanece após a chegada da noiva para um segundo deslocamento no mesmo local) | + R$ 500,00 |
 
 ### Regras comerciais (editáveis em /admin → Regras)
-- Sinal de **50%** para reservar a data; a data só é bloqueada no calendário público depois que o sinal é pago.
-- Saldo pago na semana do evento (padrão: até 7 dias antes).
+- Sinal de **40%** via Pix para reservar a data; a data só é bloqueada no calendário público depois que o sinal é pago.
+- Saldo de 60% até 1 dia antes do evento.
 - Reserva provisória sem sinal expira em 48h (padrão).
-- Política de cancelamento e raio de atendimento: **ainda não definidos** pelo dono.
+- Cancelamento: sinal não reembolsável (reserva de data). Ensaios: chuva forte permite remarcar sem custo em até 60 dias.
+- Ensaio Pré-Wedding: R$ 1.900, até 3h em um ponto de ensaio; o motorista a rigor é do dia do casamento.
+- Raio de atendimento: Serra Gaúcha; fora dela, deslocamento avaliado caso a caso.
 
 ### Jornada do cliente
 Instagram ou indicação (fotógrafos, cerimonialistas como Celebre Gramado) → landing page → WhatsApp → data, local e serviço → checagem de agenda → orçamento em PDF → aprovação → Termo Simplificado → Pix do sinal → data bloqueada → confirmações → evento → saldo e pós-venda.
@@ -30,7 +32,8 @@ Instagram ou indicação (fotógrafos, cerimonialistas como Celebre Gramado) →
 - Imagens no Cloudinary. Hospedagem na Vercel (deploy automático do `main`).
 - Os pacotes `lib/*` (Drizzle, Orval) e `artifacts/mockup-sandbox` são restos do template do Replit e **não são usados pelo site**.
 - Admin: `/admin` protegido por `middleware.ts` (cookie `admin-session`). Rotas de API do admin ficam em `/api/admin/*`.
-- Módulo de gestão (Fase 1): regras puras em `src/lib/gestor/rules.ts` (com testes), acesso ao banco em `src/lib/gestor/service.ts`, telas em `app/admin/(gestor)` e `app/admin/dashboard`.
+- Módulo de gestão (Fase 1): regras puras em `src/lib/gestor/rules.ts` (com testes), acesso ao banco em `src/lib/gestor/service.ts`, telas em `src/components/gestor`, `app/admin/dashboard`, `app/admin/pedidos` e `app/admin/regras`.
+- Margot no site: chat em `/orcamento/detalhado` → `POST /api/margot` → `src/lib/margot/agent.ts` (API do Claude via fetch, ferramentas que usam `src/lib/gestor/service.ts`). Instruções dela em `src/lib/margot/prompt.ts`; preços e regras vêm do banco, nunca do prompt.
 - API para agentes externos (Margot via n8n): `/api/v1/*`, autenticada por `Authorization: Bearer <AGENT_API_TOKEN>`. Documentação em `docs/api.md`.
 
 ## Regras de trabalho
