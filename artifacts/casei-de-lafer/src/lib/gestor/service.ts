@@ -118,13 +118,12 @@ export async function saveService(input: Record<string, any>) {
 // ─── Calendário ──────────────────────────────────────────────
 
 export async function getCalendarFacts(db: Tx | typeof prisma = prisma): Promise<CalendarFacts> {
-  const [blocked, reservations] = await Promise.all([
-    db.blockedDate.findMany({ select: { date: true } }),
-    db.reservation.findMany({
-      where: { activeDate: { not: null } },
-      select: { date: true, kind: true, orderId: true },
-    }),
-  ]);
+  // Sequencial de propósito: dentro de uma transação a conexão é única.
+  const blocked = await db.blockedDate.findMany({ select: { date: true } });
+  const reservations = await db.reservation.findMany({
+    where: { activeDate: { not: null } },
+    select: { date: true, kind: true, orderId: true },
+  });
   return {
     blocked: blocked.map((b) => b.date.toISOString().slice(0, 10)),
     reservations: reservations.map((r) => ({ date: dateToISO(r.date)!, kind: r.kind, orderId: r.orderId })),
