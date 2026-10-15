@@ -41,24 +41,42 @@ export function systemBlocks(fixed: string, variable: string): SystemBlock[] {
   return blocks;
 }
 
+/** Se a API recusar o cache (conta ou plataforma sem suporte), segue sem ele em vez de parar a Margot. */
+let cacheRejected = false;
+
+function plainSystem(system: string | SystemBlock[]): string | SystemBlock[] {
+  return typeof system === "string" ? system : system.map(({ type, text }) => ({ type, text }));
+}
+
 async function callClaude(system: string | SystemBlock[], tools: ToolDef[], messages: unknown[], maxTokens: number) {
-  const res = await fetch(API_URL(), {
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-      "x-api-key": process.env["ANTHROPIC_API_KEY"]!,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: MODEL(),
-      max_tokens: maxTokens,
-      // Cache automático: o começo da conversa que se repete entre chamadas custa ~5% do preço.
-      cache_control: { type: "ephemeral" },
-      system,
-      tools,
-      messages,
-    }),
-  });
+  const send = (withCache: boolean) =>
+    fetch(API_URL(), {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-api-key": process.env["ANTHROPIC_API_KEY"]!,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: MODEL(),
+        max_tokens: maxTokens,
+        // Cache automático: o começo da conversa que se repete entre chamadas custa ~5% do preço.
+        ...(withCache ? { cache_control: { type: "ephemeral" } } : {}),
+        system: withCache ? system : plainSystem(system),
+        tools,
+        messages,
+      }),
+    });
+
+  let res = await send(!cacheRejected);
+  if (res.status === 400 && !cacheRejected) {
+    const detail = await res.clone().text().catch(() => "");
+    if (detail.includes("cache_control")) {
+      cacheRejected = true;
+      console.error("[margot] API recusou o cache de prompt; seguindo sem cache", detail.slice(0, 200));
+      res = await send(false);
+    }
+  }
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
     throw new Error(`Claude API ${res.status}: ${detail.slice(0, 300)}`);
