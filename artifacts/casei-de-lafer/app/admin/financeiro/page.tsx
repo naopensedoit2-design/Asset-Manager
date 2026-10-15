@@ -191,6 +191,7 @@ interface MargotUsage {
   ligada: boolean;
   temChave: boolean;
   modelo: string;
+  porCanal?: { site: number; whatsapp: number };
 }
 
 const usdFmt = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "USD" });
@@ -206,7 +207,7 @@ function MargotCost() {
       ? { text: "Desligada nas Regras (limite zero)", tone: "text-text-muted" }
       : !data.ligada
         ? { text: "Pausada: limite do mês atingido", tone: "text-red-300" }
-        : { text: "Atendendo no site", tone: "text-emerald-300" };
+        : { text: "Atendendo no site e no WhatsApp", tone: "text-emerald-300" };
   return (
     <Panel title="Margot (IA) neste mês">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -216,6 +217,11 @@ function MargotCost() {
             ≈ {formatBRL(Math.round(data.usd * data.cotacao * 100))} · {data.conversas} conversa{data.conversas === 1 ? "" : "s"}
             {perConversation !== null && ` · ${usdFmt.format(perConversation)} por conversa`}
           </p>
+          {data.porCanal && (data.porCanal.whatsapp > 0 || data.porCanal.site > 0) && (
+            <p className="text-xs text-text-muted mt-1">
+              Site {usdFmt.format(data.porCanal.site)} · WhatsApp {usdFmt.format(data.porCanal.whatsapp)}
+            </p>
+          )}
         </div>
         <p className={`text-sm ${status.tone}`}>{status.text}</p>
       </div>
@@ -230,8 +236,8 @@ function MargotCost() {
           <div className={`h-full rounded-full ${pct >= 90 ? "bg-red-400" : "bg-gold"}`} style={{ width: `${Math.max(1, pct)}%` }} />
         </div>
         <p className="text-xs text-text-muted mt-2">
-          Estimativa pelos preços oficiais do modelo {data.modelo}. Ao bater o limite, o chat passa a mostrar o botão do seu
-          WhatsApp. O limite e a cotação do dólar ficam em Regras.
+          Estimativa pelos preços oficiais do modelo {data.modelo}. Ao bater o limite, o chat do site mostra o botão do seu
+          WhatsApp e, no WhatsApp, a Margot só avisa que você responde em breve. O limite e a cotação do dólar ficam em Regras.
         </p>
       </div>
     </Panel>

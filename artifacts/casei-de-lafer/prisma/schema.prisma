@@ -195,6 +195,9 @@ model AiUsage {
   inputTokens    Int
   outputTokens   Int
   costMicroUsd   Int // custo estimado em milionésimos de dólar
+  // Tokens servidos do cache (bem mais baratos) e gravados no cache. inputTokens fica só com o resto.
+  cacheReadTokens  Int @default(0)
+  cacheWriteTokens Int @default(0)
 
   @@index([createdAt])
 }
