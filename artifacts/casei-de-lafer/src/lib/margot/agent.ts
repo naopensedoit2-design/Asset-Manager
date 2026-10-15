@@ -4,6 +4,8 @@
 import * as gestor from "@/lib/gestor/service";
 import { normalizePhone, TIMEZONE, todayISO } from "@/lib/gestor/rules";
 import { phoneVariants } from "@/lib/wa/phone";
+import { linkButtonMessage } from "@/lib/wa/client";
+import { notifyOwner } from "@/lib/wa/notify";
 import { runAgent, systemBlocks, type ToolDef } from "./claude";
 import { appendOrderNote, checkDate, registerOrder, toolError } from "./orders";
 import { buildSystemPrompt } from "./prompt";
@@ -72,6 +74,16 @@ const TOOLS: ToolDef[] = [
   },
 ];
 
+/** Aviso no WhatsApp do Leonardo (se configurado). Nunca atrapalha a conversa do site. */
+async function notifyOwnerSafe(text: string, summary: string, orderId: number | null) {
+  try {
+    const link = orderId && gestor.siteUrl() ? `${gestor.siteUrl()}/admin/pedidos/${orderId}` : "";
+    await notifyOwner({ text, summary, build: link ? () => linkButtonMessage(text, "Abrir pedido", link) : undefined });
+  } catch (e) {
+    console.error("[margot] aviso ao Leonardo", e);
+  }
+}
+
 interface ToolState {
   orderId: number | null;
   encaminhado: boolean;
@@ -92,6 +104,14 @@ async function runTool(name: string, input: any, state: ToolState): Promise<unkn
       });
       if ("erro" in r) return r;
       state.orderId = r.orderId;
+      if (r.created) {
+        const o = r.order;
+        await notifyOwnerSafe(
+          `🆕 Novo pedido pelo chat do site\n${o.client.name} · ${r.resultado.data}${o.city ? ` · ${o.city}` : ""}\n${r.resultado.servicos.join(" + ")}\nTotal ${r.resultado.total}.`,
+          `novo pedido pelo site de ${o.client.name} para ${r.resultado.data}, total ${r.resultado.total}`,
+          r.orderId,
+        );
+      }
       return {
         ...r.resultado,
         proximo_passo: "Falar com o Leonardo no WhatsApp para pagar o sinal e garantir a data.",
@@ -100,7 +120,13 @@ async function runTool(name: string, input: any, state: ToolState): Promise<unkn
 
     if (name === "encaminhar_para_leonardo") {
       state.encaminhado = true;
-      await appendOrderNote(state.orderId, `[Margot pediu sua ajuda] ${String(input?.motivo ?? "").slice(0, 500)}`);
+      const motivo = String(input?.motivo ?? "").slice(0, 500);
+      await appendOrderNote(state.orderId, `[Margot pediu sua ajuda] ${motivo}`);
+      await notifyOwnerSafe(
+        `🙋 Chat do site${state.orderId ? ` (pedido #${state.orderId})` : ""}: ${motivo}\nA pessoa vai te chamar no WhatsApp.`,
+        `chat do site: ${motivo}`,
+        state.orderId,
+      );
       return { ok: true, instrucao: "Diga que o Leonardo responde pessoalmente pelo WhatsApp (botão abaixo da conversa)." };
     }
 
