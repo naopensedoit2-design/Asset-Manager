@@ -90,7 +90,8 @@ function GoogleCard() {
             </ul>
           )}
           <p className="text-xs text-text-muted">
-            Para um compromisso não bloquear o dia, marque-o como "Disponível" na Google Agenda.
+            Só compromissos únicos bloqueiam o dia. Eventos que se repetem (rotina, trabalho, aniversários) são ignorados.
+            Para um compromisso único não bloquear, marque-o como "Disponível" na Google Agenda.
           </p>
           <Button variant="ghost" onClick={sendPending}>
             Enviar pedidos confirmados para a agenda

@@ -4,6 +4,7 @@
 export interface GoogleEvent {
   id: string;
   status?: string; // "cancelled" para eventos apagados
+  recurringEventId?: string; // presente nas ocorrências de eventos que se repetem
   transparency?: string; // "transparent" = marcado como "Disponível"
   summary?: string;
   start?: { date?: string; dateTime?: string };
@@ -26,7 +27,8 @@ function nextDay(d: string): string {
 }
 
 /**
- * Regras: evento cancelado ou marcado como "Disponível" não bloqueia; eventos criados pelo
+ * Regras: evento cancelado, marcado como "Disponível" ou que se repete (rotina, trabalho,
+ * aniversário) não bloqueia; só compromissos únicos, como casamentos e ensaios. Eventos criados pelo
  * próprio site (que já têm reserva no banco) são ignorados para não contar duas vezes.
  * Evento de dia inteiro bloqueia todos os dias que cobre; evento com horário bloqueia o dia em que acontece.
  */
@@ -34,10 +36,13 @@ export function busyDays(events: GoogleEvent[]): { date: string; summary: string
   const out = new Map<string, string>();
   for (const e of events) {
     if (e.status === "cancelled" || e.transparency === "transparent") continue;
+    if (e.recurringEventId) continue;
     if (e.extendedProperties?.private?.["ecdlOrderId"]) continue;
     const title = e.summary?.trim() || "Compromisso";
     if (e.start?.date) {
       const end = e.end?.date ?? nextDay(e.start.date); // fim é exclusivo no Google
+      // Evento de dia inteiro com mais de 30 dias (ex.: "Férias 2027", "Temporada") não fecha a agenda inteira.
+      if (Date.parse(end) - Date.parse(e.start.date) > 30 * 86_400_000) continue;
       for (let d = e.start.date; d < end; d = nextDay(d)) if (!out.has(d)) out.set(d, title);
     } else if (e.start?.dateTime) {
       const first = localDay(e.start.dateTime);
