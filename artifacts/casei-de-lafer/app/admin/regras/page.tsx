@@ -27,6 +27,7 @@ export default function RulesPage() {
           </p>
         </div>
         <GoogleCard />
+        <WhatsAppCard />
         <ServicesEditor />
         <SettingsEditor />
       </main>
@@ -106,6 +107,140 @@ function GoogleCard() {
           </p>
         </div>
       )}
+    </Panel>
+  );
+}
+
+interface WaStatus {
+  configurado: boolean;
+  faltando: string[];
+  numero: {
+    display_phone_number?: string;
+    verified_name?: string;
+    quality_rating?: string;
+    code_verification_status?: string;
+    name_status?: string;
+    status?: string;
+  } | null;
+  erro: string | null;
+  webhookUrl: string;
+  ultimoWebhook: string | null;
+  dono: string | null;
+  voz: boolean;
+  modelo: string;
+  temWaba: boolean;
+}
+
+const GUIDE_URL = "https://github.com/naopensedoit2-design/Asset-Manager/blob/main/docs/whatsapp.md";
+
+function WhatsAppCard() {
+  const { data, refetch, isFetching } = useQuery<WaStatus>({
+    queryKey: ["wa-status"],
+    queryFn: () => api("/api/admin/whatsapp/status"),
+  });
+  const [msg, setMsg] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [pin, setPin] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
+
+  async function act(acao: string) {
+    setBusy(acao);
+    setMsg(null);
+    setErr(null);
+    try {
+      const r = await api<{ mensagem: string }>("/api/admin/whatsapp/status", { body: { acao, pin } });
+      setMsg(r.mensagem);
+      refetch();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  const n = data?.numero;
+  return (
+    <Panel
+      title="WhatsApp da Margot"
+      action={
+        <Button variant="ghost" onClick={() => refetch()} disabled={isFetching}>
+          {isFetching ? "Conferindo…" : "Conferir"}
+        </Button>
+      }
+    >
+      {!data ? (
+        <Loading />
+      ) : !data.configurado ? (
+        <div className="space-y-3 text-sm">
+          <p className="text-text-secondary">
+            Ainda não conectado. Faltam na Vercel: <span className="text-text-primary">{data.faltando.join(", ")}</span>.
+          </p>
+          <p className="text-text-muted">
+            Siga o{" "}
+            <a href={GUIDE_URL} target="_blank" rel="noreferrer" className="text-gold underline underline-offset-2">
+              passo a passo da Meta
+            </a>
+            . Quando pedir a URL do webhook, use:
+          </p>
+          <code className="block bg-bg-elevated rounded px-3 py-2 text-xs text-text-primary break-all">{data.webhookUrl}</code>
+        </div>
+      ) : (
+        <div className="space-y-3 text-sm">
+          {data.erro ? (
+            <p className="text-red-300">Configurado, mas a Meta recusou: {data.erro}</p>
+          ) : (
+            <p className="text-emerald-300">
+              Conectado{n?.display_phone_number ? ` ao ${n.display_phone_number}` : ""}
+              {n?.verified_name ? ` (${n.verified_name})` : ""}.
+            </p>
+          )}
+          <ul className="text-text-secondary space-y-1">
+            {n?.quality_rating && <li>Qualidade do número: {n.quality_rating === "GREEN" ? "boa" : n.quality_rating === "YELLOW" ? "atenção" : n.quality_rating === "RED" ? "ruim" : n.quality_rating}</li>}
+            {n?.name_status && <li>Nome de exibição: {n.name_status === "APPROVED" ? "aprovado" : n.name_status === "PENDING_REVIEW" ? "em análise pela Meta" : n.name_status}</li>}
+            <li>Última mensagem recebida: {data.ultimoWebhook ? new Date(data.ultimoWebhook).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" }) : "nenhuma ainda"}</li>
+            <li>Seu WhatsApp (modo secretária): {data.dono ?? <span className="text-amber-300">preencha abaixo, em "WhatsApp da Margot"</span>}</li>
+            <li>Áudio (ouvir e falar): {data.voz ? "ligado" : "desligado (falta VOICE_API_KEY)"}</li>
+          </ul>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="ghost" onClick={() => act("teste")} disabled={!!busy}>
+              {busy === "teste" ? "Enviando…" : "Mandar teste para mim"}
+            </Button>
+            {data.temWaba && (
+              <Button variant="ghost" onClick={() => act("assinar")} disabled={!!busy}>
+                {busy === "assinar" ? "Assinando…" : "Assinar webhooks"}
+              </Button>
+            )}
+          </div>
+          <details className="text-text-muted">
+            <summary className="cursor-pointer text-text-secondary">Registrar o número na API (só uma vez)</summary>
+            <p className="mt-2">
+              Depois de verificar o número pelo SMS na Meta, escolha um PIN de 6 números. Ele vira a confirmação em duas etapas do
+              número: guarde-o.
+            </p>
+            <div className="flex gap-2 mt-2">
+              <input
+                inputMode="numeric"
+                maxLength={6}
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+                placeholder="PIN de 6 números"
+                className={`${inputClass} max-w-48`}
+              />
+              <Button variant="ghost" onClick={() => act("registrar")} disabled={!!busy || pin.length !== 6}>
+                {busy === "registrar" ? "Registrando…" : "Registrar"}
+              </Button>
+            </div>
+          </details>
+          <p className="text-xs text-text-muted">
+            Webhook: <span className="break-all">{data.webhookUrl}</span> ·{" "}
+            <a href={GUIDE_URL} target="_blank" rel="noreferrer" className="text-gold underline underline-offset-2">
+              guia
+            </a>
+          </p>
+        </div>
+      )}
+      {msg && <p className="text-sm text-emerald-300 mt-3">{msg}</p>}
+      <ErrorNote message={err} />
     </Panel>
   );
 }
@@ -211,7 +346,7 @@ function ServiceRow({ service, onSaved, onCancel }: { service: Service; onSaved:
   );
 }
 
-type FieldSpec = { key: keyof Settings; kind: "number" | "decimal" | "text" | "long"; hint?: string };
+type FieldSpec = { key: keyof Settings; kind: "number" | "decimal" | "text" | "long" | "bool"; hint?: string };
 
 const GROUPS: { title: string; note?: string; fields: FieldSpec[] }[] = [
   {
@@ -230,6 +365,15 @@ const GROUPS: { title: string; note?: string; fields: FieldSpec[] }[] = [
     fields: [
       { key: "margotLimitUsd", kind: "number", hint: "Ao atingir, o chat mostra seu WhatsApp. 0 desliga a Margot." },
       { key: "dollarRate", kind: "decimal", hint: "Só para mostrar o gasto em reais no Financeiro." },
+    ],
+  },
+  {
+    title: "WhatsApp da Margot",
+    note: "Quando o seu número escreve para o número da Margot, ela vira sua secretária (resumo, agenda, pedidos, despesas).",
+    fields: [
+      { key: "ownerPhone", kind: "text", hint: "Com DDD. É o número que recebe os avisos e fala com a Margot no modo secretária." },
+      { key: "margotWhatsapp", kind: "bool", hint: "Desligado: as mensagens dos clientes só chegam para você." },
+      { key: "ownerDailySummary", kind: "bool", hint: "Só quando há algo para ver: evento perto, alerta ou conversa esperando." },
     ],
   },
   {
@@ -282,7 +426,17 @@ function SettingsEditor() {
           <div className="grid sm:grid-cols-2 gap-4">
             {g.fields.map((f) => (
               <Field key={f.key} label={SETTING_LABELS[f.key]} hint={f.hint} className={f.kind === "long" ? "sm:col-span-2" : ""}>
-                {f.kind === "long" ? (
+                {f.kind === "bool" ? (
+                  <span className="flex items-center gap-3 py-1.5">
+                    <input
+                      type="checkbox"
+                      className="w-5 h-5 accent-gold cursor-pointer"
+                      checked={form[f.key] === "true" || form[f.key] === "1"}
+                      onChange={(e) => setForm({ ...form, [f.key]: e.target.checked ? "true" : "false" })}
+                    />
+                    <span className="text-sm text-text-primary">{form[f.key] === "true" || form[f.key] === "1" ? "Ligado" : "Desligado"}</span>
+                  </span>
+                ) : f.kind === "long" ? (
                   <textarea
                     rows={3}
                     value={form[f.key] ?? ""}

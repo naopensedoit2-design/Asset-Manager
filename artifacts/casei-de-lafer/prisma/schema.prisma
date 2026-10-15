@@ -195,6 +195,58 @@ model AiUsage {
   inputTokens    Int
   outputTokens   Int
   costMicroUsd   Int // custo estimado em milionésimos de dólar
+  // Tokens servidos do cache (bem mais baratos) e gravados no cache. inputTokens fica só com o resto.
+  cacheReadTokens  Int @default(0)
+  cacheWriteTokens Int @default(0)
 
   @@index([createdAt])
+}
+
+// ─── WhatsApp da Margot (API oficial da Meta) ────────────────
+// Tabelas novas: índices únicos aqui são seguros (não existem dados antigos).
+
+model WaContact {
+  id            Int         @id @default(autoincrement())
+  waId          String      @unique // número como o WhatsApp informa (só dígitos, com DDI)
+  name          String      @default("") // nome do perfil no WhatsApp
+  clientId      Int? // cliente do painel, quando identificado
+  orderId       Int? // pedido em andamento nesta conversa
+  isOwner       Boolean     @default(false) // é o Leonardo (modo secretária)
+  pausedUntil   DateTime? // Margot não responde até esta hora (Leonardo assumiu)
+  prefersAudio  Boolean? // só para o dono: null = perguntar, true = sempre, false = nunca
+  lastInboundAt DateTime? // última mensagem da pessoa: abre a janela de 24h
+  lastMessageAt DateTime?
+  unread        Int         @default(0)
+  lockedUntil   DateTime? // processamento em andamento (evita respostas duplicadas)
+  notifiedAt    DateTime? // último aviso ao Leonardo sobre esta conversa (evita excesso)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  messages      WaMessage[]
+
+  @@index([lastMessageAt])
+}
+
+model WaMessage {
+  id           Int       @id @default(autoincrement())
+  contactId    Int
+  contact      WaContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  wamid        String?   @unique // id da mensagem no WhatsApp (evita processar duas vezes)
+  direction    String // in | out
+  author       String // cliente | margot | leonardo | sistema
+  type         String    @default("text") // text | image | audio | document | interactive | template | ...
+  kind         String    @default("") // aviso | confirmacao | resumo_diario | rascunho ...
+  text         String    @default("")
+  mediaId      String    @default("")
+  mediaMime    String    @default("")
+  fileName     String    @default("")
+  status       String    @default("") // recebida | enviada | entregue | lida | falhou | pendente
+  error        String    @default("")
+  payload      String    @default("") // mensagem completa para envio posterior (fila do dono)
+  action       String    @default("") // ação que espera confirmação do Leonardo (JSON)
+  actionDoneAt DateTime?
+  handledAt    DateTime? // quando a Margot tratou esta mensagem (só entrada)
+  createdAt    DateTime  @default(now())
+
+  @@index([contactId, createdAt])
+  @@index([status])
 }

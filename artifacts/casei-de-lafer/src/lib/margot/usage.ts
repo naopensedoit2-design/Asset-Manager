@@ -7,8 +7,10 @@ import { costMicroUsd } from "./pricing";
 
 export interface CallUsage {
   model: string;
-  inputTokens: number;
+  inputTokens: number; // só o que não veio nem foi para o cache
   outputTokens: number;
+  cacheWriteTokens?: number;
+  cacheReadTokens?: number;
 }
 
 export async function recordUsage(calls: CallUsage[], channel: "site" | "whatsapp", conversationId: string) {
@@ -20,7 +22,9 @@ export async function recordUsage(calls: CallUsage[], channel: "site" | "whatsap
       model: c.model,
       inputTokens: c.inputTokens,
       outputTokens: c.outputTokens,
-      costMicroUsd: costMicroUsd(c.model, c.inputTokens, c.outputTokens),
+      cacheWriteTokens: c.cacheWriteTokens ?? 0,
+      cacheReadTokens: c.cacheReadTokens ?? 0,
+      costMicroUsd: costMicroUsd(c.model, c.inputTokens, c.outputTokens, c.cacheWriteTokens ?? 0, c.cacheReadTokens ?? 0),
     })),
   });
 }
@@ -34,10 +38,10 @@ function monthStart(now = new Date()): Date {
 
 export async function monthUsage(now = new Date()) {
   const since = monthStart(now);
-  const [agg, conversations] = await Promise.all([
+  const [agg, conversations, byChannel] = await Promise.all([
     prisma.aiUsage.aggregate({
       where: { createdAt: { gte: since } },
-      _sum: { costMicroUsd: true, inputTokens: true, outputTokens: true },
+      _sum: { costMicroUsd: true, inputTokens: true, outputTokens: true, cacheReadTokens: true, cacheWriteTokens: true },
       _count: true,
     }),
     prisma.aiUsage.findMany({
@@ -45,15 +49,24 @@ export async function monthUsage(now = new Date()) {
       distinct: ["conversationId"],
       select: { conversationId: true },
     }),
+    prisma.aiUsage.groupBy({
+      by: ["channel"],
+      where: { createdAt: { gte: since } },
+      _sum: { costMicroUsd: true },
+    }),
   ]);
   const micro = agg._sum.costMicroUsd ?? 0;
+  const channelUsd = (name: string) => (byChannel.find((c) => c.channel === name)?._sum.costMicroUsd ?? 0) / 1_000_000;
   return {
     desde: since.toISOString(),
     usd: micro / 1_000_000,
     chamadas: agg._count,
     conversas: conversations.length,
-    tokensEntrada: agg._sum.inputTokens ?? 0,
+    // Total de tokens lidos pelo modelo (inclui os que vieram do cache, que custam bem menos).
+    tokensEntrada: (agg._sum.inputTokens ?? 0) + (agg._sum.cacheReadTokens ?? 0) + (agg._sum.cacheWriteTokens ?? 0),
+    tokensDoCache: agg._sum.cacheReadTokens ?? 0,
     tokensSaida: agg._sum.outputTokens ?? 0,
+    porCanal: { site: channelUsd("site"), whatsapp: channelUsd("whatsapp") },
   };
 }
 

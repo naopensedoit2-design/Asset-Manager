@@ -14,6 +14,8 @@ import {
   RuleError,
   todayISO,
   validateSetting,
+  isValidCpf,
+  formatCpf,
 } from "./rules.ts";
 
 const carro = { serviceId: 1, name: "Carro da Noiva", priceCents: 260000 };
@@ -162,4 +164,33 @@ test("padrão atual: sinal de 40% e saldo 1 dia antes (como nos termos)", () => 
   assert.equal(t.depositCents, 124000); // R$ 1.240 de R$ 3.100
   assert.equal(t.balanceCents, 186000);
   assert.equal(balanceDueDate("2026-12-05", DEFAULT_SETTINGS.balanceDaysBefore, "2026-10-14"), "2026-12-04");
+});
+
+test("WhatsApp nas Regras: liga/desliga e número do dono", () => {
+  const s = parseSettings([
+    { key: "margotWhatsapp", value: "0" },
+    { key: "ownerDailySummary", value: "1" },
+    { key: "ownerPhone", value: "51988887777" },
+  ]);
+  assert.equal(s.margotWhatsapp, false);
+  assert.equal(s.ownerDailySummary, true);
+  assert.equal(s.ownerPhone, "51988887777");
+  // Padrões: Margot atende no WhatsApp e manda o resumo do dia
+  assert.equal(parseSettings([]).margotWhatsapp, true);
+  assert.equal(parseSettings([]).ownerDailySummary, true);
+  assert.deepEqual(validateSetting("margotWhatsapp", false), { ok: true, value: "0" });
+  assert.deepEqual(validateSetting("margotWhatsapp", "true"), { ok: true, value: "1" });
+  assert.deepEqual(validateSetting("ownerPhone", "(51) 98888-7777"), { ok: true, value: "51988887777" });
+  assert.deepEqual(validateSetting("ownerPhone", ""), { ok: true, value: "" });
+  assert.equal(validateSetting("ownerPhone", "98888").ok, false);
+});
+
+test("CPF do termo: dígitos verificadores e formatação", () => {
+  assert.equal(isValidCpf("529.982.247-25"), true);
+  assert.equal(isValidCpf("52998224725"), true);
+  assert.equal(isValidCpf("529.982.247-26"), false);
+  assert.equal(isValidCpf("111.111.111-11"), false);
+  assert.equal(isValidCpf("1234"), false);
+  assert.equal(formatCpf("52998224725"), "529.982.247-25");
+  assert.equal(formatCpf(" AB123456 "), "AB123456");
 });

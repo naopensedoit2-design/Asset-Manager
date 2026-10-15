@@ -38,7 +38,10 @@ Instagram ou indicação (fotógrafos, cerimonialistas como Celebre Gramado) →
 - Documentos: proposta em `/p/<código>` e Termo Simplificado em `/t/<código>` (`src/lib/documents/*`), HTML pronto para imprimir/salvar em PDF. O código é `Order.publicToken`. Dados do contratado (CPF, Pix) ficam em Regras, **nunca no código: o repositório é público**.
 - Custo da Margot: cada chamada grava `AiUsage`; preços em `src/lib/margot/pricing.ts`; limite mensal em Regras (0 desliga).
 - Margot no site: chat em `/orcamento/detalhado` → `POST /api/margot` → `src/lib/margot/agent.ts` (API do Claude via fetch, ferramentas que usam `src/lib/gestor/service.ts`). Instruções dela em `src/lib/margot/prompt.ts`; preços e regras vêm do banco, nunca do prompt.
-- API para agentes externos (Margot via n8n): `/api/v1/*`, autenticada por `Authorization: Bearer <AGENT_API_TOKEN>`. Documentação em `docs/api.md`.
+- Margot no WhatsApp (API oficial da Meta, número próprio): webhook em `app/api/whatsapp/webhook`, lógica em `src/lib/wa/*`, tela em `app/admin/conversas`. Clientes são atendidos por `customer.ts` (mesmo prompt do site, canal "whatsapp"); o número do dono (Regras → "Seu WhatsApp pessoal") cai no modo secretária (`secretary.ts`). **Ações com dinheiro ou mensagens para clientes só acontecem depois do botão Confirmar** (`actions.ts`): o modelo propõe, o código executa. Avisos ao dono respeitam a janela de 24h (modelo `aviso_margot` + fila em `notify.ts`). Guia de configuração e referência em `docs/whatsapp.md`.
+- Áudio: a API do Claude não ouve nem fala; transcrição e voz usam uma API compatível com a da OpenAI (`src/lib/wa/voice.ts`, opcional por `VOICE_API_KEY`).
+- Custo da IA: chamadas usam cache de prompt (bloco fixo das instruções + cache automático); `AiUsage` guarda tokens do cache à parte e `pricing.ts` cobra cada parte pelo preço certo.
+- API para agentes externos (Margot via n8n): `/api/v1/*`, autenticada por `Authorization: Bearer <AGENT_API_TOKEN>`. Documentação em `docs/api.md`. Com a Margot nativa no WhatsApp, o n8n deixou de ser necessário; a API continua para integrações futuras.
 
 ## Regras de trabalho
 
@@ -46,6 +49,8 @@ Instagram ou indicação (fotógrafos, cerimonialistas como Celebre Gramado) →
 - **Não quebre o site público.** Landing, links de WhatsApp, galeria, calendário público e admin atual devem continuar funcionando.
 - **Banco de dados é produção.** O build roda `prisma db push` **sem** `--accept-data-loss`: mudanças que apagariam dados fazem o deploy falhar, de propósito. Nunca reintroduza essa flag, nunca rode `migrate reset`. Mudanças de schema só aditivas (novos modelos/campos opcionais ou com default). Renomear ou remover campo exige plano explícito aprovado pelo dono.
 - **Segredos só em variáveis de ambiente.** Documente toda variável nova em `.env.example`.
+- **Tabelas existentes não ganham índice único** (o `db push` falha se houver dados repetidos). Em tabela nova, pode.
+- **Teste o WhatsApp sem a Meta:** `WHATSAPP_API_BASE` aponta a Graph API para um simulador local e `ANTHROPIC_BASE_URL` faz o mesmo com a API do Claude; os webhooks de teste precisam ser assinados com `WHATSAPP_APP_SECRET`.
 - **Interface em português do Brasil.** Dinheiro em centavos (inteiro) no banco, exibido com `Intl.NumberFormat('pt-BR')`; datas `dd/mm/aaaa`; fuso `America/Sao_Paulo`.
 - **Mobile first.** O painel é usado principalmente pelo celular.
 - **Identidade visual:** a do site — fundo quase preto, dourado `#C9A84C`, Playfair Display nos títulos e Inter no texto (tokens em `app/globals.css`).

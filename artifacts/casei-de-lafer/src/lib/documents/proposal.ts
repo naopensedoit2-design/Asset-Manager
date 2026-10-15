@@ -1,7 +1,7 @@
 // Proposta comercial no mesmo visual do PDF aprovado (skill "eu-casei-de-lafer-orcamento"):
 // 5 páginas A4, fundo escuro, dourado, Cormorant Garamond + Inter, galeria de inspiração.
 
-import { dateLong, durationLabel, esc, instantLong, money, placeLabel, type DocData } from "./data";
+import { dateLong, durationLabel, esc, instantLong, money, ogTags, placeLabel, type DocData } from "./data";
 
 export const DOC_FONTS =
   '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
@@ -144,7 +144,10 @@ export function renderProposal(d: DocData): string {
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Orçamento — ${firstName} · Eu Casei de Lafer</title>${DOC_FONTS}
+<title>Orçamento — ${firstName} · Eu Casei de Lafer</title>${ogTags(
+    `Orçamento — ${d.names} · Eu Casei de Lafer`,
+    wedding ? "O MP Lafer conversível para o grande dia. Toque para ver a proposta completa." : "O MP Lafer conversível para o seu ensaio. Toque para ver a proposta completa.",
+  )}${DOC_FONTS}
 <style>${CSS}${chrome.css}</style></head><body>
 
 <div class="page">${corners}

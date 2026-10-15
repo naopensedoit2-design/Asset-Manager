@@ -12,3 +12,15 @@ test("custo por modelo, em milionésimos de dólar", () => {
   // Modelo desconhecido: preço do Sonnet
   assert.equal(costMicroUsd("modelo-x", 1_000_000, 0), 2_000_000);
 });
+
+test("cache: gravar custa 1,25× e ler custa 0,05× (Sonnet/Opus) ou 0,1× (Haiku)", () => {
+  // Sonnet: 1.000 novos + 4.000 gravados + 20.000 lidos + 300 de saída
+  // 1.000×2 + 4.000×2×1,25 + 20.000×2×0,05 + 300×10 = 2.000 + 10.000 + 2.000 + 3.000 = 17.000
+  assert.equal(costMicroUsd("claude-sonnet-5-5", 1_000, 300, 4_000, 20_000), 17_000);
+  // Sem cache seria 25.000×2 + 300×10 = 53.000: o cache corta dois terços do custo.
+  assert.equal(costMicroUsd("claude-sonnet-5-5", 25_000, 300), 53_000);
+  // Haiku lê do cache a 0,1×: 20.000×0,1×0,1 = 200
+  assert.equal(costMicroUsd("claude-haiku-5-5", 0, 0, 0, 20_000), 200);
+  // Prompt grande (mesmo vindo do cache) usa a tabela maior do Haiku: 120.000×0,5×0,1 = 6.000
+  assert.equal(costMicroUsd("claude-haiku-5-5", 0, 0, 0, 120_000), 6_000);
+});
