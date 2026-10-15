@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 import { fail, ok, readJson, route } from "@/lib/gestor/http";
 import { chat, type ChatMessage } from "@/lib/margot/agent";
 import { prisma } from "@/lib/prisma";
+import { getSettings } from "@/lib/gestor/service";
+import { overMonthlyLimit, recordUsage } from "@/lib/margot/usage";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -65,7 +67,9 @@ export const POST = route(async (req: NextRequest) => {
     if (o && o.createdBy === "margot" && o.createdAt.getTime() > Date.now() - 3 * 86_400_000) orderId = o.id;
   }
 
-  if (!process.env["ANTHROPIC_API_KEY"]) {
+  const conversationId = typeof body.conversationId === "string" ? body.conversationId : "";
+  const settings = await getSettings();
+  if (!process.env["ANTHROPIC_API_KEY"] || (await overMonthlyLimit(settings.margotLimitUsd))) {
     return ok({
       reply: "Nosso atendimento automático está em manutenção agora. Fale com o Leonardo pelo WhatsApp, ele responde rapidinho.",
       orderId,
@@ -74,14 +78,16 @@ export const POST = route(async (req: NextRequest) => {
     });
   }
 
+  const usage: Parameters<typeof recordUsage>[0] = [];
   try {
-    const result = await chat(history, orderId);
+    const result = await chat(history, orderId, usage);
     let name: string | undefined;
     if (result.orderId) {
       const order = await prisma.order.findUnique({ where: { id: result.orderId }, include: { client: true } });
       name = order?.client.name.split(" ")[0];
     }
-    return ok({ ...result, whatsappUrl: await whatsappUrl(result.orderId, name) });
+    const { usage: _usage, ...publicResult } = result;
+    return ok({ ...publicResult, whatsappUrl: await whatsappUrl(result.orderId, name) });
   } catch (e) {
     console.error("[margot]", e);
     return ok({
@@ -90,5 +96,8 @@ export const POST = route(async (req: NextRequest) => {
       encaminhado: true,
       whatsappUrl: await whatsappUrl(orderId),
     });
+  } finally {
+    // Registra o custo mesmo quando a conversa falha no meio.
+    await recordUsage(usage, "site", conversationId).catch((e) => console.error("[margot] uso", e));
   }
 });

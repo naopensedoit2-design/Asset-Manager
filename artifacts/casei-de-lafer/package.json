@@ -8,7 +8,7 @@
     "build": "prisma generate && prisma db push && next build",
     "start": "next start -p $PORT -H 0.0.0.0",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node --experimental-strip-types --no-warnings --test src/lib/gestor/*.test.ts"
+    "test": "node --experimental-strip-types --no-warnings --test src/lib/gestor/*.test.ts src/lib/margot/*.test.ts src/lib/google/*.test.ts"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
