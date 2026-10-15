@@ -79,6 +79,12 @@ export default function Footer() {
               @eucaseidelafer
             </a>
             <a
+              href="/privacidade"
+              className="font-sans text-text-muted hover:text-gold transition-colors text-xs"
+            >
+              Privacidade
+            </a>
+            <a
               href="/admin"
               className="font-sans text-text-muted hover:text-gold transition-colors text-xs"
             >
