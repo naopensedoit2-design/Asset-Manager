@@ -16,6 +16,11 @@ test("eventos da agenda viram dias ocupados", () => {
     { id: "5", status: "cancelled", start: { date: "2026-12-07" }, end: { date: "2026-12-08" } },
     // Criado pelo próprio site: já existe reserva no banco
     { id: "6", summary: "💍 Carro da Noiva", extendedProperties: { private: { ecdlOrderId: "9" } }, start: { date: "2026-12-12" }, end: { date: "2026-12-13" } },
+    // Rotina que se repete todo dia: não bloqueia
+    { id: "8", summary: "Academia", recurringEventId: "r1", start: { dateTime: "2026-12-08T07:00:00-03:00" }, end: { dateTime: "2026-12-08T08:00:00-03:00" } },
+    { id: "9", summary: "Trabalho", recurringEventId: "r2", start: { date: "2026-12-09" }, end: { date: "2026-12-10" } },
+    // Evento gigante de dia inteiro (mais de 30 dias): ignorado
+    { id: "10", summary: "Temporada de casamentos", start: { date: "2026-10-01" }, end: { date: "2027-03-01" } },
     // 23h em SP já é outro dia em UTC: deve contar o dia de SP
     { id: "7", summary: "Noite", start: { dateTime: "2026-11-20T23:00:00-03:00" }, end: { dateTime: "2026-11-20T23:30:00-03:00" } },
   ]);
