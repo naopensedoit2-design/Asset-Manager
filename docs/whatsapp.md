@@ -16,7 +16,7 @@ Nada disso exige VPS nem computador ligado: roda no próprio site, na Vercel.
 - Áudios dos clientes são transcritos automaticamente (se a chave de voz estiver configurada).
 
 **Para você (Leonardo)**
-- Recebe no seu WhatsApp pessoal um aviso a cada novidade: pedido novo, cliente querendo fechar, comprovante (com a imagem e os botões **✅ Confirmar** / **Cancelar**), cliente pedindo para falar com você.
+- Recebe no seu WhatsApp pessoal um aviso a cada novidade: pedido novo (do WhatsApp ou do chat do site), cliente querendo fechar, comprovante (com a imagem e os botões **✅ Confirmar** / **Cancelar**), cliente pedindo para falar com você.
 - Tocou em **Confirmar** no comprovante: o sinal é marcado como recebido, a data fica confirmada e bloqueada no site, vai para a Google Agenda e o cliente recebe a confirmação. Tudo com um toque.
 - Converse com a Margot como secretária, por texto ou áudio:
   - "me manda o resumo do dia"
@@ -27,7 +27,7 @@ Nada disso exige VPS nem computador ligado: roda no próprio site, na Vercel.
   - "o sinal do pedido 14 caiu"
   - "manda para a Ana que o motorista chega 15h antes"
   - "pausa a Margot com a Ana" / "pode voltar a atender a Ana"
-- **Dinheiro e mensagens para clientes nunca acontecem sem o seu OK**: a Margot prepara e manda um botão de confirmação.
+- **Dinheiro e mensagens para clientes nunca acontecem sem o seu OK**: a Margot prepara e manda um botão de confirmação. Um "sim" escrito também vale, mas só para a última confirmação que ela mandou (até 30 minutos).
 - Depois de cada resposta, aparece o botão **🔊 Ouvir em áudio**. Se preferir, diga "sempre em áudio" ou "só texto".
 - Todo dia às 7h, se houver algo para ver (evento perto, pagamento vencendo, conversa esperando), chega um resumo.
 
