@@ -443,7 +443,7 @@ export async function changeStatus(id: unknown, to: unknown, actor: Actor, note 
 
 // ─── Google Agenda ───────────────────────────────────────────
 
-function siteUrl() {
+export function siteUrl() {
   const host = process.env["SITE_URL"] || process.env["VERCEL_PROJECT_PRODUCTION_URL"];
   return host ? (host.startsWith("http") ? host : `https://${host}`) : "";
 }
