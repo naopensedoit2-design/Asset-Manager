@@ -182,7 +182,15 @@ function Ticks({ status }: { status: string }) {
 function Media({ m, onLoad }: { m: Message; onLoad?: () => void }) {
   if (!m.mediaId) return null;
   const src = `/api/admin/whatsapp/midia/${encodeURIComponent(m.mediaId)}`;
-  if (m.type === "image" || m.type === "sticker") {
+  // Avisos com foto (ex.: comprovante com botões) chegam como "interactive": decide pelo tipo do arquivo.
+  const kind = ["image", "sticker", "audio", "video", "document"].includes(m.type)
+    ? m.type
+    : m.mediaMime.startsWith("image/")
+      ? "image"
+      : m.mediaMime.startsWith("audio/")
+        ? "audio"
+        : "document";
+  if (kind === "image" || kind === "sticker") {
     return (
       <a href={src} target="_blank" rel="noreferrer" className="block mb-1.5">
         <img
@@ -194,8 +202,8 @@ function Media({ m, onLoad }: { m: Message; onLoad?: () => void }) {
       </a>
     );
   }
-  if (m.type === "audio") return <audio controls preload="none" src={src} className="w-64 max-w-full mb-1.5" />;
-  if (m.type === "video") return <video controls preload="none" src={src} className="rounded max-h-72 max-w-full mb-1.5" />;
+  if (kind === "audio") return <audio controls preload="none" src={src} className="w-64 max-w-full mb-1.5" />;
+  if (kind === "video") return <video controls preload="none" src={src} className="rounded max-h-72 max-w-full mb-1.5" />;
   return (
     <a href={src} target="_blank" rel="noreferrer" className="flex items-center gap-2 mb-1.5 bg-black/20 rounded px-3 py-2 text-sm hover:bg-black/30">
       <FileText className="w-4 h-4 shrink-0" />

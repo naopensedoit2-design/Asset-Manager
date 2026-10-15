@@ -273,10 +273,12 @@ async function runTool(name: string, input: any, s: State): Promise<unknown> {
 
       // Cópia do arquivo para mostrar ao Leonardo junto dos botões.
       let header: Header | undefined;
+      let copy: { id: string; mime: string } | undefined;
       try {
         const { data, mime } = await downloadMedia(file.mediaId);
         const plain = mime.split(";")[0];
         const copyId = await uploadMedia(data, plain, file.fileName || (plain.includes("pdf") ? "comprovante.pdf" : "comprovante.jpg"));
+        copy = { id: copyId, mime: plain };
         header = file.type === "image" ? { type: "image", image: { id: copyId } } : { type: "document", document: { id: copyId, filename: file.fileName || "comprovante.pdf" } };
       } catch (e) {
         console.error("[whatsapp] cópia do comprovante", e);
@@ -310,6 +312,7 @@ async function runTool(name: string, input: any, s: State): Promise<unknown> {
         body,
         `${o.client.name} mandou o comprovante do ${kind} (pedido ${o.id}), confira e confirme`,
         header,
+        copy,
       );
       return { ok: true, instrucao: "Agradeça e diga que o Leonardo confere e confirma a reserva em seguida." };
     }

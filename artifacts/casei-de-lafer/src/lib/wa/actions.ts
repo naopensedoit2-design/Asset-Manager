@@ -42,12 +42,14 @@ export function parseAction(raw: string): Action | null {
 }
 
 /** Propõe a ação ao Leonardo com os botões Confirmar / Cancelar. */
-export async function proposeAction(action: Action, body: string, summary: string, header?: Header) {
+export async function proposeAction(action: Action, body: string, summary: string, header?: Header, media?: { id: string; mime: string }) {
   return notifyOwner({
     text: `${body}\n\nConfirma? (toque no botão ou responda *sim*)`,
     summary,
     kind: "confirmacao",
     action: JSON.stringify(action),
+    mediaId: media?.id,
+    mediaMime: media?.mime,
     build: (rowId) =>
       buttonsMessage(
         `${body}\n\nConfirma?`,
