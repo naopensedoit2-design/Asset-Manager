@@ -23,7 +23,7 @@ import {
 import { runAgent, systemBlocks, type ToolDef } from "@/lib/margot/claude";
 import { toolError } from "@/lib/margot/orders";
 import { overMonthlyLimit, recordUsage, type CallUsage } from "@/lib/margot/usage";
-import { describeExpense, latestOpenConfirmations, proposeAction, resolveAction } from "./actions";
+import { describeExpense, proposeAction, resolveAction } from "./actions";
 import { buttonsMessage, send } from "./client";
 import { isAffirmative, isNegative, isTrivial, toWhatsApp, truncate } from "./format";
 import { buildHistory } from "./history";
@@ -468,16 +468,15 @@ async function handleDirect(owner: WaContact, pending: WaMessage[]): Promise<WaM
     }
     if (button) continue; // botão de modelo ("Ver agora" etc.): a fila já foi entregue
 
+    // "sim"/"não" por escrito só vale para a ÚLTIMA coisa que a Margot mandou, se for uma confirmação
+    // recente. Um "sim" para outra pergunta nunca pode executar uma confirmação antiga.
     if (m.type === "text" && (isAffirmative(m.text) || isNegative(m.text))) {
-      const open = await latestOpenConfirmations(owner);
-      if (open.length === 1) {
-        await sendText(owner, await resolveAction(owner, open[0].id, isAffirmative(m.text)), { author: "margot" });
-        continue;
-      }
-      if (open.length > 1) {
-        await sendText(owner, `Tenho ${open.length} confirmações abertas. Toque no botão da que você quer${isAffirmative(m.text) ? " confirmar" : " cancelar"}, por favor.`, {
-          author: "margot",
-        });
+      const lastOut = await prisma.waMessage.findFirst({
+        where: { contactId: owner.id, direction: "out", status: { in: ["enviada", "entregue", "lida"] }, id: { lt: m.id } },
+        orderBy: { id: "desc" },
+      });
+      if (lastOut?.action && !lastOut.actionDoneAt && lastOut.createdAt > new Date(Date.now() - 30 * 60_000)) {
+        await sendText(owner, await resolveAction(owner, lastOut.id, isAffirmative(m.text)), { author: "margot" });
         continue;
       }
     }
@@ -501,6 +500,15 @@ export async function respondToOwner(owner: WaContact, pending: WaMessage[]): Pr
         : "Recebi seu áudio, mas ainda não consigo ouvir: falta a VOICE_API_KEY na Vercel. Por enquanto, me escreva. 🙂",
       { author: "margot" },
     );
+    return;
+  }
+
+  // Freio contra loop (ex.: mensagem automática de ausência do WhatsApp Business respondendo à Margot).
+  const recentReplies = await prisma.waMessage.count({
+    where: { contactId: owner.id, direction: "out", author: "margot", createdAt: { gte: new Date(Date.now() - 10 * 60_000) } },
+  });
+  if (recentReplies >= 25) {
+    console.error("[whatsapp] secretária: muitas respostas em 10 minutos, pausando");
     return;
   }
 

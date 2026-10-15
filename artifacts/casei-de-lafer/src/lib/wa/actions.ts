@@ -60,22 +60,6 @@ export async function proposeAction(action: Action, body: string, summary: strin
   });
 }
 
-/** Confirmação mais recente ainda em aberto (para quando o Leonardo responde "sim" por escrito). */
-export async function latestOpenConfirmations(owner: WaContact) {
-  return prisma.waMessage.findMany({
-    where: {
-      contactId: owner.id,
-      direction: "out",
-      action: { not: "" },
-      actionDoneAt: null,
-      status: { in: ["enviada", "entregue", "lida"] },
-      createdAt: { gte: new Date(Date.now() - 6 * 3_600_000) },
-    },
-    orderBy: { id: "desc" },
-    take: 3,
-  });
-}
-
 /** Executa ou cancela a ação guardada na mensagem rowId. Devolve o texto para o Leonardo. */
 export async function resolveAction(owner: WaContact, rowId: number, confirm: boolean): Promise<string> {
   const row = await prisma.waMessage.findUnique({ where: { id: rowId } });
