@@ -514,7 +514,14 @@ export async function respondToOwner(owner: WaContact, pending: WaMessage[]): Pr
     return;
   }
 
-  const rows = await prisma.waMessage.findMany({ where: { contactId: owner.id }, orderBy: { id: "desc" }, take: 30 });
+  // Até a última mensagem que a IA vai responder: respostas a botões enviadas agora há pouco ficam de fora,
+  // senão a conversa terminaria com uma fala da Margot e a pergunta nova ficaria sem resposta.
+  const lastId = rest[rest.length - 1].id;
+  const rows = await prisma.waMessage.findMany({
+    where: { contactId: owner.id, id: { lte: lastId } },
+    orderBy: { id: "desc" },
+    take: 30,
+  });
   rows.reverse();
   // Para a IA, o que a Margot mandou como aviso conta como fala dela; o que o Leonardo mandou é "user".
   const turns = buildHistory(
