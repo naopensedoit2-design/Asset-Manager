@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
+import { LogOut } from "lucide-react";
 import { STATUS_LABELS, type OrderStatus } from "@/lib/gestor/rules";
 
 // ─── Chamadas à API do painel ────────────────────────────────
@@ -25,14 +27,22 @@ export async function api<T = any>(url: string, init?: { method?: string; body?:
 
 const NAV = [
   { key: "gestao", href: "/admin/dashboard", label: "Gestão" },
+  { key: "conversas", href: "/admin/conversas", label: "Conversas" },
   { key: "financeiro", href: "/admin/financeiro", label: "Financeiro" },
   { key: "regras", href: "/admin/regras", label: "Regras" },
   { key: "site", href: "/admin/dashboard?aba=site", label: "Site" },
 ];
 
-export function AdminHeader({ active }: { active: "gestao" | "site" | "regras" | "pedido" | "financeiro" }) {
+export function AdminHeader({ active }: { active: "gestao" | "site" | "regras" | "pedido" | "financeiro" | "conversas" }) {
   const router = useRouter();
   const current = active === "pedido" ? "gestao" : active;
+  // Mensagens não lidas no WhatsApp da Margot (badge em "Conversas").
+  const { data: unread } = useQuery<{ total: number }>({
+    queryKey: ["wa-nao-lidas"],
+    queryFn: () => api("/api/admin/whatsapp/nao-lidas"),
+    refetchInterval: 30_000,
+    retry: false,
+  });
 
   async function logout() {
     await fetch("/api/admin/logout", { method: "POST" });
@@ -53,11 +63,16 @@ export function AdminHeader({ active }: { active: "gestao" | "site" | "regras" |
                 key={item.href}
                 href={item.href}
                 aria-current={on ? "page" : undefined}
-                className={`px-3 py-1.5 rounded text-sm whitespace-nowrap transition-colors ${
+                className={`px-2.5 sm:px-3 py-1.5 rounded text-sm whitespace-nowrap transition-colors ${
                   on ? "bg-gold-muted text-gold" : "text-text-secondary hover:text-text-primary"
                 }`}
               >
                 {item.label}
+                {item.key === "conversas" && unread && unread.total > 0 ? (
+                  <span className="ml-1.5 inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-gold text-bg-primary text-[11px] font-semibold align-middle">
+                    {unread.total > 99 ? "99+" : unread.total}
+                  </span>
+                ) : null}
               </Link>
             );
           })}
@@ -66,8 +81,9 @@ export function AdminHeader({ active }: { active: "gestao" | "site" | "regras" |
           <a href="/" target="_blank" className="hidden sm:inline text-sm text-text-muted hover:text-text-primary">
             Ver site
           </a>
-          <button onClick={logout} className="text-sm text-text-muted hover:text-destructive cursor-pointer">
-            Sair
+          <button onClick={logout} aria-label="Sair" className="text-sm text-text-muted hover:text-destructive cursor-pointer p-1.5 -mr-1.5 sm:p-0 sm:mr-0">
+            <LogOut className="w-4 h-4 sm:hidden" />
+            <span className="hidden sm:inline">Sair</span>
           </button>
         </div>
       </div>

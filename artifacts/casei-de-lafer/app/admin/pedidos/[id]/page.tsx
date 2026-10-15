@@ -96,6 +96,24 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
 
 // ─── Resumo e ações de status ────────────────────────────────
 
+/** Atalho para a conversa deste cliente no WhatsApp da Margot, se existir. */
+function MargotConversation({ orderId }: { orderId: number }) {
+  const { data } = useQuery<{ id: number; unread: number; paused: boolean }[]>({
+    queryKey: ["wa-conversa-do-pedido", orderId],
+    queryFn: () => api(`/api/admin/whatsapp/conversas?pedido=${orderId}`),
+    retry: false,
+  });
+  const c = data?.[0];
+  if (!c) return null;
+  return (
+    <Link href={`/admin/conversas/${c.id}`}>
+      <Button variant="ghost">
+        Conversa com a Margot{c.unread > 0 ? ` (${c.unread})` : ""}
+      </Button>
+    </Link>
+  );
+}
+
 function Summary({ order, onChange }: { order: OrderView; onChange: (o: OrderView) => void }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -138,11 +156,14 @@ function Summary({ order, onChange }: { order: OrderView; onChange: (o: OrderVie
             </p>
           )}
         </div>
-        <a href={whatsappLink(order.client.phone, `Olá, ${firstName}!`)} target="_blank" rel="noreferrer">
-          <Button variant="ghost">
-            <MessageCircle className="w-4 h-4" /> WhatsApp
-          </Button>
-        </a>
+        <div className="flex flex-wrap gap-2">
+          <MargotConversation orderId={order.id} />
+          <a href={whatsappLink(order.client.phone, `Olá, ${firstName}!`)} target="_blank" rel="noreferrer">
+            <Button variant="ghost">
+              <MessageCircle className="w-4 h-4" /> WhatsApp
+            </Button>
+          </a>
+        </div>
       </div>
 
       {order.proximosStatus.length > 0 && (
