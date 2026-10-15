@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import * as gestor from "@/lib/gestor/service";
 import { formatBRL, normalizePhone, RuleError, TIMEZONE, todayISO } from "@/lib/gestor/rules";
 import { buildSystemPrompt } from "./prompt";
+import type { CallUsage } from "./usage";
 
 export interface ChatMessage {
   role: "user" | "assistant";
@@ -15,6 +16,7 @@ export interface ChatResult {
   reply: string;
   orderId: number | null;
   encaminhado: boolean;
+  usage: CallUsage[];
 }
 
 const API_URL = `${process.env["ANTHROPIC_BASE_URL"] ?? "https://api.anthropic.com"}/v1/messages`;
@@ -184,12 +186,18 @@ async function callClaude(system: string, messages: unknown[]) {
     throw new Error(`Claude API ${res.status}: ${detail.slice(0, 300)}`);
   }
   return (await res.json()) as {
+    model?: string;
+    usage?: { input_tokens?: number; output_tokens?: number; cache_creation_input_tokens?: number; cache_read_input_tokens?: number };
     stop_reason: string;
     content: ({ type: "text"; text: string } | { type: "tool_use"; id: string; name: string; input: unknown })[];
   };
 }
 
-export async function chat(history: ChatMessage[], orderId: number | null): Promise<ChatResult> {
+export async function chat(
+  history: ChatMessage[],
+  orderId: number | null,
+  usage: CallUsage[] = [],
+): Promise<ChatResult> {
   const [services, settings] = await Promise.all([gestor.listServices({ activeOnly: true }), gestor.getSettings()]);
   const now = new Date();
   const weekday = new Intl.DateTimeFormat("pt-BR", { weekday: "long", timeZone: TIMEZONE }).format(now);
@@ -200,6 +208,12 @@ export async function chat(history: ChatMessage[], orderId: number | null): Prom
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     const response = await callClaude(system, messages);
+    const u = response.usage ?? {};
+    usage.push({
+      model: MODEL,
+      inputTokens: (u.input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0),
+      outputTokens: u.output_tokens ?? 0,
+    });
     const toolUses = response.content.filter((b) => b.type === "tool_use") as {
       id: string;
       name: string;
@@ -212,7 +226,7 @@ export async function chat(history: ChatMessage[], orderId: number | null): Prom
         .map((b) => (b as { text: string }).text)
         .join("\n")
         .trim();
-      return { reply: reply || "Desculpe, pode repetir?", orderId: state.orderId, encaminhado: state.encaminhado };
+      return { reply: reply || "Desculpe, pode repetir?", orderId: state.orderId, encaminhado: state.encaminhado, usage };
     }
 
     messages.push({ role: "assistant", content: response.content });
@@ -228,5 +242,6 @@ export async function chat(history: ChatMessage[], orderId: number | null): Prom
     reply: "Vou pedir para o Leonardo continuar com você pelo WhatsApp, tudo bem? É só tocar no botão abaixo.",
     orderId: state.orderId,
     encaminhado: true,
+    usage,
   };
 }

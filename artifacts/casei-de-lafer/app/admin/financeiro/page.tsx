@@ -82,6 +82,7 @@ export default function FinanceiroPage() {
               <VehicleCost s={summary} weddingPrice={weddingPrice} label={label} className="lg:col-span-2" />
               <Categories s={summary} className="lg:col-span-3" />
             </div>
+            <MargotCost />
             {summary.meses.length > 0 && <Monthly s={summary} today={today} onPick={(m) => setMonth(m)} />}
           </>
         )}
@@ -175,6 +176,64 @@ function VehicleCost({ s, weddingPrice, label, className }: { s: FinanceSummary;
           {s.eventos} evento{s.eventos > 1 ? "s" : ""} confirmado{s.eventos > 1 ? "s" : ""}: custo total de {formatBRL(s.custoPorEventoCents)} por evento.
         </p>
       )}
+    </Panel>
+  );
+}
+
+// ─── Custo da Margot ─────────────────────────────────────────
+
+interface MargotUsage {
+  usd: number;
+  conversas: number;
+  chamadas: number;
+  limiteUsd: number;
+  cotacao: number;
+  ligada: boolean;
+  temChave: boolean;
+  modelo: string;
+}
+
+const usdFmt = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "USD" });
+
+function MargotCost() {
+  const { data } = useQuery<MargotUsage>({ queryKey: ["margot-uso"], queryFn: () => api("/api/admin/gestor/margot-uso") });
+  if (!data) return null;
+  const pct = data.limiteUsd > 0 ? Math.min(100, (data.usd / data.limiteUsd) * 100) : 100;
+  const perConversation = data.conversas > 0 ? data.usd / data.conversas : null;
+  const status = !data.temChave
+    ? { text: "Desligada: falta a chave da API na Vercel", tone: "text-text-muted" }
+    : data.limiteUsd <= 0
+      ? { text: "Desligada nas Regras (limite zero)", tone: "text-text-muted" }
+      : !data.ligada
+        ? { text: "Pausada: limite do mês atingido", tone: "text-red-300" }
+        : { text: "Atendendo no site", tone: "text-emerald-300" };
+  return (
+    <Panel title="Margot (IA) neste mês">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="font-serif text-3xl text-text-primary">{usdFmt.format(data.usd)}</p>
+          <p className="text-sm text-text-secondary">
+            ≈ {formatBRL(Math.round(data.usd * data.cotacao * 100))} · {data.conversas} conversa{data.conversas === 1 ? "" : "s"}
+            {perConversation !== null && ` · ${usdFmt.format(perConversation)} por conversa`}
+          </p>
+        </div>
+        <p className={`text-sm ${status.tone}`}>{status.text}</p>
+      </div>
+      <div className="mt-4">
+        <div className="flex justify-between text-xs text-text-muted mb-1.5">
+          <span>Usado do limite mensal</span>
+          <span className="tabular-nums">
+            {usdFmt.format(data.usd)} de {usdFmt.format(data.limiteUsd)}
+          </span>
+        </div>
+        <div className="h-2 rounded-full bg-bg-elevated overflow-hidden">
+          <div className={`h-full rounded-full ${pct >= 90 ? "bg-red-400" : "bg-gold"}`} style={{ width: `${Math.max(1, pct)}%` }} />
+        </div>
+        <p className="text-xs text-text-muted mt-2">
+          Estimativa pelos preços oficiais do modelo {data.modelo}. Ao bater o limite, o chat passa a mostrar o botão do seu
+          WhatsApp. O limite e a cotação do dólar ficam em Regras.
+        </p>
+      </div>
     </Panel>
   );
 }

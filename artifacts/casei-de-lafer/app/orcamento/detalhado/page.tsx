@@ -11,6 +11,7 @@ interface Message {
 }
 
 interface State {
+  conversationId: string;
   messages: Message[];
   orderId: number | null;
   whatsappUrl: string | null;
@@ -26,18 +27,20 @@ const GREETING: Message = {
 const SUGGESTIONS = ["Quero ver se a minha data está livre", "Quanto custa a chegada da noiva?", "Como funciona a saída dos noivos?"];
 
 const STORAGE_KEY = "margot-conversa-v1";
-const EMPTY: State = { messages: [GREETING], orderId: null, whatsappUrl: null, encaminhado: false };
+const newId = () =>
+  typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+const emptyState = (): State => ({ conversationId: newId(), messages: [GREETING], orderId: null, whatsappUrl: null, encaminhado: false });
 
 function load(): State {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return EMPTY;
+    if (!raw) return emptyState();
     const saved = JSON.parse(raw);
     // Conversas com mais de 3 dias recomeçam do zero.
-    if (!saved?.savedAt || Date.now() - saved.savedAt > 3 * 86_400_000) return EMPTY;
-    return { ...EMPTY, ...saved.state };
+    if (!saved?.savedAt || Date.now() - saved.savedAt > 3 * 86_400_000) return emptyState();
+    return { ...emptyState(), ...saved.state };
   } catch {
-    return EMPTY;
+    return emptyState();
   }
 }
 
@@ -50,7 +53,7 @@ function save(state: State) {
 }
 
 export default function OrcamentoDetalhado() {
-  const [state, setState] = useState<State>(EMPTY);
+  const [state, setState] = useState<State>(emptyState);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -79,12 +82,13 @@ export default function OrcamentoDetalhado() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         // A saudação inicial é só da tela; a conversa enviada começa na primeira fala do cliente.
-        body: JSON.stringify({ messages: messages.slice(1), orderId: state.orderId }),
+        body: JSON.stringify({ messages: messages.slice(1), orderId: state.orderId, conversationId: state.conversationId }),
       });
       const json = await res.json();
       if (!json.ok) throw new Error(json.erro?.mensagem);
       const d = json.data;
       setState((s) => ({
+        ...s,
         messages: [...s.messages, { role: "assistant", content: d.reply }],
         orderId: d.orderId ?? s.orderId,
         whatsappUrl: d.whatsappUrl ?? s.whatsappUrl,
@@ -109,7 +113,7 @@ export default function OrcamentoDetalhado() {
 
   function restart() {
     if (!window.confirm("Começar uma nova conversa?")) return;
-    setState(EMPTY);
+    setState(emptyState());
   }
 
   const showWhatsapp = (state.orderId || state.encaminhado) && state.whatsappUrl;

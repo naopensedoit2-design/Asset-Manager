@@ -76,6 +76,15 @@ export interface Settings {
   followUpDays: number;
   cancellationPolicy: string;
   serviceArea: string;
+  // Margot (IA)
+  margotLimitUsd: number;
+  dollarRate: number;
+  // Termo Simplificado
+  contractorName: string;
+  contractorDocument: string;
+  pixKey: string;
+  forum: string;
+  proposalValidityDays: number;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -86,6 +95,13 @@ export const DEFAULT_SETTINGS: Settings = {
   cancellationPolicy:
     "Em caso de cancelamento pelo contratante, o sinal não é reembolsável, por se tratar de reserva de data. Em ensaios, chuva forte permite remarcar sem custo em até 60 dias, conforme a agenda.",
   serviceArea: "",
+  margotLimitUsd: 10,
+  dollarRate: 5.5,
+  contractorName: "Leonardo",
+  contractorDocument: "",
+  pixKey: "",
+  forum: "Comarca de Parobé/RS",
+  proposalValidityDays: 15,
 };
 
 export const SETTING_LABELS: Record<keyof Settings, string> = {
@@ -95,6 +111,13 @@ export const SETTING_LABELS: Record<keyof Settings, string> = {
   followUpDays: "Lembrar orçamento sem resposta após (dias)",
   cancellationPolicy: "Política de cancelamento",
   serviceArea: "Raio de atendimento e taxa de deslocamento",
+  margotLimitUsd: "Limite de gasto da Margot por mês (US$)",
+  dollarRate: "Cotação do dólar para estimar em reais (R$)",
+  contractorName: "Nome do contratado no termo",
+  contractorDocument: "CPF ou CNPJ do contratado",
+  pixKey: "Chave Pix para o sinal",
+  forum: "Foro do termo",
+  proposalValidityDays: "Validade da proposta (dias)",
 };
 
 const NUMERIC_SETTINGS: (keyof Settings)[] = [
@@ -102,7 +125,12 @@ const NUMERIC_SETTINGS: (keyof Settings)[] = [
   "balanceDaysBefore",
   "provisionalHours",
   "followUpDays",
+  "margotLimitUsd",
+  "proposalValidityDays",
 ];
+
+/** Números que aceitam casas decimais (com vírgula ou ponto). */
+const DECIMAL_SETTINGS: (keyof Settings)[] = ["dollarRate"];
 
 export function isSettingKey(key: string): key is keyof Settings {
   return key in DEFAULT_SETTINGS;
@@ -113,7 +141,7 @@ export function parseSettings(rows: { key: string; value: string }[]): Settings 
   const out: Settings = { ...DEFAULT_SETTINGS };
   for (const row of rows) {
     if (!isSettingKey(row.key)) continue;
-    if (NUMERIC_SETTINGS.includes(row.key)) {
+    if (NUMERIC_SETTINGS.includes(row.key) || DECIMAL_SETTINGS.includes(row.key)) {
       const n = Number(row.value);
       if (Number.isFinite(n) && n >= 0) (out as any)[row.key] = n;
     } else {
@@ -128,6 +156,11 @@ export function validateSetting(
   key: keyof Settings,
   raw: unknown,
 ): { ok: true; value: string } | { ok: false; error: string } {
+  if (DECIMAL_SETTINGS.includes(key)) {
+    const n = Number(String(raw ?? "").replace(",", "."));
+    if (!Number.isFinite(n) || n <= 0) return { ok: false, error: `${SETTING_LABELS[key]}: use um número maior que zero.` };
+    return { ok: true, value: String(n) };
+  }
   if (NUMERIC_SETTINGS.includes(key)) {
     const n = Number(raw);
     if (!Number.isFinite(n) || n < 0 || !Number.isInteger(n)) {

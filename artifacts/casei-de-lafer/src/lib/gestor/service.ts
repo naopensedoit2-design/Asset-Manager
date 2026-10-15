@@ -3,6 +3,7 @@
 
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { createOrderEvent, deleteOrderEvent, googleBusyDays, isConfigured as googleConfigured } from "@/lib/google/calendar";
 import {
   addDays,
   allowedTransitions,
@@ -13,6 +14,7 @@ import {
   computeAlerts,
   computeKpis,
   dateToISO,
+  formatBRL,
   DEFAULT_SERVICES,
   DEFAULT_SERVICES_VERSION,
   isDateString,
@@ -142,8 +144,10 @@ export async function getCalendarFacts(db: Tx | typeof prisma = prisma): Promise
     where: { activeDate: { not: null } },
     select: { date: true, kind: true, orderId: true },
   });
+  // Compromissos da Google Agenda do Leonardo também ocupam o dia.
+  const google = await googleBusyDays();
   return {
-    blocked: blocked.map((b) => b.date.toISOString().slice(0, 10)),
+    blocked: [...blocked.map((b) => b.date.toISOString().slice(0, 10)), ...google.map((g) => g.date)],
     reservations: reservations.map((r) => ({ date: dateToISO(r.date)!, kind: r.kind, orderId: r.orderId })),
   };
 }
@@ -193,6 +197,8 @@ function serializeOrder(o: FullOrder) {
     proximosStatus: isOrderStatus(o.status) ? allowedTransitions(status) : [],
     eventDate: dateToISO(o.eventDate),
     eventTime: o.eventTime,
+    duration: o.duration,
+    publicToken: o.publicToken,
     venue: o.venue,
     city: o.city,
     serviceIds: o.serviceIds,
@@ -209,6 +215,9 @@ function serializeOrder(o: FullOrder) {
       source: o.client.source,
       referredBy: o.client.referredBy,
       notes: o.client.notes,
+      legalName: o.client.legalName,
+      document: o.client.document,
+      address: o.client.address,
     },
     reserva: active
       ? {
@@ -359,7 +368,7 @@ export async function updateOrder(id: unknown, input: Record<string, any>, actor
     }
     data.eventDate = next ? toDbDate(next) : null;
   }
-  for (const field of ["eventTime", "venue", "city", "notes", "lostReason"] as const) {
+  for (const field of ["eventTime", "venue", "city", "notes", "lostReason", "duration"] as const) {
     if (input[field] !== undefined) data[field] = str(input[field]);
   }
   if (Array.isArray(input.serviceIds)) {
@@ -372,6 +381,9 @@ export async function updateOrder(id: unknown, input: Record<string, any>, actor
     if (c.email !== undefined) clientData.email = str(c.email, 200);
     if (c.referredBy !== undefined) clientData.referredBy = str(c.referredBy, 200);
     if (c.notes !== undefined) clientData.notes = str(c.notes);
+    if (c.legalName !== undefined) clientData.legalName = str(c.legalName, 200);
+    if (c.document !== undefined) clientData.document = str(c.document, 40);
+    if (c.address !== undefined) clientData.address = str(c.address, 300);
     if (c.source !== undefined && SOURCES.includes(c.source)) clientData.source = c.source;
     if (c.phone !== undefined) {
       const phone = normalizePhone(str(c.phone, 40));
@@ -398,6 +410,8 @@ export async function updateOrder(id: unknown, input: Record<string, any>, actor
 export async function changeStatus(id: unknown, to: unknown, actor: Actor, note = "") {
   const orderId = requireInt(id, "id");
   if (!isOrderStatus(to)) throw new RuleError("status_invalido", "Status desconhecido.", 400);
+  // Busca a Google Agenda antes da transação (fica em cache), para não segurar o banco esperando a rede.
+  if (to === "reservado" || to === "confirmado") await googleBusyDays();
 
   await prisma.$transaction(async (tx) => {
     const order = await loadOrder(orderId, tx);
@@ -423,7 +437,61 @@ export async function changeStatus(id: unknown, to: unknown, actor: Actor, note 
     await tx.orderHistory.create({ data: { orderId, fromStatus: from, toStatus: to, actor, note } });
   });
 
+  await syncOrderCalendar(orderId);
   return getOrder(orderId);
+}
+
+// ─── Google Agenda ───────────────────────────────────────────
+
+function siteUrl() {
+  const host = process.env["SITE_URL"] || process.env["VERCEL_PROJECT_PRODUCTION_URL"];
+  return host ? (host.startsWith("http") ? host : `https://${host}`) : "";
+}
+
+/**
+ * Deixa a Google Agenda igual ao banco: pedido confirmado ganha evento; reserva liberada perde o evento.
+ * Nunca derruba a operação principal: erros só vão para o log.
+ */
+export async function syncOrderCalendar(orderId: number) {
+  if (!googleConfigured()) return;
+  try {
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      include: { client: true, reservations: true, quotes: { orderBy: { createdAt: "desc" }, take: 1 }, payments: true },
+    });
+    if (!order) return;
+    for (const r of order.reservations) {
+      if (!r.activeDate && r.googleEventId) {
+        await deleteOrderEvent(r.googleEventId);
+        await prisma.reservation.update({ where: { id: r.id }, data: { googleEventId: null } });
+      }
+    }
+    const active = order.reservations.find((r) => r.activeDate && r.kind === "confirmada");
+    if (!active || active.googleEventId) return;
+    const quote = order.quotes[0];
+    const items = ((quote?.items as unknown as QuoteItem[]) ?? []).map((i) => i.name);
+    const balance = order.payments.find((p) => p.kind === "saldo" && p.status !== "cancelado");
+    const lines = [
+      items.length ? `Serviços: ${items.join(" + ")}` : "",
+      quote ? `Total: ${formatBRL(quote.totalCents)} (sinal ${formatBRL(quote.depositCents)})` : "",
+      balance ? `Saldo: ${formatBRL(balance.amountCents)} — ${balance.status === "recebido" ? "pago" : "a receber"}` : "",
+      `Cliente: ${order.client.name} · WhatsApp ${order.client.phone}`,
+      order.notes ? `Observações: ${order.notes}` : "",
+      siteUrl() ? `Pedido no painel: ${siteUrl()}/admin/pedidos/${order.id}` : "",
+    ].filter(Boolean);
+    const eventId = await createOrderEvent({
+      orderId: order.id,
+      date: dateToISO(active.date)!,
+      time: order.eventTime,
+      durationHours: 3,
+      title: `💍 ${items[0] ?? "Eu Casei de Lafer"} — ${order.client.name}`,
+      location: [order.venue, order.city].filter(Boolean).join(", "),
+      description: lines.join("\n"),
+    });
+    await prisma.reservation.update({ where: { id: active.id }, data: { googleEventId: eventId } });
+  } catch (e) {
+    console.error(`[google] sincronizar pedido #${orderId}`, e);
+  }
 }
 
 async function reserveInTx(order: FullOrder, settings: Settings, tx: Tx) {
@@ -727,6 +795,7 @@ export async function runDailyRoutine(now = new Date()) {
       await changeStatus(order.id, "aguardando_resposta", "sistema", "Reserva provisória expirou sem sinal");
     } else {
       await prisma.$transaction((tx) => releaseInTx(r.orderId, tx));
+      await syncOrderCalendar(r.orderId);
     }
     released.push(r.orderId);
   }

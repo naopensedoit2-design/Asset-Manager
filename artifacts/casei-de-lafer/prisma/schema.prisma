@@ -52,6 +52,10 @@ model Client {
   source     String   @default("outro") // instagram | indicacao | site | cerimonialista | outro
   referredBy String   @default("")
   notes      String   @default("")
+  // Dados para o Termo Simplificado (pedidos ao fechar)
+  legalName  String   @default("")
+  document   String   @default("") // CPF ou passaporte
+  address    String   @default("")
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   orders     Order[]
@@ -70,6 +74,8 @@ model Order {
   status       String         @default("novo")
   lostReason   String         @default("")
   createdBy    String         @default("admin") // admin | margot
+  duration     String         @default("") // ex.: "Até 3 horas no local"
+  publicToken  String? // link privado da proposta e do termo (código aleatório)
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   quotes       Quote[]
@@ -79,6 +85,7 @@ model Order {
 
   @@index([status])
   @@index([eventDate])
+  @@index([publicToken])
 }
 
 model Quote {
@@ -106,6 +113,7 @@ model Reservation {
   kind          String    @default("provisoria") // provisoria | confirmada
   expiresAt     DateTime?
   blockedDateId Int?
+  googleEventId String?
   releasedAt    DateTime?
   createdAt     DateTime  @default(now())
 }
@@ -175,4 +183,18 @@ model Expense {
 
   @@index([date])
   @@index([status])
+}
+
+// ─── Uso da IA (custo da Margot) ─────────────────────────────
+model AiUsage {
+  id             Int      @id @default(autoincrement())
+  createdAt      DateTime @default(now())
+  channel        String   @default("site") // site | whatsapp
+  conversationId String   @default("")
+  model          String
+  inputTokens    Int
+  outputTokens   Int
+  costMicroUsd   Int // custo estimado em milionésimos de dólar
+
+  @@index([createdAt])
 }

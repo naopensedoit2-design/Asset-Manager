@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { formatBRL, parseBRLToCents, SETTING_LABELS, type Settings } from "@/lib/gestor/rules";
+import { formatBRL, formatDateBR, parseBRLToCents, SETTING_LABELS, type Settings } from "@/lib/gestor/rules";
 import { AdminHeader, api, Button, ErrorNote, Field, inputClass, Loading, Panel } from "@/components/gestor/ui";
 
 interface Service {
@@ -26,10 +26,86 @@ export default function RulesPage() {
             Preços e políticas usados pelo painel e pela Margot. Mudou aqui, vale para os próximos orçamentos.
           </p>
         </div>
+        <GoogleCard />
         <ServicesEditor />
         <SettingsEditor />
       </main>
     </div>
+  );
+}
+
+interface GoogleStatus {
+  configurada: boolean;
+  motivo?: string;
+  ok?: boolean;
+  erro?: string | null;
+  contaDeServico?: string;
+  diasOcupados?: number;
+  proximos?: { date: string; summary: string }[];
+}
+
+function GoogleCard() {
+  const { data, refetch, isFetching } = useQuery<GoogleStatus>({
+    queryKey: ["google-status"],
+    queryFn: () => api("/api/admin/gestor/google"),
+  });
+  const [msg, setMsg] = useState<string | null>(null);
+
+  async function sendPending() {
+    setMsg(null);
+    try {
+      const r = await api<{ enviados: number }>("/api/admin/gestor/google", { body: {} });
+      setMsg(r.enviados ? `${r.enviados} evento(s) enviado(s) para a agenda.` : "Nada pendente: a agenda já está em dia.");
+    } catch (e) {
+      setMsg((e as Error).message);
+    }
+  }
+
+  return (
+    <Panel
+      title="Google Agenda"
+      action={
+        <Button variant="ghost" onClick={() => refetch()} disabled={isFetching}>
+          {isFetching ? "Testando…" : "Testar conexão"}
+        </Button>
+      }
+    >
+      {!data ? (
+        <Loading />
+      ) : !data.configurada ? (
+        <p className="text-sm text-text-secondary">
+          Ainda não conectada. {data.motivo} Depois de conectada, tudo o que estiver na sua agenda bloqueia o dia para a Margot e
+          no site, e cada casamento confirmado aparece na agenda sozinho.
+        </p>
+      ) : data.ok ? (
+        <div className="space-y-2 text-sm">
+          <p className="text-emerald-300">Conectada. {data.diasOcupados} dia(s) ocupado(s) nos próximos 2 anos.</p>
+          {data.proximos && data.proximos.length > 0 && (
+            <ul className="text-text-secondary">
+              {data.proximos.map((d) => (
+                <li key={d.date}>
+                  {formatDateBR(d.date)} · {d.summary}
+                </li>
+              ))}
+            </ul>
+          )}
+          <p className="text-xs text-text-muted">
+            Para um compromisso não bloquear o dia, marque-o como "Disponível" na Google Agenda.
+          </p>
+          <Button variant="ghost" onClick={sendPending}>
+            Enviar pedidos confirmados para a agenda
+          </Button>
+          {msg && <p className="text-sm text-text-secondary">{msg}</p>}
+        </div>
+      ) : (
+        <div className="space-y-1 text-sm">
+          <p className="text-red-300">Configurada, mas o Google recusou: {data.erro}</p>
+          <p className="text-text-muted">
+            Confira se a agenda foi compartilhada com {data.contaDeServico} com a permissão "Fazer alterações nos eventos".
+          </p>
+        </div>
+      )}
+    </Panel>
   );
 }
 
@@ -134,8 +210,39 @@ function ServiceRow({ service, onSaved, onCancel }: { service: Service; onSaved:
   );
 }
 
-const NUMBER_KEYS: (keyof Settings)[] = ["depositPercent", "balanceDaysBefore", "provisionalHours", "followUpDays"];
-const TEXT_KEYS: (keyof Settings)[] = ["cancellationPolicy", "serviceArea"];
+type FieldSpec = { key: keyof Settings; kind: "number" | "decimal" | "text" | "long"; hint?: string };
+
+const GROUPS: { title: string; note?: string; fields: FieldSpec[] }[] = [
+  {
+    title: "Políticas",
+    fields: [
+      { key: "depositPercent", kind: "number" },
+      { key: "balanceDaysBefore", kind: "number" },
+      { key: "provisionalHours", kind: "number" },
+      { key: "followUpDays", kind: "number" },
+      { key: "cancellationPolicy", kind: "long", hint: "Vai no termo e a Margot usa para responder." },
+      { key: "serviceArea", kind: "long", hint: "Se vazio, a Margot encaminha essa pergunta para você." },
+    ],
+  },
+  {
+    title: "Margot",
+    fields: [
+      { key: "margotLimitUsd", kind: "number", hint: "Ao atingir, o chat mostra seu WhatsApp. 0 desliga a Margot." },
+      { key: "dollarRate", kind: "decimal", hint: "Só para mostrar o gasto em reais no Financeiro." },
+    ],
+  },
+  {
+    title: "Termo e proposta",
+    note: "Esses dados aparecem no Termo Simplificado que o painel gera. Ficam só no banco do site, nunca no código.",
+    fields: [
+      { key: "contractorName", kind: "text" },
+      { key: "contractorDocument", kind: "text" },
+      { key: "pixKey", kind: "text" },
+      { key: "forum", kind: "text" },
+      { key: "proposalValidityDays", kind: "number" },
+    ],
+  },
+];
 
 function SettingsEditor() {
   const queryClient = useQueryClient();
@@ -167,30 +274,39 @@ function SettingsEditor() {
   if (!data) return <Loading />;
 
   return (
-    <Panel title="Políticas">
-      <div className="grid sm:grid-cols-2 gap-4">
-        {NUMBER_KEYS.map((k) => (
-          <Field key={k} label={SETTING_LABELS[k]}>
-            <input inputMode="numeric" value={form[k] ?? ""} onChange={(e) => setForm({ ...form, [k]: e.target.value })} className={inputClass} />
-          </Field>
-        ))}
-        {TEXT_KEYS.map((k) => (
-          <Field
-            key={k}
-            label={SETTING_LABELS[k]}
-            className="sm:col-span-2"
-            hint={!form[k] ? "Ainda não definido. A Margot vai encaminhar essas perguntas para você." : undefined}
-          >
-            <textarea rows={3} value={form[k] ?? ""} onChange={(e) => setForm({ ...form, [k]: e.target.value })} className={`${inputClass} resize-none`} />
-          </Field>
-        ))}
-      </div>
-      <div className="mt-4 space-y-3">
+    <>
+      {GROUPS.map((g) => (
+        <Panel key={g.title} title={g.title}>
+          {g.note && <p className="text-sm text-text-muted -mt-2 mb-4">{g.note}</p>}
+          <div className="grid sm:grid-cols-2 gap-4">
+            {g.fields.map((f) => (
+              <Field key={f.key} label={SETTING_LABELS[f.key]} hint={f.hint} className={f.kind === "long" ? "sm:col-span-2" : ""}>
+                {f.kind === "long" ? (
+                  <textarea
+                    rows={3}
+                    value={form[f.key] ?? ""}
+                    onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
+                    className={`${inputClass} resize-none`}
+                  />
+                ) : (
+                  <input
+                    inputMode={f.kind === "number" ? "numeric" : f.kind === "decimal" ? "decimal" : "text"}
+                    value={form[f.key] ?? ""}
+                    onChange={(e) => setForm({ ...form, [f.key]: e.target.value })}
+                    className={inputClass}
+                  />
+                )}
+              </Field>
+            ))}
+          </div>
+        </Panel>
+      ))}
+      <div className="sticky bottom-0 -mx-4 sm:mx-0 px-4 sm:px-0 py-3 bg-bg-primary/95 backdrop-blur space-y-3">
         <ErrorNote message={error} />
-        <Button onClick={save} disabled={saving}>
-          {saved ? "Salvo" : saving ? "Salvando…" : "Salvar políticas"}
+        <Button onClick={save} disabled={saving} className="w-full sm:w-auto">
+          {saved ? "Salvo" : saving ? "Salvando…" : "Salvar regras"}
         </Button>
       </div>
-    </Panel>
+    </>
   );
 }
