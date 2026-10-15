@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { prisma } from "@/lib/prisma";
-import { getSettings } from "@/lib/gestor/service";
+import { getSettings, siteUrl } from "@/lib/gestor/service";
 import { dateToISO, type QuoteItem, type Settings } from "@/lib/gestor/rules";
 
 export type DocKind = "casamento" | "ensaio";
@@ -102,6 +102,19 @@ export function esc(v: unknown): string {
 
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 export const money = (cents: number) => brl.format(cents / 100).replace(/ /g, " ");
+
+/** Prévia do link no WhatsApp (título, texto e foto) quando a Margot ou o Leonardo mandam o documento. */
+export function ogTags(title: string, description: string): string {
+  const site = siteUrl();
+  const image = `${site}/opengraph.jpg`;
+  return [
+    '<meta property="og:type" content="website">',
+    '<meta property="og:site_name" content="Eu Casei de Lafer">',
+    `<meta property="og:title" content="${esc(title)}">`,
+    `<meta property="og:description" content="${esc(description)}">`,
+    site ? `<meta property="og:image" content="${image}">` : "",
+  ].join("");
+}
 
 export function placeLabel(d: Pick<DocData, "venue" | "city">): string {
   return [d.venue, d.city].filter(Boolean).join(" — ") || "A definir";

@@ -1,7 +1,7 @@
 // Termo Simplificado de Prestação de Serviço, no mesmo texto dos termos que o Leonardo já usa.
 // Página A4 clara (economiza tinta e lê como contrato), com toques dourados.
 
-import { dateLong, durationLabel, esc, money, placeLabel, type DocData } from "./data";
+import { dateLong, durationLabel, esc, money, ogTags, placeLabel, type DocData } from "./data";
 import { DOC_FONTS, screenChrome } from "./proposal";
 
 const CSS = `
@@ -65,7 +65,10 @@ export function renderTermo(d: DocData): string {
   return `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Termo — ${esc(contratante)} · Eu Casei de Lafer</title>${DOC_FONTS}
+<title>Termo — ${esc(contratante)} · Eu Casei de Lafer</title>${ogTags(
+    "Termo Simplificado · Eu Casei de Lafer",
+    "Termo de prestação de serviço do MP Lafer. Toque para ler e salvar em PDF.",
+  )}${DOC_FONTS}
 <style>${CSS}${chrome.css}</style></head><body>
 <div class="page">
   <div class="top">
