@@ -75,7 +75,7 @@ model Order {
   lostReason   String         @default("")
   createdBy    String         @default("admin") // admin | margot
   duration     String         @default("") // ex.: "Até 3 horas no local"
-  publicToken  String?        @unique // link privado da proposta e do termo
+  publicToken  String? // link privado da proposta e do termo (código aleatório)
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
   quotes       Quote[]
@@ -85,6 +85,7 @@ model Order {
 
   @@index([status])
   @@index([eventDate])
+  @@index([publicToken])
 }
 
 model Quote {

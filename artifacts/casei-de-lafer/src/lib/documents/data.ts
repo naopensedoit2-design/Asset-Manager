@@ -41,7 +41,7 @@ export async function ensurePublicToken(orderId: number): Promise<string> {
 
 export async function loadDocData(token: string): Promise<DocData | null> {
   if (!/^[A-Za-z0-9_-]{16,40}$/.test(token)) return null;
-  const order = await prisma.order.findUnique({
+  const order = await prisma.order.findFirst({
     where: { publicToken: token },
     include: { client: true, quotes: { orderBy: { createdAt: "desc" }, take: 1 } },
   });
