@@ -1,27 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { googleBusyDays } from "@/lib/google/calendar";
 
 export const dynamic = "force-dynamic";
 
-// Datas ocupadas para o calendário público do site.
-// ?manual=1 devolve só os bloqueios feitos à mão (usado pelo admin para desbloquear).
+// Datas reservadas para o calendário público do site.
+// A Google Agenda pessoal do Leonardo NUNCA aparece aqui: ela só é usada por dentro
+// (painel e Margot) para saber se o dia está livre. Clientes veem apenas as datas
+// reservadas pelo próprio negócio, e nada quando o calendário está desligado no admin.
+// ?manual=1 devolve os bloqueios para a tela do admin (protegida pelo login).
 export async function GET(req: NextRequest) {
   try {
+    const manualOnly = req.nextUrl.searchParams.get("manual") === "1";
+    if (!manualOnly) {
+      const cfg = await prisma.siteConfig.findFirst();
+      if (cfg && cfg.showCalendar === false) return NextResponse.json([]);
+    }
     const blockedDates = await prisma.blockedDate.findMany({ orderBy: { date: "asc" } });
-    const manual = blockedDates.map((d: any) => ({
-      id: d.id,
-      date: d.date.toISOString().split("T")[0],
-      label: d.label,
-    }));
-    if (req.nextUrl.searchParams.get("manual") === "1") return NextResponse.json(manual);
-
-    // Compromissos da Google Agenda aparecem como "Reservado", sem expor o título.
-    const taken = new Set(manual.map((d) => d.date));
-    const google = (await googleBusyDays())
-      .filter((g) => !taken.has(g.date))
-      .map((g) => ({ id: 0, date: g.date, label: "Reservado" }));
-    return NextResponse.json([...manual, ...google].sort((a, b) => a.date.localeCompare(b.date)));
+    return NextResponse.json(
+      blockedDates.map((d: any) => ({
+        id: d.id,
+        date: d.date.toISOString().split("T")[0],
+        label: d.label,
+      })),
+    );
   } catch {
     return NextResponse.json([], { status: 200 });
   }
