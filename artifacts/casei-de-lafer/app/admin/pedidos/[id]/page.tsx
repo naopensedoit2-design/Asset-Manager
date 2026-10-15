@@ -83,6 +83,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
           <>
             <Summary order={order} onChange={refresh} />
             <QuoteSection order={order} onChange={refresh} />
+            <DocumentsSection order={order} />
             <PaymentsSection order={order} onChange={refresh} />
             <DetailsSection order={order} onChange={refresh} />
             <History order={order} />
@@ -312,6 +313,91 @@ function QuoteSection({ order, onChange }: { order: OrderView; onChange: (o: Ord
   );
 }
 
+// ─── Documentos ──────────────────────────────────────────────
+
+function DocumentsSection({ order }: { order: OrderView }) {
+  const [links, setLinks] = useState<{ proposta: string; termo: string } | null>(
+    order.publicToken ? { proposta: `/p/${order.publicToken}`, termo: `/t/${order.publicToken}` } : null,
+  );
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
+  const hasQuote = order.quotes.length > 0;
+  const termoReady = Boolean(order.client.legalName && order.client.document && order.client.address);
+  const firstName = order.client.name.split(" ")[0];
+
+  async function ensure() {
+    if (links) return links;
+    const l = await api<{ proposta: string; termo: string }>(`/api/admin/gestor/pedidos/${order.id}/documentos`, { body: {} });
+    setLinks(l);
+    return l;
+  }
+
+  async function act(kind: "proposta" | "termo", how: "abrir" | "copiar" | "whatsapp") {
+    setError(null);
+    // Abre a janela já no clique, para o celular não bloquear o pop-up.
+    const win = how !== "copiar" ? window.open("", "_blank") : null;
+    try {
+      const l = await ensure();
+      const url = `${window.location.origin}${l[kind]}`;
+      if (how === "abrir") {
+        if (win) win.location.href = url;
+      } else if (how === "copiar") {
+        await navigator.clipboard.writeText(url);
+        setCopied(kind);
+        setTimeout(() => setCopied(null), 2000);
+      } else {
+        const text =
+          kind === "proposta"
+            ? `Olá, ${firstName}! Segue a proposta do MP Lafer para o grande dia: ${url}`
+            : `Olá, ${firstName}! Segue o Termo Simplificado de Prestação de Serviço. O pagamento do sinal confirma a reserva: ${url}`;
+        if (win) win.location.href = whatsappLink(order.client.phone, text);
+      }
+    } catch (e) {
+      win?.close();
+      setError((e as Error).message);
+    }
+  }
+
+  const row = (kind: "proposta" | "termo", title: string, desc: string, ready: boolean, warn?: string) => (
+    <div className="bg-bg-elevated rounded p-3 sm:p-4">
+      <p className="text-sm text-text-primary">{title}</p>
+      <p className="text-xs text-text-muted">{desc}</p>
+      {warn && <p className="text-xs text-amber-300 mt-1">{warn}</p>}
+      <div className="flex flex-wrap gap-2 mt-3">
+        <Button variant="ghost" onClick={() => act(kind, "abrir")} disabled={!ready}>
+          Abrir
+        </Button>
+        <Button variant="ghost" onClick={() => act(kind, "copiar")} disabled={!ready}>
+          {copied === kind ? "Link copiado" : "Copiar link"}
+        </Button>
+        <Button onClick={() => act(kind, "whatsapp")} disabled={!ready}>
+          <MessageCircle className="w-4 h-4" /> Enviar no WhatsApp
+        </Button>
+      </div>
+    </div>
+  );
+
+  return (
+    <Panel title="Documentos">
+      {!hasQuote ? (
+        <p className="text-sm text-text-muted">Registre um orçamento para gerar a proposta e o termo.</p>
+      ) : (
+        <div className="space-y-3">
+          {row("proposta", "Proposta", "Página no visual do seu orçamento, com fotos. O cliente pode salvar em PDF.", true)}
+          {row(
+            "termo",
+            "Termo Simplificado",
+            "Com valores, sinal, Pix e as cláusulas dos seus termos.",
+            true,
+            termoReady ? undefined : "Faltam nome completo, CPF ou endereço do contratante (em Dados do pedido). O termo mostra os campos em destaque.",
+          )}
+          <ErrorNote message={error} />
+        </div>
+      )}
+    </Panel>
+  );
+}
+
 // ─── Pagamentos ──────────────────────────────────────────────
 
 function PaymentsSection({ order, onChange }: { order: OrderView; onChange: (o: OrderView) => void }) {
@@ -471,6 +557,10 @@ function DetailsSection({ order, onChange }: { order: OrderView; onChange: (o: O
     venue: order.venue,
     city: order.city,
     notes: order.notes,
+    duration: order.duration,
+    legalName: order.client.legalName,
+    document: order.client.document,
+    address: order.client.address,
   });
   const [form, setForm] = useState(initial);
   const [saving, setSaving] = useState(false);
@@ -494,7 +584,16 @@ function DetailsSection({ order, onChange }: { order: OrderView; onChange: (o: O
           venue: form.venue,
           city: form.city,
           notes: form.notes,
-          client: { name: form.name, phone: form.phone, email: form.email, referredBy: form.referredBy },
+          duration: form.duration,
+          client: {
+            name: form.name,
+            phone: form.phone,
+            email: form.email,
+            referredBy: form.referredBy,
+            legalName: form.legalName,
+            document: form.document,
+            address: form.address,
+          },
         },
       });
       onChange(next);
@@ -533,6 +632,22 @@ function DetailsSection({ order, onChange }: { order: OrderView; onChange: (o: O
         </Field>
         <Field label="Cidade">
           <input value={form.city} onChange={set("city")} className={inputClass} />
+        </Field>
+        <Field label="Duração" hint='Vai na proposta e no termo. Vazio = "Até 3 horas no local".'>
+          <input value={form.duration} onChange={set("duration")} placeholder="Até 3 horas no local" className={inputClass} />
+        </Field>
+        <div className="sm:col-span-2 pt-2 border-t border-border-subtle">
+          <p className="text-sm text-text-primary">Dados para o termo</p>
+          <p className="text-xs text-text-muted">De quem assina como contratante. Peça ao fechar.</p>
+        </div>
+        <Field label="Nome completo do contratante">
+          <input value={form.legalName} onChange={set("legalName")} placeholder={form.name} className={inputClass} />
+        </Field>
+        <Field label="CPF ou passaporte">
+          <input value={form.document} onChange={set("document")} inputMode="numeric" className={inputClass} />
+        </Field>
+        <Field label="Endereço completo" className="sm:col-span-2">
+          <input value={form.address} onChange={set("address")} placeholder="Rua, número, bairro, cidade/UF, CEP" className={inputClass} />
         </Field>
         <Field label="Observações" className="sm:col-span-2">
           <textarea rows={3} value={form.notes} onChange={set("notes")} className={`${inputClass} resize-none`} />
