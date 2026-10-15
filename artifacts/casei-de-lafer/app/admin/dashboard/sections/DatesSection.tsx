@@ -28,7 +28,7 @@ export default function DatesSection() {
 
   const { data: blockedDates = [] } = useQuery<BlockedDate[]>({
     queryKey: ["blocked-dates"],
-    queryFn: () => fetch("/api/dates").then((r) => r.json()),
+    queryFn: () => fetch("/api/dates?manual=1").then((r) => r.json()),
   });
 
   // Sync config
