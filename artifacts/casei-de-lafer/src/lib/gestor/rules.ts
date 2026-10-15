@@ -85,6 +85,10 @@ export interface Settings {
   pixKey: string;
   forum: string;
   proposalValidityDays: number;
+  // WhatsApp
+  ownerPhone: string;
+  margotWhatsapp: boolean;
+  ownerDailySummary: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -102,6 +106,9 @@ export const DEFAULT_SETTINGS: Settings = {
   pixKey: "",
   forum: "Comarca de Parobé/RS",
   proposalValidityDays: 15,
+  ownerPhone: "",
+  margotWhatsapp: true,
+  ownerDailySummary: true,
 };
 
 export const SETTING_LABELS: Record<keyof Settings, string> = {
@@ -118,6 +125,9 @@ export const SETTING_LABELS: Record<keyof Settings, string> = {
   pixKey: "Chave Pix para o sinal",
   forum: "Foro do termo",
   proposalValidityDays: "Validade da proposta (dias)",
+  ownerPhone: "Seu WhatsApp pessoal (modo secretária)",
+  margotWhatsapp: "Margot responde clientes no WhatsApp",
+  ownerDailySummary: "Resumo do dia no seu WhatsApp às 7h",
 };
 
 const NUMERIC_SETTINGS: (keyof Settings)[] = [
@@ -132,6 +142,11 @@ const NUMERIC_SETTINGS: (keyof Settings)[] = [
 /** Números que aceitam casas decimais (com vírgula ou ponto). */
 const DECIMAL_SETTINGS: (keyof Settings)[] = ["dollarRate"];
 
+/** Liga/desliga: guardados como "1" ou "0". */
+export const BOOLEAN_SETTINGS: (keyof Settings)[] = ["margotWhatsapp", "ownerDailySummary"];
+
+const TRUE_VALUES = ["1", "true", "sim", "on"];
+
 export function isSettingKey(key: string): key is keyof Settings {
   return key in DEFAULT_SETTINGS;
 }
@@ -141,7 +156,9 @@ export function parseSettings(rows: { key: string; value: string }[]): Settings 
   const out: Settings = { ...DEFAULT_SETTINGS };
   for (const row of rows) {
     if (!isSettingKey(row.key)) continue;
-    if (NUMERIC_SETTINGS.includes(row.key) || DECIMAL_SETTINGS.includes(row.key)) {
+    if (BOOLEAN_SETTINGS.includes(row.key)) {
+      (out as any)[row.key] = TRUE_VALUES.includes(String(row.value).toLowerCase());
+    } else if (NUMERIC_SETTINGS.includes(row.key) || DECIMAL_SETTINGS.includes(row.key)) {
       const n = Number(row.value);
       if (Number.isFinite(n) && n >= 0) (out as any)[row.key] = n;
     } else {
@@ -156,6 +173,14 @@ export function validateSetting(
   key: keyof Settings,
   raw: unknown,
 ): { ok: true; value: string } | { ok: false; error: string } {
+  if (BOOLEAN_SETTINGS.includes(key)) {
+    return { ok: true, value: raw === true || TRUE_VALUES.includes(String(raw ?? "").toLowerCase()) ? "1" : "0" };
+  }
+  if (key === "ownerPhone") {
+    const digits = String(raw ?? "").replace(/\D/g, "");
+    if (digits && digits.length < 10) return { ok: false, error: "Seu WhatsApp: informe com DDD, por exemplo (51) 9XXXX-XXXX." };
+    return { ok: true, value: digits };
+  }
   if (DECIMAL_SETTINGS.includes(key)) {
     const n = Number(String(raw ?? "").replace(",", "."));
     if (!Number.isFinite(n) || n <= 0) return { ok: false, error: `${SETTING_LABELS[key]}: use um número maior que zero.` };
@@ -340,6 +365,27 @@ export function normalizePhone(raw: string): string {
   const digits = (raw ?? "").replace(/\D/g, "");
   if (digits.length === 10 || digits.length === 11) return `55${digits}`;
   return digits;
+}
+
+// ─── CPF (Termo Simplificado) ────────────────────────────────
+
+/** CPF com dígitos verificadores corretos. Aceita com ou sem pontuação. */
+export function isValidCpf(raw: string): boolean {
+  const d = (raw ?? "").replace(/\D/g, "");
+  if (!/^\d{11}$/.test(d) || /^(\d)\1{10}$/.test(d)) return false;
+  const check = (len: number) => {
+    let sum = 0;
+    for (let i = 0; i < len; i++) sum += Number(d[i]) * (len + 1 - i);
+    const r = (sum * 10) % 11;
+    return r === 10 ? 0 : r;
+  };
+  return check(9) === Number(d[9]) && check(10) === Number(d[10]);
+}
+
+/** "52998224725" → "529.982.247-25". Outros documentos (passaporte) ficam como vieram. */
+export function formatCpf(raw: string): string {
+  const d = (raw ?? "").replace(/\D/g, "");
+  return d.length === 11 ? `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}` : (raw ?? "").trim();
 }
 
 // ─── Alertas ─────────────────────────────────────────────────
