@@ -7,6 +7,7 @@ import { addDays, formatBRL, formatDateBR, TIMEZONE, todayISO } from "@/lib/gest
 import { waCanSend } from "./config";
 import { linkButtonMessage } from "./client";
 import { notifyOwner } from "./notify";
+import { countByKind, monthStart, quotaReport } from "./quota";
 import { contactLabel } from "./store";
 
 export async function dailySummary(now = new Date()) {
@@ -18,6 +19,17 @@ export async function dailySummary(now = new Date()) {
     include: { messages: { where: { type: { not: "reaction" } }, orderBy: { id: "desc" }, take: 1 } },
   });
   const unanswered = await Promise.all(waiting.filter((c) => c.messages[0]?.direction === "in").map((c) => contactLabel(c)));
+
+  // Margot desligada em Regras: o resumo lembra, para ela não ficar parada sem ninguém perceber.
+  const settings = await gestor.getSettings();
+  const botOff = !settings.margotWhatsapp;
+  // Cota grátis de mensagens do mês (R19): só aparece a partir de 70%.
+  const sent = await prisma.waMessage.groupBy({
+    by: ["type"],
+    where: { direction: "out", status: { in: ["enviada", "entregue", "lida"] }, createdAt: { gte: monthStart(today) } },
+    _count: { _all: true },
+  });
+  const quota = quotaReport(countByKind(sent.map((r) => ({ type: r.type, n: r._count._all }))));
 
   const describe = (o: (typeof d.upcoming)[number]) =>
     `${o.client.name}${o.eventTime ? ` às ${o.eventTime}` : ""}${o.city ? ` em ${o.city}` : ""}`;
@@ -31,6 +43,8 @@ export async function dailySummary(now = new Date()) {
   if (tomorrows.length) lines.push(`*Amanhã:* ${tomorrows.map(describe).join("; ")}`);
   if (alerts.length) lines.push(`\n*Atenção*\n${alerts.map((a) => `• ${a.title}`).join("\n")}`);
   if (unanswered.length) lines.push(`\n*Esperando resposta no WhatsApp:* ${unanswered.slice(0, 5).join(", ")}`);
+  if (botOff) lines.push("\n⏸️ *Margot desligada no WhatsApp* (Regras): as mensagens dos clientes só chegam para você.");
+  if (quota.lines.length) lines.push(`\n${quota.lines.join("\n")}`);
   lines.push(`\nNo mês: recebido ${formatBRL(d.kpis.recebidoMesCents)} · a receber ${formatBRL(d.kpis.aReceberCents)}.`);
 
   const parts = [
@@ -38,6 +52,8 @@ export async function dailySummary(now = new Date()) {
     tomorrows.length ? `amanhã ${tomorrows.map((o) => o.client.name).join(" e ")}` : "",
     alerts.length ? `${alerts.length} alerta${alerts.length > 1 ? "s" : ""}` : "",
     unanswered.length ? `${unanswered.length} conversa${unanswered.length > 1 ? "s" : ""} esperando` : "",
+    botOff ? "Margot desligada" : "",
+    quota.part,
   ].filter(Boolean);
 
   return { text: lines.join("\n"), line: `resumo do dia: ${parts.join(", ")}`, worthSending: parts.length > 0 };
