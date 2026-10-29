@@ -383,6 +383,7 @@ const GROUPS: { title: string; note?: string; fields: FieldSpec[] }[] = [
     title: "Margot",
     fields: [
       { key: "margotLimitUsd", kind: "number", hint: "Ao atingir, o chat mostra seu WhatsApp. 0 desliga a Margot." },
+      { key: "margotSite", kind: "bool", hint: "Desligado: o chat do site manda a pessoa para o seu WhatsApp." },
       { key: "dollarRate", kind: "decimal", hint: "Só para mostrar o gasto em reais no Financeiro." },
     ],
   },

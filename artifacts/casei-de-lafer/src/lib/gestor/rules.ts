@@ -79,6 +79,8 @@ export interface Settings {
   // Margot (IA)
   margotLimitUsd: number;
   dollarRate: number;
+  /** Chat do site (/orcamento/detalhado). Desligado: manda a pessoa para o WhatsApp do Leonardo. */
+  margotSite: boolean;
   // Termo Simplificado
   contractorName: string;
   contractorDocument: string;
@@ -101,6 +103,7 @@ export const DEFAULT_SETTINGS: Settings = {
   serviceArea: "",
   margotLimitUsd: 10,
   dollarRate: 5.5,
+  margotSite: true,
   contractorName: "Leonardo",
   contractorDocument: "",
   pixKey: "",
@@ -120,6 +123,7 @@ export const SETTING_LABELS: Record<keyof Settings, string> = {
   serviceArea: "Raio de atendimento e taxa de deslocamento",
   margotLimitUsd: "Limite de gasto da Margot por mês (US$)",
   dollarRate: "Cotação do dólar para estimar em reais (R$)",
+  margotSite: "Margot responde no chat do site",
   contractorName: "Nome do contratado no termo",
   contractorDocument: "CPF ou CNPJ do contratado",
   pixKey: "Chave Pix para o sinal",
@@ -143,7 +147,7 @@ const NUMERIC_SETTINGS: (keyof Settings)[] = [
 const DECIMAL_SETTINGS: (keyof Settings)[] = ["dollarRate"];
 
 /** Liga/desliga: guardados como "1" ou "0". */
-export const BOOLEAN_SETTINGS: (keyof Settings)[] = ["margotWhatsapp", "ownerDailySummary"];
+export const BOOLEAN_SETTINGS: (keyof Settings)[] = ["margotWhatsapp", "margotSite", "ownerDailySummary"];
 
 const TRUE_VALUES = ["1", "true", "sim", "on"];
 
