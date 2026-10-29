@@ -2,6 +2,7 @@
 // Documentação: developers.facebook.com/documentation/business-messaging/whatsapp
 
 import { waConfig } from "./config";
+import { EXTRA_ERROR_TEXT, parseHealth, type PhoneHealth } from "./health";
 
 export class WaApiError extends Error {
   code: number;
@@ -31,6 +32,7 @@ export function explainError(e: unknown): string {
     132001: "O modelo de mensagem não existe ou ainda não foi aprovado pela Meta.",
     133010: "O número da Margot ainda não foi registrado na API. Use o botão Registrar número em Regras.",
     190: "O token do WhatsApp expirou ou é inválido. Gere um token permanente (usuário do sistema) e atualize na Vercel.",
+    ...EXTRA_ERROR_TEXT,
   };
   return known[e.code] ?? `WhatsApp recusou (código ${e.code}): ${e.message}`;
 }
@@ -179,6 +181,27 @@ export async function phoneInfo(): Promise<PhoneInfo> {
   return graph<PhoneInfo>(
     `${c.phoneNumberId}?fields=display_phone_number,verified_name,quality_rating,code_verification_status,name_status,status,platform_type`,
   );
+}
+
+export interface PhoneExtras {
+  health: PhoneHealth | null; // pode enviar? e por quê (`health_status`)
+  newNameStatus: string; // pedido de novo nome de exibição (`new_name_status`)
+  accountMode: string; // SANDBOX (teste) ou LIVE (produção), só em algumas contas (`account_mode`)
+}
+
+/**
+ * Campos extras do número, só para o cartão de Regras. Cada campo vai numa chamada à parte: se a Meta não
+ * oferecer um deles (erro de campo desconhecido), os outros continuam valendo e o cartão não quebra.
+ */
+export async function phoneExtras(): Promise<PhoneExtras> {
+  const c = waConfig();
+  const one = (field: string) => graph<Record<string, unknown>>(`${c.phoneNumberId}?fields=${field}`).catch(() => null);
+  const [health, name, mode] = await Promise.all([one("health_status"), one("new_name_status"), one("account_mode")]);
+  return {
+    health: health ? parseHealth(health) : null,
+    newNameStatus: typeof name?.new_name_status === "string" ? name.new_name_status : "",
+    accountMode: typeof mode?.account_mode === "string" ? mode.account_mode : "",
+  };
 }
 
 /** Registra o número na Cloud API (necessário uma vez, com um PIN de 6 dígitos que vira a confirmação em duas etapas). */

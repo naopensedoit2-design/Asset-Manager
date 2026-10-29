@@ -3,7 +3,7 @@
 import { prisma } from "@/lib/prisma";
 import { RuleError, STATUS_LABELS, type OrderStatus } from "@/lib/gestor/rules";
 import { siteUrl } from "@/lib/gestor/service";
-import { explainError, phoneInfo, registerNumber, subscribeApp } from "./client";
+import { explainError, phoneExtras, phoneInfo, registerNumber, subscribeApp, type PhoneExtras } from "./client";
 import { waCanSend, waConfig, waMissing } from "./config";
 import { truncate } from "./format";
 import { notifyOwner } from "./notify";
@@ -155,18 +155,22 @@ export async function connectionStatus() {
   const owner = await ownerPhone();
   let numero: Record<string, unknown> | null = null;
   let erro: string | null = null;
+  let saude: PhoneExtras | null = null;
   if (waCanSend()) {
     try {
       numero = { ...(await phoneInfo()) };
     } catch (e) {
       erro = explainError(e);
     }
+    // Só o cartão usa: se a Meta não devolver, o cartão segue como antes.
+    if (numero) saude = await phoneExtras().catch(() => null);
   }
   const site = siteUrl();
   return {
     configurado: missing.length === 0,
     faltando: missing,
     numero,
+    saude,
     erro,
     webhookUrl: site ? `${site}/api/whatsapp/webhook` : "/api/whatsapp/webhook",
     ultimoWebhook: last?.value ?? null,

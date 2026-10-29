@@ -69,7 +69,8 @@ export const POST = route(async (req: NextRequest) => {
 
   const conversationId = typeof body.conversationId === "string" ? body.conversationId : "";
   const settings = await getSettings();
-  if (!process.env["ANTHROPIC_API_KEY"] || (await overMonthlyLimit(settings.margotLimitUsd))) {
+  // Chave "Margot responde no chat do site" desligada (Regras ou "pausar Margot" pelo WhatsApp): não chama a IA.
+  if (!settings.margotSite || !process.env["ANTHROPIC_API_KEY"] || (await overMonthlyLimit(settings.margotLimitUsd))) {
     return ok({
       reply: "Nosso atendimento automático está em manutenção agora. Fale com o Leonardo pelo WhatsApp, ele responde rapidinho.",
       orderId,

@@ -6,6 +6,7 @@ import { canonicalPhone, formatPhone, phoneVariants, samePhone } from "./phone.t
 import { parseWebhook } from "./parse.ts";
 import { buttonTitle, isAffirmative, isNegative, isTrivial, oneLine, splitText, toWhatsApp } from "./format.ts";
 import { buildHistory, describe } from "./history.ts";
+import { accountModeText, canSendText, EXTRA_ERROR_TEXT, nameStatusText, parseHealth } from "./health.ts";
 
 // ─── Assinatura ──────────────────────────────────────────────
 
@@ -209,4 +210,71 @@ test("histórico longo guarda só o final", () => {
   assert.equal(turns[0].role, "user");
   assert.ok(turns.reduce((n, t) => n + t.content.length, 0) <= 1500);
   assert.match(turns[turns.length - 1].content, /mensagem 99/);
+});
+
+// ─── Estado de envio do número (cartão de Regras) ───────────
+
+test("saúde do número: bloqueado traz os motivos, sem repetir o mesmo aviso", () => {
+  const erro = { error_code: 131037, error_description: "Display name not approved", possible_solution: "Change the display name" };
+  const h = parseHealth({
+    health_status: {
+      can_send_message: "BLOCKED",
+      entities: [
+        { entity_type: "PHONE_NUMBER", id: "1", can_send_message: "BLOCKED", errors: [erro] },
+        { entity_type: "WABA", id: "2", can_send_message: "BLOCKED", errors: [erro] },
+      ],
+    },
+    id: "1",
+  });
+  assert.equal(h.canSend, "BLOCKED");
+  assert.deepEqual(h.issues, [{ code: "131037", text: "Display name not approved", solution: "Change the display name" }]);
+  assert.equal(canSendText(h).tone, "bad");
+});
+
+test("saúde do número: disponível, limitado (texto solto ou objeto) e lixo", () => {
+  assert.deepEqual(parseHealth({ health_status: { can_send_message: "AVAILABLE", entities: [] } }), { canSend: "AVAILABLE", issues: [] });
+  assert.equal(canSendText(parseHealth({ health_status: { can_send_message: "AVAILABLE" } })).tone, "ok");
+
+  const limitado = parseHealth({
+    health_status: {
+      can_send_message: "limited",
+      additional_info: "Business verification pending",
+      entities: [{ entity_type: "BUSINESS", additional_info: [{ description: "Messaging limit is 250" }] }],
+    },
+  });
+  assert.equal(limitado.canSend, "LIMITED");
+  assert.deepEqual(
+    limitado.issues.map((i) => i.text),
+    ["Business verification pending", "Messaging limit is 250"],
+  );
+  assert.equal(canSendText(limitado).tone, "warn");
+
+  // A Meta pode omitir ou mudar o campo: nunca lança erro e o cartão mostra "não informou".
+  for (const lixo of [null, undefined, "x", 7, [], {}, { health_status: "ruim" }, { health_status: { entities: "ruim", errors: 5 } }]) {
+    assert.deepEqual(parseHealth(lixo), { canSend: "", issues: [] });
+  }
+  assert.equal(canSendText(null).tone, "none");
+  assert.equal(canSendText(undefined).tone, "none");
+});
+
+test("textos do cartão: nome de exibição e tipo do número em português", () => {
+  assert.equal(nameStatusText("APPROVED"), "aprovado");
+  assert.equal(nameStatusText("AVAILABLE_WITHOUT_REVIEW"), "pronto para uso, sem revisão");
+  assert.equal(nameStatusText("PENDING_REVIEW"), "em análise pela Meta");
+  assert.equal(nameStatusText("DECLINED"), "recusado pela Meta");
+  assert.equal(nameStatusText("declined"), "recusado pela Meta");
+  assert.equal(nameStatusText("ALGO_NOVO"), "ALGO_NOVO");
+  assert.equal(nameStatusText(undefined), "");
+  assert.equal(accountModeText("SANDBOX"), "número de teste da Meta");
+  assert.equal(accountModeText("LIVE"), "número de produção");
+  assert.equal(accountModeText("OUTRO"), "OUTRO");
+});
+
+test("erros da Meta traduzidos: 131037 aponta o nome de exibição; 131045 e 133005 dizem o que fazer", () => {
+  assert.match(EXTRA_ERROR_TEXT[131037], /nome de exibição/);
+  assert.match(EXTRA_ERROR_TEXT[131045], /Registrar o número/);
+  assert.match(EXTRA_ERROR_TEXT[133005], /PIN/);
+  assert.match(EXTRA_ERROR_TEXT[131031], /política/);
+  // O texto vai para a conversa do painel (campo de 300 caracteres): precisa caber.
+  for (const texto of Object.values(EXTRA_ERROR_TEXT)) assert.ok(texto.length <= 300);
 });

@@ -26,6 +26,7 @@ import { toolError } from "@/lib/margot/orders";
 import { overMonthlyLimit, recordUsage, type CallUsage } from "@/lib/margot/usage";
 import { describeExpense, proposeAction, resolveAction } from "./actions";
 import { buttonsMessage, send } from "./client";
+import { killFailedReply, parseKillCommand, planKillCommand } from "./commands";
 import { isAffirmative, isNegative, isTrivial, toWhatsApp, truncate } from "./format";
 import { buildHistory } from "./history";
 import { attachMedia, mediaBlocks } from "./media";
@@ -472,6 +473,24 @@ async function handleDirect(owner: WaContact, pending: WaMessage[]): Promise<WaM
       continue;
     }
     if (button) continue; // botão de modelo ("Ver agora" etc.): a fila já foi entregue
+
+    // Interruptor geral: "pausar Margot" / "retomar Margot" (texto, ou áudio já transcrito). Resolvido aqui,
+    // sem IA: funciona mesmo sem chave da API, com o limite de gasto estourado ou se o modelo estiver fora.
+    if ((m.type === "text" || m.type === "audio") && m.text) {
+      const command = parseKillCommand(m.text);
+      if (command) {
+        let reply = killFailedReply(command);
+        try {
+          const plan = planKillCommand(command, await gestor.getSettings());
+          if (Object.keys(plan.changes).length) await gestor.saveSettings(plan.changes);
+          reply = plan.reply; // só vale depois de gravar: se falhou, o aviso é o de "não consegui"
+        } catch (e) {
+          console.error("[whatsapp] interruptor geral", e);
+        }
+        await sendText(owner, reply, { author: "margot" }).catch((e) => console.error("[whatsapp] resposta do interruptor geral", e));
+        continue;
+      }
+    }
 
     // "sim"/"não" por escrito só vale para a ÚLTIMA coisa que a Margot mandou, se for uma confirmação
     // recente. Um "sim" para outra pergunta nunca pode executar uma confirmação antiga.

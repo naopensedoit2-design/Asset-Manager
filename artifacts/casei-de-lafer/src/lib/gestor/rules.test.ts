@@ -8,6 +8,7 @@ import {
   computeAlerts,
   computeKpis,
   DEFAULT_SETTINGS,
+  isSettingKey,
   normalizePhone,
   parseBRLToCents,
   parseSettings,
@@ -183,6 +184,20 @@ test("WhatsApp nas Regras: liga/desliga e número do dono", () => {
   assert.deepEqual(validateSetting("ownerPhone", "(51) 98888-7777"), { ok: true, value: "51988887777" });
   assert.deepEqual(validateSetting("ownerPhone", ""), { ok: true, value: "" });
   assert.equal(validateSetting("ownerPhone", "98888").ok, false);
+});
+
+test("chat do site nas Regras: padrão ligado, liga/desliga e a chave existe", () => {
+  assert.equal(DEFAULT_SETTINGS.margotSite, true);
+  assert.equal(parseSettings([]).margotSite, true);
+  assert.equal(parseSettings([{ key: "margotSite", value: "0" }]).margotSite, false);
+  assert.equal(parseSettings([{ key: "margotSite", value: "1" }]).margotSite, true);
+  assert.deepEqual(validateSetting("margotSite", false), { ok: true, value: "0" });
+  assert.deepEqual(validateSetting("margotSite", true), { ok: true, value: "1" });
+  assert.equal(isSettingKey("margotSite"), true);
+  // As duas chaves do interruptor geral são independentes e as duas são liga/desliga.
+  const s = parseSettings([{ key: "margotWhatsapp", value: "0" }]);
+  assert.equal(s.margotWhatsapp, false);
+  assert.equal(s.margotSite, true);
 });
 
 test("CPF do termo: dígitos verificadores e formatação", () => {

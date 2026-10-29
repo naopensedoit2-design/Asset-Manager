@@ -27,6 +27,7 @@ Nada disso exige VPS nem computador ligado: roda no próprio site, na Vercel.
   - "o sinal do pedido 14 caiu"
   - "manda para a Ana que o motorista chega 15h antes"
   - "pausa a Margot com a Ana" / "pode voltar a atender a Ana"
+  - **"pausar Margot" / "retomar Margot"**: interruptor geral. Pausada, ela não responde mais nenhum cliente (WhatsApp e chat do site); o que chegar aparece em Conversas e avisa você. Vale na hora e funciona mesmo sem IA (sem chave ou com o limite do mês estourado). O mesmo liga/desliga está em Regras ("Margot responde clientes no WhatsApp" e "Margot responde no chat do site")
 - **Dinheiro e mensagens para clientes nunca acontecem sem o seu OK**: a Margot prepara e manda um botão de confirmação. Um "sim" escrito também vale, mas só para a última confirmação que ela mandou (até 30 minutos).
 - Depois de cada resposta, aparece o botão **🔊 Ouvir em áudio**. Se preferir, diga "sempre em áudio" ou "só texto".
 - Todo dia às 7h, se houver algo para ver (evento perto, pagamento vencendo, conversa esperando), chega um resumo.
@@ -152,7 +153,7 @@ O WhatsApp só deixa a empresa mandar mensagem livre até 24h depois da sua últ
 | Erro 190 | Token expirado ou sem permissão: gere o token do usuário do sistema (Parte 3) com validade "Nunca". |
 | Erro 131042 | Falta o cartão na conta do WhatsApp (Parte 9). |
 | Avisos só chegam quando você escreve para a Margot | O modelo `aviso_margot` ainda não foi aprovado, ou o nome está diferente. |
-| A Margot respondeu algo que não devia | Pause a conversa (botão em Conversas) e responda você. Os ajustes de comportamento ficam em `src/lib/margot/prompt.ts`. |
+| A Margot respondeu algo que não devia | Pause a conversa (botão em Conversas) e responda você. Se for grave ou parecer repetir, mande **pausar Margot** no seu WhatsApp (corta todas as conversas e o chat do site). Os ajustes de comportamento ficam em `src/lib/margot/prompt.ts`. |
 
 ---
 
