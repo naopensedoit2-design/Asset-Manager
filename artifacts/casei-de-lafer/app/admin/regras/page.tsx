@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatBRL, formatDateBR, parseBRLToCents, SETTING_LABELS, type Settings } from "@/lib/gestor/rules";
 import { AdminHeader, api, Button, ErrorNote, Field, inputClass, Loading, Panel } from "@/components/gestor/ui";
+import { accountModeText, canSendText, nameStatusText, type PhoneHealth } from "@/lib/wa/health";
 
 interface Service {
   id?: number;
@@ -122,6 +123,8 @@ interface WaStatus {
     name_status?: string;
     status?: string;
   } | null;
+  /** Pode enviar? Pedido de novo nome e tipo do número (a Meta pode não devolver cada um). */
+  saude: { health: PhoneHealth | null; newNameStatus: string; accountMode: string } | null;
   erro: string | null;
   webhookUrl: string;
   ultimoWebhook: string | null;
@@ -130,6 +133,8 @@ interface WaStatus {
   modelo: string;
   temWaba: boolean;
 }
+
+const ENVIO_TOM = { ok: "text-emerald-300", warn: "text-amber-300", bad: "text-red-300", none: "text-text-muted" } as const;
 
 const GUIDE_URL = "https://github.com/naopensedoit2-design/Asset-Manager/blob/main/docs/whatsapp.md";
 
@@ -159,6 +164,7 @@ function WhatsAppCard() {
   }
 
   const n = data?.numero;
+  const envio = canSendText(data?.saude?.health);
   return (
     <Panel
       title="WhatsApp da Margot"
@@ -196,7 +202,20 @@ function WhatsAppCard() {
           )}
           <ul className="text-text-secondary space-y-1">
             {n?.quality_rating && <li>Qualidade do número: {n.quality_rating === "GREEN" ? "boa" : n.quality_rating === "YELLOW" ? "atenção" : n.quality_rating === "RED" ? "ruim" : n.quality_rating}</li>}
-            {n?.name_status && <li>Nome de exibição: {n.name_status === "APPROVED" ? "aprovado" : n.name_status === "PENDING_REVIEW" ? "em análise pela Meta" : n.name_status}</li>}
+            {n?.name_status && <li>Nome de exibição: {nameStatusText(n.name_status)}</li>}
+            {data.saude?.newNameStatus && <li>Pedido de novo nome: {nameStatusText(data.saude.newNameStatus)}</li>}
+            {data.saude?.accountMode && <li>Tipo de número: {accountModeText(data.saude.accountMode)}</li>}
+            {!data.erro && (
+              <li>
+                Pode enviar: <span className={ENVIO_TOM[envio.tone]}>{envio.text}</span>
+              </li>
+            )}
+            {data.saude?.health?.issues.map((i, k) => (
+              <li key={k} className="text-text-muted">
+                Meta{i.code ? ` (${i.code})` : ""}: {i.text}
+                {i.solution ? ` Solução sugerida: ${i.solution}` : ""}
+              </li>
+            ))}
             <li>Última mensagem recebida: {data.ultimoWebhook ? new Date(data.ultimoWebhook).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" }) : "nenhuma ainda"}</li>
             <li>Seu WhatsApp (modo secretária): {data.dono ?? <span className="text-amber-300">preencha abaixo, em "WhatsApp da Margot"</span>}</li>
             <li>Áudio (ouvir e falar): {data.voz ? "ligado" : "desligado (falta VOICE_API_KEY)"}</li>
