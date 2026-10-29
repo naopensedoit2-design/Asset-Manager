@@ -1,6 +1,7 @@
 // Conversa com a API do Claude (via fetch, sem SDK) e roda o ciclo de ferramentas.
 // Usado pela Margot no site, pela Margot no WhatsApp e pelo modo secretária.
 
+import { stampLastUserTurn } from "./clock.ts";
 import type { CallUsage } from "./usage";
 
 const API_URL = () => `${process.env["ANTHROPIC_BASE_URL"] ?? "https://api.anthropic.com"}/v1/messages`;
@@ -93,6 +94,8 @@ export interface AgentRun {
   usage: CallUsage[];
   maxRounds?: number;
   maxTokens?: number;
+  /** Relógio usado no carimbo de data e hora (só os testes passam este valor). */
+  now?: Date;
 }
 
 export interface AgentResult {
@@ -102,7 +105,9 @@ export interface AgentResult {
 }
 
 export async function runAgent(run: AgentRun): Promise<AgentResult> {
-  const messages = [...run.messages];
+  // Data e hora do servidor na última fala da pessoa: o modelo não tem relógio e, sem isso,
+  // pode se apoiar em datas de mensagens antigas da conversa (ex.: o resumo de dias atrás).
+  const messages = stampLastUserTurn([...run.messages] as { role: string; content: unknown }[], run.now);
   const maxRounds = run.maxRounds ?? 6;
   for (let round = 0; round < maxRounds; round++) {
     const response = await callClaude(run.system, run.tools, messages, run.maxTokens ?? 800);

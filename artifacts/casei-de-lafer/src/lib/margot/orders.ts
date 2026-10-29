@@ -4,13 +4,16 @@
 import { prisma } from "@/lib/prisma";
 import * as gestor from "@/lib/gestor/service";
 import { formatBRL, formatDateBR, normalizePhone, RuleError } from "@/lib/gestor/rules";
+import { dateFacts } from "./clock";
 
 const EDITABLE = ["novo", "orcamento_enviado", "aguardando_resposta"];
 
 export async function checkDate(date: unknown) {
   const r = await gestor.checkAvailability(date);
-  if (r.passado) return { data: r.data, status: "passou", mensagem: "Essa data já passou." };
-  return { data: r.data, status: r.status };
+  // Dia da semana e dias que faltam vêm do código: o modelo não calcula calendário de cabeça.
+  const facts = dateFacts(r.data) ?? {};
+  if (r.passado) return { data: r.data, status: "passou", mensagem: "Essa data já passou.", ...facts };
+  return { data: r.data, status: r.status, ...facts };
 }
 
 /** Reaproveita o pedido desta conversa, ou um pedido recente em aberto do mesmo WhatsApp. */
