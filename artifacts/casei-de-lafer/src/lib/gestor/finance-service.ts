@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { computeFinance, isExpenseCategory, categoryLabel } from "./finance";
+import { planExpensePayment } from "./expense-split";
 import { dateToISO, isDateString, RuleError, todayISO } from "./rules";
 
 const toDbDate = (d: string) => new Date(`${d}T00:00:00Z`);
@@ -162,6 +163,55 @@ export async function saveExpense(input: Record<string, any>, actor: "admin" | "
     return serialize(await prisma.expense.update({ where: { id }, data }));
   }
   return serialize(await prisma.expense.create({ data: { ...data, createdBy: actor } }));
+}
+
+/**
+ * Abate `paidCents` de uma conta em aberto (regra em expense-split.ts). Tudo numa transação: ou a
+ * conta diminui E a parte paga é lançada, ou nada muda. A parte paga mantém a data do gasto original
+ * (custo do carro) e leva a data do pagamento em `paidAt` (caixa).
+ */
+export async function payExpensePart(
+  input: { id: number; paidCents: number; date: string; expectedCents?: number },
+  actor: "admin" | "margot" = "admin",
+) {
+  const date = requireDate(input.date, "a data do pagamento");
+  return prisma.$transaction(async (tx) => {
+    const e = await tx.expense.findUnique({ where: { id: input.id } });
+    if (!e) throw new RuleError("despesa_nao_encontrada", "Não achei essa conta.", 404);
+    const plan = planExpensePayment(
+      { description: e.description, amountCents: e.amountCents, status: e.status, notes: e.notes, supplier: e.supplier },
+      input.paidCents,
+      date,
+      input.expectedCents,
+    );
+    if (plan.kind === "total") {
+      const paid = await tx.expense.update({
+        where: { id: e.id },
+        data: { status: "pago", paidAt: toDbDate(date), dueDate: null, notes: plan.openNotes },
+      });
+      return { kind: "total" as const, open: null, paid: serialize(paid) };
+    }
+    const open = await tx.expense.update({
+      where: { id: e.id },
+      data: { amountCents: plan.remainingCents, notes: plan.openNotes },
+    });
+    const paid = await tx.expense.create({
+      data: {
+        date: e.date,
+        description: plan.paidDescription,
+        category: e.category,
+        supplier: e.supplier,
+        amountCents: input.paidCents,
+        status: "pago",
+        dueDate: null,
+        paidAt: toDbDate(date),
+        notes: plan.paidNotes,
+        orderId: e.orderId,
+        createdBy: actor,
+      },
+    });
+    return { kind: "parcial" as const, open: serialize(open), paid: serialize(paid) };
+  });
 }
 
 export async function deleteExpense(id: unknown) {

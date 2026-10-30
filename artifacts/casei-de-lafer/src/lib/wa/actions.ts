@@ -4,7 +4,7 @@
 
 import { prisma } from "@/lib/prisma";
 import * as gestor from "@/lib/gestor/service";
-import { saveExpense } from "@/lib/gestor/finance-service";
+import { payExpensePart, saveExpense } from "@/lib/gestor/finance-service";
 import { categoryLabel } from "@/lib/gestor/finance";
 import { formatBRL, formatDateBR, RuleError } from "@/lib/gestor/rules";
 import { buttonsMessage, type Header } from "./client";
@@ -27,7 +27,9 @@ export type Action =
         pedido: number | null;
       };
     }
-  | { tipo: "mensagem"; contato: number; texto: string };
+  | { tipo: "mensagem"; contato: number; texto: string }
+  // Abater parte de (ou quitar) uma conta a pagar. `saldoCents` é o saldo que o Leonardo viu na confirmação.
+  | { tipo: "abatimento"; conta: number; valorCents: number; saldoCents: number; data: string };
 
 export function parseAction(raw: string): Action | null {
   try {
@@ -35,6 +37,15 @@ export function parseAction(raw: string): Action | null {
     if (a?.tipo === "pagamento" && Number.isInteger(a.pedido) && (a.pagamento === "sinal" || a.pagamento === "saldo")) return a;
     if (a?.tipo === "despesa" && a.despesa && Number.isInteger(a.despesa.valorCents)) return a;
     if (a?.tipo === "mensagem" && Number.isInteger(a.contato) && typeof a.texto === "string") return a;
+    if (
+      a?.tipo === "abatimento" &&
+      Number.isInteger(a.conta) &&
+      Number.isInteger(a.valorCents) &&
+      Number.isInteger(a.saldoCents) &&
+      typeof a.data === "string"
+    ) {
+      return a;
+    }
   } catch {
     // ignora
   }
@@ -79,6 +90,7 @@ export async function resolveAction(owner: WaContact, rowId: number, confirm: bo
   try {
     if (action.tipo === "pagamento") return await confirmPayment(action.pedido, action.pagamento);
     if (action.tipo === "despesa") return await createExpense(action.despesa);
+    if (action.tipo === "abatimento") return await payExpense(action);
     return await messageClient(action.contato, action.texto);
   } catch (e) {
     // Deixa tentar de novo se falhou.
@@ -151,6 +163,14 @@ async function createExpense(d: Extract<Action, { tipo: "despesa" }>["despesa"])
   return `✅ Despesa lançada: ${e.description} · ${formatBRL(e.amountCents)} · ${categoryLabel(e.category)}${
     e.status === "a_pagar" ? ` · a pagar${e.dueDate ? ` até ${formatDateBR(e.dueDate)}` : ""}` : " · paga"
   }. Já aparece no Financeiro.`;
+}
+
+async function payExpense(a: Extract<Action, { tipo: "abatimento" }>): Promise<string> {
+  const r = await payExpensePart({ id: a.conta, paidCents: a.valorCents, date: a.data, expectedCents: a.saldoCents }, "margot");
+  if (r.kind === "total") {
+    return `✅ Conta quitada: ${r.paid.description} · ${formatBRL(r.paid.amountCents)}. Já aparece em "Pagas" no Financeiro.`;
+  }
+  return `✅ Abatidos ${formatBRL(r.paid.amountCents)} de "${r.open.description}". Saldo em aberto: ${formatBRL(r.open.amountCents)}. O pagamento aparece em "Pagas" no Financeiro, e o custo total não mudou.`;
 }
 
 async function messageClient(contactId: number, text: string): Promise<string> {
