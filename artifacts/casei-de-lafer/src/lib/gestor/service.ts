@@ -720,7 +720,7 @@ export async function updatePayment(id: unknown, input: Record<string, any>, act
 // ─── Painel ──────────────────────────────────────────────────
 
 export async function getAlerts(now = new Date()) {
-  const [settings, orders, reservations, payments, facts] = await Promise.all([
+  const [settings, openOrders, reservations, payments, facts] = await Promise.all([
     getSettings(),
     prisma.order.findMany({
       where: { status: { notIn: ["realizado", "perdido", "cancelado"] } },
@@ -730,6 +730,14 @@ export async function getAlerts(now = new Date()) {
     prisma.payment.findMany({ where: { status: { in: ["a_receber", "atrasado"] } } }),
     getCalendarFacts(),
   ]);
+  // Pagamento em aberto de pedido já realizado (saldo que ficou para trás) também precisa do nome do casal
+  // no alerta; senão aparece "Pedido #8". Esses pedidos não geram nenhum outro alerta (só os abertos geram).
+  const known = new Set(openOrders.map((o) => o.id));
+  const missing = [...new Set(payments.map((p) => p.orderId))].filter((id) => !known.has(id));
+  const closedWithDebt = missing.length
+    ? await prisma.order.findMany({ where: { id: { in: missing } }, include: { client: { select: { name: true } } } })
+    : [];
+  const orders = [...openOrders, ...closedWithDebt];
   return computeAlerts({
     now,
     settings,

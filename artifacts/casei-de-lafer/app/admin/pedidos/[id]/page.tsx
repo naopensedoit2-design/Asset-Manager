@@ -15,7 +15,6 @@ import {
 } from "@/lib/gestor/rules";
 import type { OrderView } from "@/lib/gestor/service";
 import {
-  AdminHeader,
   api,
   Button,
   ErrorNote,
@@ -37,9 +36,9 @@ interface Service {
 
 const PAYMENT_LABEL: Record<string, string> = { sinal: "Sinal", saldo: "Saldo", outro: "Pagamento" };
 const PAYMENT_STATUS: Record<string, { label: string; tone: string }> = {
-  a_receber: { label: "A receber", tone: "text-amber-300" },
-  recebido: { label: "Recebido", tone: "text-emerald-300" },
-  atrasado: { label: "Atrasado", tone: "text-red-300" },
+  a_receber: { label: "A receber", tone: "text-warn" },
+  recebido: { label: "Recebido", tone: "text-ok" },
+  atrasado: { label: "Atrasado", tone: "text-bad" },
   cancelado: { label: "Cancelado", tone: "text-text-muted line-through" },
 };
 const ACTOR_LABEL: Record<string, string> = { admin: "Você", margot: "Margot", sistema: "Sistema" };
@@ -71,11 +70,10 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
   }
 
   return (
-    <div className="min-h-screen bg-bg-primary">
-      <AdminHeader active="pedido" />
+    <div>
       <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
-        <Link href="/admin/dashboard" className="text-sm text-text-muted hover:text-text-primary">
-          ← Voltar à gestão
+        <Link href="/admin/pedidos" className="text-sm text-text-muted hover:text-text-primary">
+          ← Voltar aos pedidos
         </Link>
         {isLoading && <Loading />}
         {error && <ErrorNote message={(error as Error).message} />}
@@ -383,7 +381,7 @@ function DocumentsSection({ order }: { order: OrderView }) {
     <div className="bg-bg-elevated rounded p-3 sm:p-4">
       <p className="text-sm text-text-primary">{title}</p>
       <p className="text-xs text-text-muted">{desc}</p>
-      {warn && <p className="text-xs text-amber-300 mt-1">{warn}</p>}
+      {warn && <p className="text-xs text-warn mt-1">{warn}</p>}
       <div className="flex flex-wrap gap-2 mt-3">
         <Button variant="ghost" onClick={() => act(kind, "abrir")} disabled={!ready}>
           Abrir
@@ -559,7 +557,7 @@ function PaymentsSection({ order, onChange }: { order: OrderView; onChange: (o: 
       )}
       <div className="mt-3 space-y-2">
         <ErrorNote message={error} />
-        {notice && <p className="text-sm text-amber-300">{notice}</p>}
+        {notice && <p className="text-sm text-warn">{notice}</p>}
       </div>
     </Panel>
   );

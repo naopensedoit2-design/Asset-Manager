@@ -72,7 +72,7 @@ export async function sendDailySummary(now = new Date()) {
     text: s.text,
     summary: s.line,
     kind: "resumo_diario",
-    build: site ? () => linkButtonMessage(s.text, "Abrir o painel", `${site}/admin/dashboard`) : undefined,
+    build: site ? () => linkButtonMessage(s.text, "Abrir o painel", `${site}/admin/hoje`) : undefined,
   });
   return { enviado: r.result === "enviado" || r.result === "modelo", como: r.result };
 }
