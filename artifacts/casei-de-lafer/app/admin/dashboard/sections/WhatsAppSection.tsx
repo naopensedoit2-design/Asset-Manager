@@ -39,7 +39,7 @@ export default function WhatsAppSection() {
           value={currentNumber}
           onChange={(e) => setNumber(e.target.value)}
           placeholder="Ex: 5554999999999"
-          className="flex-1 bg-bg-elevated border border-border-subtle text-text-primary placeholder-text-muted px-4 py-2.5 rounded font-sans text-sm focus:outline-none focus:border-gold/50 transition-colors"
+          className="flex-1 bg-bg-elevated border border-border-subtle text-text-primary placeholder:text-text-muted px-4 py-2.5 rounded font-sans text-sm focus:outline-none focus:border-gold/50 transition-colors"
         />
         <button
           onClick={handleSave}

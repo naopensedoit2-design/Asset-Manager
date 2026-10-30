@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatBRL, formatDateBR, parseBRLToCents, SETTING_LABELS, type Settings } from "@/lib/gestor/rules";
-import { AdminHeader, api, Button, ErrorNote, Field, inputClass, Loading, Panel } from "@/components/gestor/ui";
+import { api, Button, ErrorNote, Field, inputClass, Loading, Panel } from "@/components/gestor/ui";
 import { accountModeText, canSendText, nameStatusText, type PhoneHealth } from "@/lib/wa/health";
 
 interface Service {
@@ -18,23 +18,50 @@ interface Service {
 
 export default function RulesPage() {
   return (
-    <div className="min-h-screen bg-bg-primary">
-      <AdminHeader active="regras" />
+    <div>
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
         <div>
-          <h1 className="font-serif text-3xl text-text-primary">Regras do negócio</h1>
-          <p className="text-sm text-text-muted mt-1">
+          <h1 className="font-serif text-3xl text-text-primary">Margot e regras</h1>
+          <p className="text-sm text-text-secondary mt-1">
             Preços e políticas usados pelo painel e pela Margot. Mudou aqui, vale para os próximos orçamentos.
           </p>
         </div>
-        <GoogleCard />
-        <WhatsAppCard />
-        <ServicesEditor />
+        <nav aria-label="Ir para" className="sticky top-14 lg:top-0 z-20 -mx-4 sm:mx-0 px-4 sm:px-0 py-2 bg-bg-primary/95 backdrop-blur flex gap-2 overflow-x-auto">
+          {SECTIONS.map((sec) => (
+            <a
+              key={sec.id}
+              href={`#${sec.id}`}
+              className="shrink-0 inline-flex min-h-10 items-center rounded-full border border-border-subtle px-3.5 text-sm text-text-secondary transition-colors hover:border-border-gold hover:text-text-primary"
+            >
+              {sec.label}
+            </a>
+          ))}
+        </nav>
+        <div id="agenda" className="scroll-mt-28">
+          <GoogleCard />
+        </div>
+        <div id="whatsapp" className="scroll-mt-28">
+          <WhatsAppCard />
+        </div>
+        <div id="servicos" className="scroll-mt-28">
+          <ServicesEditor />
+        </div>
         <SettingsEditor />
       </main>
     </div>
   );
 }
+
+/** Atalhos do topo. Os ids das políticas vêm de GROUPS (g-<id>). */
+const SECTIONS = [
+  { id: "agenda", label: "Agenda" },
+  { id: "whatsapp", label: "WhatsApp" },
+  { id: "servicos", label: "Serviços e preços" },
+  { id: "g-politicas", label: "Políticas" },
+  { id: "g-margot", label: "Margot" },
+  { id: "g-whatsapp", label: "Seu número" },
+  { id: "g-termo", label: "Termo" },
+];
 
 interface GoogleStatus {
   configurada: boolean;
@@ -81,7 +108,7 @@ function GoogleCard() {
         </p>
       ) : data.ok ? (
         <div className="space-y-2 text-sm">
-          <p className="text-emerald-300">Conectada. {data.diasOcupados} dia(s) ocupado(s) nos próximos 2 anos.</p>
+          <p className="text-ok">Conectada. {data.diasOcupados} dia(s) ocupado(s) nos próximos 2 anos.</p>
           {data.proximos && data.proximos.length > 0 && (
             <ul className="text-text-secondary">
               {data.proximos.map((d) => (
@@ -102,7 +129,7 @@ function GoogleCard() {
         </div>
       ) : (
         <div className="space-y-1 text-sm">
-          <p className="text-red-300">Configurada, mas o Google recusou: {data.erro}</p>
+          <p className="text-bad">Configurada, mas o Google recusou: {data.erro}</p>
           <p className="text-text-muted">
             Confira se a agenda foi compartilhada com {data.contaDeServico} com a permissão "Fazer alterações nos eventos".
           </p>
@@ -134,7 +161,7 @@ interface WaStatus {
   temWaba: boolean;
 }
 
-const ENVIO_TOM = { ok: "text-emerald-300", warn: "text-amber-300", bad: "text-red-300", none: "text-text-muted" } as const;
+const ENVIO_TOM = { ok: "text-ok", warn: "text-warn", bad: "text-bad", none: "text-text-muted" } as const;
 
 const GUIDE_URL = "https://github.com/naopensedoit2-design/Asset-Manager/blob/main/docs/whatsapp.md";
 
@@ -193,9 +220,9 @@ function WhatsAppCard() {
       ) : (
         <div className="space-y-3 text-sm">
           {data.erro ? (
-            <p className="text-red-300">Configurado, mas a Meta recusou: {data.erro}</p>
+            <p className="text-bad">Configurado, mas a Meta recusou: {data.erro}</p>
           ) : (
-            <p className="text-emerald-300">
+            <p className="text-ok">
               Conectado{n?.display_phone_number ? ` ao ${n.display_phone_number}` : ""}
               {n?.verified_name ? ` (${n.verified_name})` : ""}.
             </p>
@@ -217,7 +244,7 @@ function WhatsAppCard() {
               </li>
             ))}
             <li>Última mensagem recebida: {data.ultimoWebhook ? new Date(data.ultimoWebhook).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" }) : "nenhuma ainda"}</li>
-            <li>Seu WhatsApp (modo secretária): {data.dono ?? <span className="text-amber-300">preencha abaixo, em "WhatsApp da Margot"</span>}</li>
+            <li>Seu WhatsApp (modo secretária): {data.dono ?? <span className="text-warn">preencha abaixo, em "Seu número e avisos"</span>}</li>
             <li>Áudio (ouvir e falar): {data.voz ? "ligado" : "desligado (falta VOICE_API_KEY)"}</li>
           </ul>
           <div className="flex flex-wrap gap-2">
@@ -258,7 +285,7 @@ function WhatsAppCard() {
           </p>
         </div>
       )}
-      {msg && <p className="text-sm text-emerald-300 mt-3">{msg}</p>}
+      {msg && <p className="text-sm text-ok mt-3">{msg}</p>}
       <ErrorNote message={err} />
     </Panel>
   );
@@ -327,7 +354,7 @@ function ServiceRow({ service, onSaved, onCancel }: { service: Service; onSaved:
   }
 
   return (
-    <div className={`bg-bg-elevated border rounded p-4 space-y-3 ${form.active ? "border-border-subtle" : "border-dashed border-white/10 opacity-70"}`}>
+    <div className={`bg-bg-elevated border rounded p-4 space-y-3 ${form.active ? "border-border-subtle" : "border-dashed border-border opacity-70"}`}>
       <div className="grid grid-cols-[1fr_8rem] gap-3">
         <Field label="Nome">
           <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={inputClass} />
@@ -367,8 +394,9 @@ function ServiceRow({ service, onSaved, onCancel }: { service: Service; onSaved:
 
 type FieldSpec = { key: keyof Settings; kind: "number" | "decimal" | "text" | "long" | "bool"; hint?: string };
 
-const GROUPS: { title: string; note?: string; fields: FieldSpec[] }[] = [
+const GROUPS: { id: string; title: string; note?: string; fields: FieldSpec[] }[] = [
   {
+    id: "politicas",
     title: "Políticas",
     fields: [
       { key: "depositPercent", kind: "number" },
@@ -380,6 +408,7 @@ const GROUPS: { title: string; note?: string; fields: FieldSpec[] }[] = [
     ],
   },
   {
+    id: "margot",
     title: "Margot",
     fields: [
       { key: "margotLimitUsd", kind: "number", hint: "Ao atingir, o chat mostra seu WhatsApp. 0 desliga a Margot." },
@@ -388,7 +417,8 @@ const GROUPS: { title: string; note?: string; fields: FieldSpec[] }[] = [
     ],
   },
   {
-    title: "WhatsApp da Margot",
+    id: "whatsapp",
+    title: "Seu número e avisos",
     note: "Quando o seu número escreve para o número da Margot, ela vira sua secretária (resumo, agenda, pedidos, despesas).",
     fields: [
       { key: "ownerPhone", kind: "text", hint: "Com DDD. É o número que recebe os avisos e fala com a Margot no modo secretária." },
@@ -397,6 +427,7 @@ const GROUPS: { title: string; note?: string; fields: FieldSpec[] }[] = [
     ],
   },
   {
+    id: "termo",
     title: "Termo e proposta",
     note: "Esses dados aparecem no Termo Simplificado que o painel gera. Ficam só no banco do site, nunca no código.",
     fields: [
@@ -441,8 +472,9 @@ function SettingsEditor() {
   return (
     <>
       {GROUPS.map((g) => (
-        <Panel key={g.title} title={g.title}>
-          {g.note && <p className="text-sm text-text-muted -mt-2 mb-4">{g.note}</p>}
+        <div key={g.title} id={`g-${g.id}`} className="scroll-mt-28">
+        <Panel title={g.title}>
+          {g.note && <p className="text-sm text-text-secondary -mt-2 mb-4">{g.note}</p>}
           <div className="grid sm:grid-cols-2 gap-4">
             {g.fields.map((f) => (
               <Field key={f.key} label={SETTING_LABELS[f.key]} hint={f.hint} className={f.kind === "long" ? "sm:col-span-2" : ""}>
@@ -475,8 +507,9 @@ function SettingsEditor() {
             ))}
           </div>
         </Panel>
+        </div>
       ))}
-      <div className="sticky bottom-0 -mx-4 sm:mx-0 px-4 sm:px-0 py-3 bg-bg-primary/95 backdrop-blur space-y-3">
+      <div className="sticky bottom-[var(--tabbar-h)] -mx-4 sm:mx-0 px-4 sm:px-0 py-3 bg-bg-primary/95 backdrop-blur space-y-3 z-20">
         <ErrorNote message={error} />
         <Button onClick={save} disabled={saving} className="w-full sm:w-auto">
           {saved ? "Salvo" : saving ? "Salvando…" : "Salvar regras"}

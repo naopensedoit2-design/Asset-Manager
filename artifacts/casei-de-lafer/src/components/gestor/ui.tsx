@@ -1,9 +1,6 @@
 "use client";
 
-import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { LogOut } from "lucide-react";
+import { usePathname } from "next/navigation";
 import { STATUS_LABELS, type OrderStatus } from "@/lib/gestor/rules";
 
 // ─── Chamadas à API do painel ────────────────────────────────
@@ -21,74 +18,6 @@ export async function api<T = any>(url: string, init?: { method?: string; body?:
   const json = await res.json().catch(() => null);
   if (!json?.ok) throw new Error(json?.erro?.mensagem ?? "Não foi possível concluir. Tente de novo.");
   return json.data as T;
-}
-
-// ─── Cabeçalho do admin ──────────────────────────────────────
-
-const NAV = [
-  { key: "gestao", href: "/admin/dashboard", label: "Gestão" },
-  { key: "conversas", href: "/admin/conversas", label: "Conversas" },
-  { key: "financeiro", href: "/admin/financeiro", label: "Financeiro" },
-  { key: "regras", href: "/admin/regras", label: "Regras" },
-  { key: "site", href: "/admin/dashboard?aba=site", label: "Site" },
-];
-
-export function AdminHeader({ active }: { active: "gestao" | "site" | "regras" | "pedido" | "financeiro" | "conversas" }) {
-  const router = useRouter();
-  const current = active === "pedido" ? "gestao" : active;
-  // Mensagens não lidas no WhatsApp da Margot (badge em "Conversas").
-  const { data: unread } = useQuery<{ total: number }>({
-    queryKey: ["wa-nao-lidas"],
-    queryFn: () => api("/api/admin/whatsapp/nao-lidas"),
-    refetchInterval: 30_000,
-    retry: false,
-  });
-
-  async function logout() {
-    await fetch("/api/admin/logout", { method: "POST" });
-    router.push("/admin/login");
-  }
-
-  return (
-    <header className="sticky top-0 z-40 bg-bg-secondary/95 backdrop-blur border-b border-border-subtle">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-2 sm:gap-4">
-        <Link href="/admin/dashboard" className="hidden sm:inline font-serif text-lg text-text-primary whitespace-nowrap">
-          Casei de Lafer
-        </Link>
-        <nav className="flex gap-1 overflow-x-auto" aria-label="Seções do painel">
-          {NAV.map((item) => {
-            const on = item.key === current;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={on ? "page" : undefined}
-                className={`px-2.5 sm:px-3 py-1.5 rounded text-sm whitespace-nowrap transition-colors ${
-                  on ? "bg-gold-muted text-gold" : "text-text-secondary hover:text-text-primary"
-                }`}
-              >
-                {item.label}
-                {item.key === "conversas" && unread && unread.total > 0 ? (
-                  <span className="ml-1.5 inline-flex min-w-5 h-5 px-1 items-center justify-center rounded-full bg-gold text-bg-primary text-[11px] font-semibold align-middle">
-                    {unread.total > 99 ? "99+" : unread.total}
-                  </span>
-                ) : null}
-              </Link>
-            );
-          })}
-        </nav>
-        <div className="ml-auto flex items-center gap-3 shrink-0">
-          <a href="/" target="_blank" className="hidden sm:inline text-sm text-text-muted hover:text-text-primary">
-            Ver site
-          </a>
-          <button onClick={logout} aria-label="Sair" className="text-sm text-text-muted hover:text-destructive cursor-pointer p-1.5 -mr-1.5 sm:p-0 sm:mr-0">
-            <LogOut className="w-4 h-4 sm:hidden" />
-            <span className="hidden sm:inline">Sair</span>
-          </button>
-        </div>
-      </div>
-    </header>
-  );
 }
 
 // ─── Peças visuais ───────────────────────────────────────────
@@ -118,14 +47,14 @@ export function Panel({
 }
 
 const STATUS_TONE: Record<OrderStatus, string> = {
-  novo: "border-sky-400/40 text-sky-300",
+  novo: "border-info/40 text-info",
   orcamento_enviado: "border-gold/40 text-gold-light",
-  aguardando_resposta: "border-amber-500/40 text-amber-300",
+  aguardando_resposta: "border-warn/40 text-warn",
   reservado: "border-gold/60 text-gold",
-  confirmado: "border-emerald-500/50 text-emerald-300",
-  realizado: "border-white/20 text-text-secondary",
-  perdido: "border-white/10 text-text-muted",
-  cancelado: "border-destructive/50 text-red-300",
+  confirmado: "border-ok/50 text-ok",
+  realizado: "border-text-muted/40 text-text-secondary",
+  perdido: "border-border text-text-muted",
+  cancelado: "border-bad/50 text-bad",
 };
 
 export function StatusBadge({ status }: { status: OrderStatus }) {
@@ -144,7 +73,7 @@ export function Button({
   const styles = {
     gold: "bg-gold hover:bg-gold-light text-bg-primary font-semibold",
     ghost: "bg-bg-elevated border border-border-subtle text-text-primary hover:border-gold/40",
-    danger: "bg-transparent border border-destructive/50 text-red-300 hover:bg-destructive/10",
+    danger: "bg-transparent border border-bad/50 text-bad hover:bg-bad/10",
   }[variant];
   return (
     <button
@@ -175,12 +104,12 @@ export function Field({
 }
 
 export const inputClass =
-  "w-full bg-bg-elevated border border-border-subtle text-text-primary placeholder-text-muted px-3 py-2.5 rounded text-base sm:text-sm focus:outline-none focus:border-gold/60 transition-colors";
+  "w-full bg-bg-elevated border border-border-subtle text-text-primary placeholder:text-text-muted px-3 py-2.5 rounded text-base sm:text-sm focus:outline-none focus:border-gold/60 transition-colors";
 
 export function ErrorNote({ message }: { message: string | null }) {
   if (!message) return null;
   return (
-    <p role="alert" className="text-sm text-red-300 bg-destructive/10 border border-destructive/30 rounded px-3 py-2">
+    <p role="alert" className="text-sm text-bad bg-bad/10 border border-bad/30 rounded px-3 py-2">
       {message}
     </p>
   );

@@ -96,7 +96,7 @@ function HeroColumn({ type, label }: { type: "desktop" | "mobile"; label: string
         {current?.url && (
           <button
             onClick={handleDelete}
-            className="p-2.5 bg-bg-elevated hover:bg-destructive/10 border border-border-subtle text-text-muted hover:text-destructive rounded transition-colors cursor-pointer"
+            className="p-2.5 bg-bg-elevated hover:bg-bad/10 border border-border-subtle text-text-muted hover:text-bad rounded transition-colors cursor-pointer"
           >
             <Trash2 className="w-4 h-4" />
           </button>
@@ -113,7 +113,7 @@ function HeroColumn({ type, label }: { type: "desktop" | "mobile"; label: string
             value={videoUrl || current?.videoUrl || ""}
             onChange={(e) => setVideoUrl(e.target.value)}
             placeholder="Ex: dQw4w9WgXcQ"
-            className="flex-1 bg-bg-elevated border border-border-subtle text-text-primary placeholder-text-muted px-3 py-2 rounded font-sans text-xs focus:outline-none focus:border-gold/50 transition-colors"
+            className="flex-1 bg-bg-elevated border border-border-subtle text-text-primary placeholder:text-text-muted px-3 py-2 rounded font-sans text-xs focus:outline-none focus:border-gold/50 transition-colors"
           />
           <button
             onClick={handleSaveVideo}

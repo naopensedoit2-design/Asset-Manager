@@ -48,7 +48,7 @@ export default function ConfigSection() {
             min={0}
             value={weddingCount}
             onChange={(e) => setWeddingCount(Number(e.target.value))}
-            className="w-full bg-bg-elevated border border-border-subtle text-text-primary placeholder-text-muted px-4 py-2.5 rounded font-sans text-sm focus:outline-none focus:border-gold/50 transition-colors"
+            className="w-full bg-bg-elevated border border-border-subtle text-text-primary placeholder:text-text-muted px-4 py-2.5 rounded font-sans text-sm focus:outline-none focus:border-gold/50 transition-colors"
           />
         </div>
 
@@ -61,7 +61,7 @@ export default function ConfigSection() {
             onChange={(e) => setDriverQuote(e.target.value)}
             rows={4}
             placeholder='"Uma experiência única..."'
-            className="w-full bg-bg-elevated border border-border-subtle text-text-primary placeholder-text-muted px-4 py-2.5 rounded font-sans text-sm focus:outline-none focus:border-gold/50 transition-colors resize-none"
+            className="w-full bg-bg-elevated border border-border-subtle text-text-primary placeholder:text-text-muted px-4 py-2.5 rounded font-sans text-sm focus:outline-none focus:border-gold/50 transition-colors resize-none"
           />
         </div>
 

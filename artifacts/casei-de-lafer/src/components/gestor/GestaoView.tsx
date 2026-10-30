@@ -61,7 +61,7 @@ export default function GestaoView() {
 
       <KpiGrid kpis={data.kpis} />
 
-      <div className="grid gap-6 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
         <AlertList alerts={data.alerts} className="lg:col-span-3" />
         <Upcoming orders={data.upcoming} today={data.hoje} className="lg:col-span-2" />
       </div>
@@ -93,10 +93,10 @@ function KpiGrid({ kpis }: { kpis: Kpis }) {
         {money.map((m) => (
           <div
             key={m.label}
-            className={`rounded-lg border p-3 sm:p-4 ${"alert" in m ? "border-destructive/50 bg-destructive/10 col-span-2 sm:col-span-1" : "border-border-gold bg-gold-muted/40"}`}
+            className={`rounded-lg border p-3 sm:p-4 ${"alert" in m ? "border-bad/50 bg-bad/10 col-span-2 sm:col-span-1" : "border-border-gold bg-gold-muted/40"}`}
           >
             <p className="text-xs sm:text-sm text-text-secondary">{m.label}</p>
-            <p className={`font-serif text-xl sm:text-3xl mt-1 ${"alert" in m ? "text-red-300" : "text-gold"}`}>{formatBRL(m.value)}</p>
+            <p className={`font-serif text-xl sm:text-3xl mt-1 ${"alert" in m ? "text-bad" : "text-gold"}`}>{formatBRL(m.value)}</p>
           </div>
         ))}
       </div>
@@ -179,7 +179,7 @@ function Upcoming({ orders, today, className }: { orders: OrderView[]; today: st
                     <div className="flex flex-wrap gap-2 mt-1">
                       <StatusBadge status={o.status} />
                       {balance && (
-                        <span className={`text-xs ${balance.status === "recebido" ? "text-emerald-300" : "text-amber-300"}`}>
+                        <span className={`text-xs ${balance.status === "recebido" ? "text-ok" : "text-warn"}`}>
                           Saldo {balance.status === "recebido" ? "pago" : "pendente"}
                         </span>
                       )}
@@ -327,9 +327,9 @@ function MonthCalendar({ today }: { today: string }) {
             : d.status === "provisoria"
               ? "border border-gold text-gold"
               : blocked
-                ? "bg-white/10 text-text-secondary"
+                ? "bg-text-primary/10 text-text-secondary"
                 : d.data < today
-                  ? "text-text-muted/50"
+                  ? "text-text-muted"
                   : "text-text-primary";
           const inner = (
             <span className={`flex items-center justify-center aspect-square rounded text-sm ${cls} ${d.data === today ? "ring-1 ring-text-secondary" : ""}`}>
@@ -348,7 +348,7 @@ function MonthCalendar({ today }: { today: string }) {
       <div className="flex flex-wrap gap-4 mt-4 text-xs text-text-muted">
         <span className="flex items-center gap-1.5"><i className="w-3 h-3 rounded-sm bg-gold" /> Confirmado</span>
         <span className="flex items-center gap-1.5"><i className="w-3 h-3 rounded-sm border border-gold" /> Reserva sem sinal</span>
-        <span className="flex items-center gap-1.5"><i className="w-3 h-3 rounded-sm bg-white/10" /> Bloqueio manual</span>
+        <span className="flex items-center gap-1.5"><i className="w-3 h-3 rounded-sm bg-text-primary/10" /> Bloqueio manual</span>
       </div>
     </Panel>
   );
