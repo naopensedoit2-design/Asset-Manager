@@ -1,0 +1,180 @@
+/* Temas e cores de destaque do painel (/admin).
+
+   Como funciona: o painel marca o <html> com data-admin-theme, data-admin-accent e
+   data-admin-size (ver src/lib/admin/look.ts). Cada tema troca as cores base
+   (fundo, cartões, textos, status); cada cor de destaque define o "dourado" que
+   o painel inteiro usa (as classes text-gold, bg-gold… apontam para var(--gold)).
+   Fora do painel o <html> não tem essas marcas, então o site público continua
+   com os padrões de globals.css.
+
+   O padrão é o tema "classico" com o destaque "ouro": o mesmo visual de sempre.
+   src/lib/admin/look.test.ts confere o contraste de todas as combinações abaixo. */
+
+/* ── Cores de destaque ─────────────────────────────────────────
+   dk = versão para fundo escuro, lt = versão para fundo claro,
+   hi/lo = mais clara / mais escura (hover e variações). */
+html[data-admin-accent="ouro"] {
+  --a-dk: #c9a84c; --a-dk-hi: #dfc070; --a-dk-lo: #a8862e;
+  --a-lt: #795e0f; --a-lt-lo: #5f4806;
+}
+html[data-admin-accent="bordo"] {
+  --a-dk: #e77d8b; --a-dk-hi: #f29aa5; --a-dk-lo: #c4505f;
+  --a-lt: #9b1c3a; --a-lt-lo: #7a1530;
+}
+html[data-admin-accent="verde"] {
+  --a-dk: #55b98b; --a-dk-hi: #7bd1a8; --a-dk-lo: #3a9a6e;
+  --a-lt: #1b6b4a; --a-lt-lo: #0f5236;
+}
+html[data-admin-accent="cobalto"] {
+  --a-dk: #6ea2ff; --a-dk-hi: #92b9ff; --a-dk-lo: #4c85e6;
+  --a-lt: #1d4fbf; --a-lt-lo: #153d99;
+}
+html[data-admin-accent="rose"] {
+  --a-dk: #e98fb0; --a-dk-hi: #f2abc6; --a-dk-lo: #cf6f94;
+  --a-lt: #a52f5f; --a-lt-lo: #85204a;
+}
+html[data-admin-accent="cobre"] {
+  --a-dk: #e39a5c; --a-dk-hi: #efb680; --a-dk-lo: #c97d3d;
+  --a-lt: #974c14; --a-lt-lo: #7a3b0b;
+}
+
+/* ── Temas escuros ─────────────────────────────────────────────── */
+html[data-admin-theme="classico"],
+html[data-admin-theme="grafite"] {
+  color-scheme: dark;
+  --gold: var(--a-dk);
+  --gold-light: var(--a-dk-hi);
+  --gold-dark: var(--a-dk-lo);
+  --gold-muted: color-mix(in srgb, var(--a-dk) 15%, transparent);
+  --border-gold: color-mix(in srgb, var(--a-dk) 35%, transparent);
+  --selection-bg: color-mix(in srgb, var(--a-dk) 25%, transparent);
+  --ok: #6ee7b7;
+  --warn: #fcd34d;
+  --bad: #fca5a5;
+  --info: #7dd3fc;
+}
+
+/* Clássico: o visual de sempre (fundo quase preto). Só o texto apagado ficou mais claro,
+   porque o cinza antigo não passava no teste de contraste. */
+html[data-admin-theme="classico"] {
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #111111;
+  --bg-card: #161616;
+  --bg-elevated: #1c1c1c;
+  --text-primary: #f5f0e8;
+  --text-secondary: #b0a898;
+  --text-muted: #8f887d;
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.08);
+  --input-default: rgba(255, 255, 255, 0.1);
+}
+
+/* Grafite: escuro com fundo azulado, mais neutro que o preto quente do Clássico. */
+html[data-admin-theme="grafite"] {
+  --bg-primary: #0d1013;
+  --bg-secondary: #12161a;
+  --bg-card: #171c21;
+  --bg-elevated: #1e242a;
+  --text-primary: #e9eef2;
+  --text-secondary: #a9b4bd;
+  --text-muted: #8593a0;
+  --border-subtle: rgba(190, 210, 230, 0.1);
+  --border-default: rgba(190, 210, 230, 0.13);
+  --input-default: rgba(190, 210, 230, 0.16);
+}
+
+/* ── Temas claros ──────────────────────────────────────────────── */
+html[data-admin-theme="perola"],
+html[data-admin-theme="sol"] {
+  color-scheme: light;
+  --gold-muted: color-mix(in srgb, var(--gold) 12%, transparent);
+  --border-gold: color-mix(in srgb, var(--gold) 45%, transparent);
+  --selection-bg: color-mix(in srgb, var(--gold) 22%, transparent);
+}
+
+/* Pérola: claro e suave, para o dia a dia. */
+html[data-admin-theme="perola"] {
+  --gold: var(--a-lt);
+  --gold-light: var(--a-lt-lo);
+  --gold-dark: var(--a-lt-lo);
+  --bg-primary: #edf0f3;
+  --bg-secondary: #f7f8fa;
+  --bg-card: #ffffff;
+  --bg-elevated: #f1f3f6;
+  --text-primary: #15191e;
+  --text-secondary: #445160;
+  --text-muted: #57636e;
+  --border-subtle: rgba(21, 25, 30, 0.12);
+  --border-default: rgba(21, 25, 30, 0.16);
+  --input-default: rgba(21, 25, 30, 0.22);
+  --ok: #0a7146;
+  --warn: #8a5300;
+  --bad: #b42318;
+  --info: #0b67a4;
+}
+
+/* Sol: contraste máximo (letras pretas, bordas firmes e destaque mais escuro) para usar na rua, com sol na tela. */
+html[data-admin-theme="sol"] {
+  --gold: var(--a-lt-lo);
+  --gold-light: var(--a-lt-lo);
+  --gold-dark: var(--a-lt-lo);
+  --bg-primary: #ffffff;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-elevated: #eeeeee;
+  --text-primary: #000000;
+  --text-secondary: #262626;
+  --text-muted: #444444;
+  --border-subtle: rgba(0, 0, 0, 0.3);
+  --border-default: rgba(0, 0, 0, 0.4);
+  --input-default: rgba(0, 0, 0, 0.5);
+  --ok: #006b3f;
+  --warn: #744400;
+  --bad: #a11a10;
+  --info: #05558f;
+}
+
+/* ── Tamanho do texto ──────────────────────────────────────────
+   "zoom" aumenta tudo junto (letras, espaços e botões), inclusive os textos pequenos. */
+.admin-app {
+  --admin-zoom: 1;
+  min-height: calc(100dvh / var(--admin-zoom));
+}
+html[data-admin-size="lg"] .admin-app { --admin-zoom: 1.12; zoom: 1.12; }
+html[data-admin-size="xl"] .admin-app { --admin-zoom: 1.25; zoom: 1.25; }
+
+/* ── Detalhes ──────────────────────────────────────────────────── */
+.admin-app :focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-app *,
+  .admin-app *::before,
+  .admin-app *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── Altura do menu inferior (vira 0 no computador, onde o menu é lateral) ── */
+.admin-app {
+  --tabbar-h: calc(64px + env(safe-area-inset-bottom, 0px));
+}
+@media (min-width: 1024px) {
+  .admin-app {
+    --tabbar-h: 0px;
+  }
+}
+
+/* ── Folha que sobe de baixo (Aparência, Margot) ── */
+@keyframes admin-sheet-in {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.admin-sheet {
+  animation: admin-sheet-in 0.2s ease-out;
+}
