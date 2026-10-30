@@ -143,6 +143,14 @@ html[data-admin-theme="sol"] {
 html[data-admin-size="lg"] .admin-app { --admin-zoom: 1.12; zoom: 1.12; }
 html[data-admin-size="xl"] .admin-app { --admin-zoom: 1.25; zoom: 1.25; }
 
+/* No texto Maior o topo do celular não comporta nome do negócio + "Margot ligada" + aparência.
+   Com a Margot ligada o ponto verde basta (o leitor de tela lê "Margot ligada" pelo aria-label);
+   pausada, a palavra continua à vista porque é a exceção que importa. */
+html[data-admin-size="xl"] .admin-pill-state[data-state="on"],
+html[data-admin-size="xl"] .admin-pill-state[data-state="unknown"] {
+  display: none;
+}
+
 /* ── Detalhes ──────────────────────────────────────────────────── */
 .admin-app :focus-visible {
   outline: 2px solid var(--gold);

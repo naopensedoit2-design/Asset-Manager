@@ -129,11 +129,15 @@ function Frame({ children }: { children: React.ReactNode }) {
                 <button
                   type="button"
                   onClick={() => setMargotOpen(true)}
+                  aria-label={margotState === "off" ? "Margot pausada" : margotState === "on" ? "Margot ligada" : "Margot"}
                   className="inline-flex items-center gap-2 h-9 rounded-full border border-border-subtle bg-bg-card pl-3 pr-3.5 text-[13px] text-text-primary cursor-pointer"
                 >
                   <Dot state={margotState} />
                   Margot
-                  <span className="text-text-secondary">{margotState === "off" ? "pausada" : margotState === "on" ? "ligada" : ""}</span>
+                  {/* No texto Maior (theme.css) a palavra "ligada" some para o nome do negócio caber; "pausada" continua visível. */}
+                  <span data-state={margotState} className="admin-pill-state text-text-secondary">
+                    {margotState === "off" ? "pausada" : margotState === "on" ? "ligada" : ""}
+                  </span>
                 </button>
                 <button
                   type="button"
