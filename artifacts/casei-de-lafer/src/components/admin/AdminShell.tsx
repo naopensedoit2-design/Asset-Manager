@@ -31,7 +31,7 @@ function Frame({ children }: { children: React.ReactNode }) {
   const [margotOpen, setMargotOpen] = useState(false);
 
   const hoje = useHoje({ enabled: !bare });
-  const { data: settings } = useMargotSettings();
+  const { data: settings } = useMargotSettings({ enabled: !bare });
   const { data: unread } = useQuery<{ total: number }>({
     queryKey: ["wa-nao-lidas"],
     queryFn: () => api("/api/admin/whatsapp/nao-lidas"),

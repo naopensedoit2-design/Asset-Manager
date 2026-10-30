@@ -104,7 +104,7 @@ function FinanceiroView() {
         </div>
 
         {tab !== "contas" && (
-          <div className="-mx-4 sm:mx-0 px-4 sm:px-0 flex gap-1.5 overflow-x-auto pb-1" role="group" aria-label="Período">
+          <div className="-mx-4 sm:mx-0 px-4 sm:px-0 flex gap-1.5 overflow-x-auto pb-1 lg:flex-wrap lg:overflow-visible" role="group" aria-label="Período">
             <PeriodChip on={!month} onClick={() => setMonth(null)}>
               Ano inteiro
             </PeriodChip>

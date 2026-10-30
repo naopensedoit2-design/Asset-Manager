@@ -59,7 +59,7 @@ export default function OrdersPage() {
         />
       </div>
 
-      <div role="group" aria-label="Filtrar pedidos" className="mt-3 -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
+      <div role="group" aria-label="Filtrar pedidos" className="mt-3 -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0 lg:flex-wrap lg:overflow-visible">
         {ORDER_FILTERS.map((f) => {
           const on = filter === f.key;
           return (

@@ -10,8 +10,8 @@ import Switch from "./Switch";
 export const REGRAS_KEY = ["gestor-regras"];
 
 /** Estado da Margot lido das regras: usado no topo do painel e na folha de pausar/retomar. */
-export function useMargotSettings() {
-  return useQuery<Settings>({ queryKey: REGRAS_KEY, queryFn: () => api("/api/admin/gestor/regras"), staleTime: 30_000 });
+export function useMargotSettings(options: { enabled?: boolean } = {}) {
+  return useQuery<Settings>({ queryKey: REGRAS_KEY, queryFn: () => api("/api/admin/gestor/regras"), staleTime: 30_000, enabled: options.enabled ?? true });
 }
 
 /** Liga ou pausa a Margot (WhatsApp e/ou chat do site) com um toque. */

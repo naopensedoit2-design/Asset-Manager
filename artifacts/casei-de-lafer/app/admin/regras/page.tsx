@@ -26,7 +26,7 @@ export default function RulesPage() {
             Preços e políticas usados pelo painel e pela Margot. Mudou aqui, vale para os próximos orçamentos.
           </p>
         </div>
-        <nav aria-label="Ir para" className="sticky top-14 lg:top-0 z-20 -mx-4 sm:mx-0 px-4 sm:px-0 py-2 bg-bg-primary/95 backdrop-blur flex gap-2 overflow-x-auto">
+        <nav aria-label="Ir para" className="sticky top-14 lg:top-0 z-20 -mx-4 sm:mx-0 px-4 sm:px-0 py-2 bg-bg-primary/95 backdrop-blur flex gap-2 overflow-x-auto lg:flex-wrap lg:overflow-visible">
           {SECTIONS.map((sec) => (
             <a
               key={sec.id}
