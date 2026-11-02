@@ -6,31 +6,40 @@
 
 @theme inline {
   /* ─── Brand Colors ─────────────────────────────────── */
-  --color-gold:        #C9A84C;
-  --color-gold-light:  #DFC070;
-  --color-gold-dark:   #A8862E;
-  --color-gold-muted:  rgba(201, 168, 76, 0.15);
+  /* Os valores vivem em :root (abaixo) e podem ser trocados por tema no painel
+     (app/admin/theme.css). Aqui só apontamos para eles; "inline" faz cada classe
+     usar var(--…) direto, sem congelar a cor. O site público fica com os padrões. */
+  --color-gold:        var(--gold);
+  --color-gold-light:  var(--gold-light);
+  --color-gold-dark:   var(--gold-dark);
+  --color-gold-muted:  var(--gold-muted);
 
   /* ─── Background Scale ──────────────────────────────── */
-  --color-bg-primary:   #0a0a0a;
-  --color-bg-secondary: #111111;
-  --color-bg-card:      #161616;
-  --color-bg-elevated:  #1c1c1c;
+  --color-bg-primary:   var(--bg-primary);
+  --color-bg-secondary: var(--bg-secondary);
+  --color-bg-card:      var(--bg-card);
+  --color-bg-elevated:  var(--bg-elevated);
 
   /* ─── Text Scale ────────────────────────────────────── */
-  --color-text-primary:   #f5f0e8;
-  --color-text-secondary: #b0a898;
-  --color-text-muted:     #6b6560;
+  --color-text-primary:   var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-muted:     var(--text-muted);
 
   /* ─── Borders ───────────────────────────────────────── */
-  --color-border-subtle:  rgba(255, 255, 255, 0.06);
-  --color-border-gold:    rgba(201, 168, 76, 0.35);
+  --color-border-subtle:  var(--border-subtle);
+  --color-border-gold:    var(--border-gold);
+
+  /* ─── Status (ok / atenção / problema / informação) ──── */
+  --color-ok:    var(--ok);
+  --color-warn:  var(--warn);
+  --color-bad:   var(--bad);
+  --color-info:  var(--info);
 
   /* ─── Semantic mappings (Shadcn compatibility) ───────── */
   --color-background:        #0a0a0a;
   --color-foreground:        #f5f0e8;
-  --color-border:            rgba(255, 255, 255, 0.08);
-  --color-input:             rgba(255, 255, 255, 0.10);
+  --color-border:            var(--border-default);
+  --color-input:             var(--input-default);
   --color-ring:              #C9A84C;
 
   --color-card:              #161616;
@@ -87,6 +96,37 @@
   --shadow-gold-lg: 0 0 48px rgba(201, 168, 76, 0.20);
 }
 
+/* ─── Cores padrão (site público e tema "Clássico" do painel) ──────────────
+   O painel troca estes valores por tema e por cor de destaque em app/admin/theme.css. */
+:root {
+  --gold:        #C9A84C;
+  --gold-light:  #DFC070;
+  --gold-dark:   #A8862E;
+  --gold-muted:  rgba(201, 168, 76, 0.15);
+
+  --bg-primary:   #0a0a0a;
+  --bg-secondary: #111111;
+  --bg-card:      #161616;
+  --bg-elevated:  #1c1c1c;
+
+  --text-primary:   #f5f0e8;
+  --text-secondary: #b0a898;
+  --text-muted:     #6b6560;
+
+  --border-subtle:  rgba(255, 255, 255, 0.06);
+  --border-gold:    rgba(201, 168, 76, 0.35);
+  --border-default: rgba(255, 255, 255, 0.08);
+  --input-default:  rgba(255, 255, 255, 0.10);
+
+  --selection-bg:   rgba(201, 168, 76, 0.25);
+
+  /* Status: tons claros para fundo escuro (os mesmos -300 do Tailwind que o painel já usava). */
+  --ok:   #6ee7b7;
+  --warn: #fcd34d;
+  --bad:  #fca5a5;
+  --info: #7dd3fc;
+}
+
 /* ─── Global Base ────────────────────────────────────────── */
 @layer base {
   * {
@@ -98,8 +138,8 @@
   }
 
   body {
-    background-color: #0a0a0a;
-    color: #f5f0e8;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
     font-family: 'Inter', system-ui, sans-serif;
     font-size: 1rem;
     line-height: 1.7;
@@ -111,7 +151,7 @@
     font-family: 'Playfair Display', Georgia, serif;
     font-weight: 500;
     line-height: 1.25;
-    color: #f5f0e8;
+    color: var(--text-primary);
   }
 
   /* Custom scrollbar */
@@ -119,20 +159,20 @@
     width: 6px;
   }
   ::-webkit-scrollbar-track {
-    background: #0a0a0a;
+    background: var(--bg-primary);
   }
   ::-webkit-scrollbar-thumb {
-    background: #C9A84C;
+    background: var(--gold);
     border-radius: 3px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #DFC070;
+    background: var(--gold-light);
   }
 
   /* Selection */
   ::selection {
-    background-color: rgba(201, 168, 76, 0.25);
-    color: #f5f0e8;
+    background-color: var(--selection-bg);
+    color: var(--text-primary);
   }
 }
 
@@ -144,7 +184,7 @@
 
   [contenteditable][data-placeholder]:empty::before {
     content: attr(data-placeholder);
-    color: #6b6560;
+    color: var(--text-muted);
     pointer-events: none;
   }
 
@@ -154,14 +194,14 @@
     background: linear-gradient(
       to right,
       transparent,
-      rgba(201, 168, 76, 0.5),
+      color-mix(in srgb, var(--gold) 50%, transparent),
       transparent
     );
   }
 
   /* Gold text gradient */
   .text-gold-gradient {
-    background: linear-gradient(135deg, #DFC070 0%, #C9A84C 50%, #A8862E 100%);
+    background: linear-gradient(135deg, var(--gold-light) 0%, var(--gold) 50%, var(--gold-dark) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;

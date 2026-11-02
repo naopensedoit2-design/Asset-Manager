@@ -4,7 +4,7 @@ import Link from "next/link";
 import { use, useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, ArrowLeft, Check, CheckCheck, Clock, FileText, Pause, Play, Send } from "lucide-react";
-import { AdminHeader, api, Button, ErrorNote, Loading, whatsappLink } from "@/components/gestor/ui";
+import { api, Button, ErrorNote, Loading, whatsappLink } from "@/components/gestor/ui";
 import { formatDateBR } from "@/lib/gestor/rules";
 import { type ConversationSummary } from "@/components/gestor/wa";
 
@@ -75,8 +75,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
   }, [lastId, queryClient]);
 
   return (
-    <div className="min-h-screen bg-bg-primary flex flex-col">
-      <AdminHeader active="conversas" />
+    <div className="flex flex-col min-h-[calc((100dvh-3.5rem)/var(--admin-zoom))] lg:min-h-[calc(100dvh/var(--admin-zoom))]">
       {isLoading ? (
         <Loading />
       ) : error || !data ? (
@@ -131,7 +130,7 @@ function TopBar({ c, onChange }: { c: ConversationSummary; onChange: (next: Conv
   }
 
   return (
-    <div className="sticky top-14 z-30 bg-bg-secondary/95 backdrop-blur border-b border-border-subtle">
+    <div className="sticky top-14 lg:top-0 z-30 bg-bg-secondary/95 backdrop-blur border-b border-border-subtle">
       <div className="max-w-3xl mx-auto px-3 sm:px-6 py-2.5 flex items-center gap-3">
         <Link href="/admin/conversas" aria-label="Voltar para conversas" className="p-1.5 -ml-1.5 text-text-secondary hover:text-text-primary">
           <ArrowLeft className="w-5 h-5" />
@@ -159,23 +158,23 @@ function TopBar({ c, onChange }: { c: ConversationSummary; onChange: (next: Conv
         )}
       </div>
       {!c.isOwner && (
-        <p className={`max-w-3xl mx-auto px-3 sm:px-6 pb-2 text-xs ${c.paused ? "text-amber-300" : "text-text-muted"}`}>
+        <p className={`max-w-3xl mx-auto px-3 sm:px-6 pb-2 text-xs ${c.paused ? "text-warn" : "text-text-muted"}`}>
           {c.paused
             ? `Margot pausada${c.pausedUntil ? ` até ${new Date(c.pausedUntil).toLocaleString("pt-BR", { timeZone: TZ, dateStyle: "short", timeStyle: "short" })}` : ""}: você está atendendo. Mensagens novas chegam no seu WhatsApp.`
             : "Margot atendendo esta conversa."}
         </p>
       )}
-      {error && <p className="max-w-3xl mx-auto px-3 sm:px-6 pb-2 text-xs text-red-300">{error}</p>}
+      {error && <p className="max-w-3xl mx-auto px-3 sm:px-6 pb-2 text-xs text-bad">{error}</p>}
     </div>
   );
 }
 
 function Ticks({ status }: { status: string }) {
-  if (status === "lida") return <CheckCheck className="w-3.5 h-3.5 text-sky-300" aria-label="lida" />;
+  if (status === "lida") return <CheckCheck className="w-3.5 h-3.5 text-info" aria-label="lida" />;
   if (status === "entregue") return <CheckCheck className="w-3.5 h-3.5" aria-label="entregue" />;
   if (status === "enviada") return <Check className="w-3.5 h-3.5" aria-label="enviada" />;
   if (status === "pendente") return <Clock className="w-3.5 h-3.5" aria-label="na fila" />;
-  if (status === "falhou") return <AlertTriangle className="w-3.5 h-3.5 text-red-300" aria-label="falhou" />;
+  if (status === "falhou") return <AlertTriangle className="w-3.5 h-3.5 text-bad" aria-label="falhou" />;
   return null;
 }
 
@@ -247,18 +246,18 @@ function Bubble({ m, ownerChat, onMediaLoad }: { m: Message; ownerChat: boolean;
 
   return (
     <div className={`flex ${mine ? "justify-end" : "justify-start"}`}>
-      <div className={`max-w-[85%] sm:max-w-[75%] border rounded-lg px-3 py-2 ${tone} ${m.status === "falhou" ? "border-red-400/50" : ""}`}>
-        {label && <p className="text-[11px] uppercase tracking-wider text-gold mb-0.5">{label}</p>}
+      <div className={`max-w-[85%] sm:max-w-[75%] border rounded-lg px-3 py-2 ${tone} ${m.status === "falhou" ? "border-bad/50" : ""}`}>
+        {label && <p className={`text-[11px] uppercase tracking-wider mb-0.5 ${m.author === "leonardo" ? "text-gold-light" : "text-gold"}`}>{label}</p>}
         <Media m={m} onLoad={onMediaLoad} />
         {text && (
           <p className="text-sm whitespace-pre-wrap break-words">
             <WaText text={text} />
           </p>
         )}
-        {m.type === "interactive" && mine && <p className="text-[11px] text-text-muted mt-1">com botões</p>}
-        {m.status === "falhou" && m.error && <p className="text-xs text-red-300 mt-1">{m.error}</p>}
-        {m.status === "pendente" && <p className="text-xs text-amber-300 mt-1">Na fila: sai quando a conversa abrir.</p>}
-        <p className="flex items-center justify-end gap-1 text-[11px] text-text-muted mt-1">
+        {m.type === "interactive" && mine && <p className="text-[11px] text-text-secondary mt-1">com botões</p>}
+        {m.status === "falhou" && m.error && <p className="text-xs text-bad mt-1">{m.error}</p>}
+        {m.status === "pendente" && <p className="text-xs text-warn mt-1">Na fila: sai quando a conversa abrir.</p>}
+        <p className={`flex items-center justify-end gap-1 text-[11px] mt-1 ${mine ? "text-text-secondary" : "text-text-muted"}`}>
           {time(m.createdAt)}
           {mine && <Ticks status={m.status} />}
         </p>
@@ -309,7 +308,7 @@ function Composer({ c, id, onSent }: { c: ConversationSummary; id: string; onSen
                 rows={Math.min(5, Math.max(1, text.split("\n").length))}
                 placeholder="Escreva como Leonardo…"
                 aria-label="Mensagem"
-                className="flex-1 resize-none bg-bg-elevated border border-border-subtle text-text-primary placeholder-text-muted px-3 py-2.5 rounded text-base sm:text-sm focus:outline-none focus:border-gold/60"
+                className="flex-1 resize-none bg-bg-elevated border border-border-subtle text-text-primary placeholder:text-text-muted px-3 py-2.5 rounded text-base sm:text-sm focus:outline-none focus:border-gold/60"
               />
               <Button onClick={sendNow} disabled={busy || !text.trim()} aria-label="Enviar" className="!px-3.5 !py-3">
                 <Send className="w-4 h-4" />

@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { EXPENSE_CATEGORIES, type FinanceSummary } from "@/lib/gestor/finance";
 import { formatBRL, formatDateBR, parseBRLToCents, todayISO } from "@/lib/gestor/rules";
 import type { ExpenseView } from "@/lib/gestor/finance-service";
-import { AdminHeader, api, Button, ErrorNote, Field, inputClass, Loading, Panel } from "@/components/gestor/ui";
+import { api, Button, ErrorNote, Field, inputClass, Loading, Panel } from "@/components/gestor/ui";
 
 const MONTHS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 const MONTHS_FULL = [
@@ -14,8 +16,29 @@ const MONTHS_FULL = [
   "julho", "agosto", "setembro", "outubro", "novembro", "dezembro",
 ];
 
+type Tab = "resumo" | "contas" | "pagas";
+
+const TABS: { key: Tab; label: string }[] = [
+  { key: "resumo", label: "Resumo" },
+  { key: "contas", label: "A pagar" },
+  { key: "pagas", label: "Pagas" },
+];
+
 export default function FinanceiroPage() {
+  return (
+    <Suspense fallback={<div />}>
+      <FinanceiroView />
+    </Suspense>
+  );
+}
+
+function FinanceiroView() {
   const today = todayISO();
+  const router = useRouter();
+  const params = useSearchParams();
+  const raw = params.get("aba");
+  const tab: Tab = raw === "contas" || raw === "pagas" ? raw : "resumo";
+  const setTab = (t: Tab) => router.replace(t === "resumo" ? "/admin/financeiro" : `/admin/financeiro?aba=${t}`, { scroll: false });
   const [year, setYear] = useState(today.slice(0, 4));
   const [month, setMonth] = useState<string | null>(null);
   const period = month ? `${year}-${month}` : year;
@@ -36,58 +59,86 @@ export default function FinanceiroPage() {
   const weddingPrice = services.find((s) => !s.isAddon && /noiva/i.test(s.name))?.priceCents ?? 260000;
 
   const years = [String(Number(today.slice(0, 4)) - 1), today.slice(0, 4), String(Number(today.slice(0, 4)) + 1)];
+  const openCount = (expenses ?? []).filter((e) => e.status === "a_pagar").length;
 
   return (
-    <div className="min-h-screen bg-bg-primary">
-      <AdminHeader active="financeiro" />
+    <div>
       <main className="max-w-5xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="font-serif text-2xl sm:text-4xl text-text-primary">Financeiro</h1>
-            <p className="text-sm text-text-muted mt-1">Caixa de {label}</p>
+            <h1 className="font-serif text-2xl sm:text-4xl text-text-primary">Dinheiro</h1>
+            <p className="text-sm text-text-secondary mt-1">{tab === "contas" ? "Contas em aberto, de qualquer mês" : `Caixa de ${label}`}</p>
           </div>
-          <select
-            aria-label="Ano"
-            value={year}
-            onChange={(e) => setYear(e.target.value)}
-            className="bg-bg-elevated border border-border-subtle text-text-primary rounded px-3 py-2 text-sm"
-          >
-            {years.map((y) => (
-              <option key={y}>{y}</option>
-            ))}
-          </select>
+          {tab !== "contas" && (
+            <select
+              aria-label="Ano"
+              value={year}
+              onChange={(e) => setYear(e.target.value)}
+              className="bg-bg-elevated border border-border-subtle text-text-primary rounded px-3 py-2 text-sm min-h-11"
+            >
+              {years.map((y) => (
+                <option key={y}>{y}</option>
+              ))}
+            </select>
+          )}
         </div>
 
-        <div className="-mx-4 sm:mx-0 px-4 sm:px-0 flex gap-1.5 overflow-x-auto pb-1" role="tablist" aria-label="Período">
-          <PeriodChip on={!month} onClick={() => setMonth(null)}>
-            Ano inteiro
-          </PeriodChip>
-          {MONTHS.map((m, i) => {
-            const key = String(i + 1).padStart(2, "0");
+        <div role="tablist" aria-label="Seções do dinheiro" className="grid grid-cols-3 gap-1 rounded-lg border border-border-subtle bg-bg-card p-1">
+          {TABS.map((t) => {
+            const on = tab === t.key;
             return (
-              <PeriodChip key={m} on={month === key} onClick={() => setMonth(key)}>
-                {m}
-              </PeriodChip>
+              <button
+                key={t.key}
+                role="tab"
+                aria-selected={on}
+                onClick={() => setTab(t.key)}
+                className={`min-h-11 rounded-md text-sm transition-colors cursor-pointer ${
+                  on ? "bg-gold text-bg-primary font-semibold" : "text-text-secondary hover:text-text-primary"
+                }`}
+              >
+                {t.label}
+                {t.key === "contas" && openCount > 0 ? ` (${openCount})` : ""}
+              </button>
             );
           })}
         </div>
 
-        {error && <ErrorNote message={(error as Error).message} />}
-        {!summary ? (
-          <Loading />
-        ) : (
+        {tab !== "contas" && (
+          <div className="-mx-4 sm:mx-0 px-4 sm:px-0 flex gap-1.5 overflow-x-auto pb-1 lg:flex-wrap lg:overflow-visible" role="group" aria-label="Período">
+            <PeriodChip on={!month} onClick={() => setMonth(null)}>
+              Ano inteiro
+            </PeriodChip>
+            {MONTHS.map((m, i) => {
+              const key = String(i + 1).padStart(2, "0");
+              return (
+                <PeriodChip key={m} on={month === key} onClick={() => setMonth(key)}>
+                  {m}
+                </PeriodChip>
+              );
+            })}
+          </div>
+        )}
+
+        {tab === "resumo" && (
           <>
-            <Totals s={summary} />
-            <div className="grid gap-6 lg:grid-cols-5">
-              <VehicleCost s={summary} weddingPrice={weddingPrice} label={label} className="lg:col-span-2" />
-              <Categories s={summary} className="lg:col-span-3" />
-            </div>
-            <MargotCost />
-            {summary.meses.length > 0 && <Monthly s={summary} today={today} onPick={(m) => setMonth(m)} />}
+            {error && <ErrorNote message={(error as Error).message} />}
+            {!summary ? (
+              <Loading />
+            ) : (
+              <>
+                <Totals s={summary} />
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-5">
+                  <VehicleCost s={summary} weddingPrice={weddingPrice} label={label} className="lg:col-span-2" />
+                  <Categories s={summary} className="lg:col-span-3" />
+                </div>
+                <MargotCost />
+                {summary.meses.length > 0 && <Monthly s={summary} today={today} onPick={(m) => setMonth(m)} />}
+              </>
+            )}
           </>
         )}
 
-        <Expenses expenses={expenses} period={period} />
+        {tab !== "resumo" && <Expenses expenses={expenses} period={period} view={tab} />}
       </main>
     </div>
   );
@@ -96,10 +147,9 @@ export default function FinanceiroPage() {
 function PeriodChip({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
-      role="tab"
-      aria-selected={on}
+      aria-pressed={on}
       onClick={onClick}
-      className={`shrink-0 rounded-full px-3.5 py-1.5 text-sm border transition-colors cursor-pointer ${
+      className={`shrink-0 min-h-10 rounded-full px-3.5 text-sm border transition-colors cursor-pointer ${
         on ? "bg-gold text-bg-primary border-gold font-semibold" : "border-border-subtle text-text-secondary hover:text-text-primary"
       }`}
     >
@@ -119,11 +169,11 @@ function Totals({ s }: { s: FinanceSummary }) {
         <Tile label="Saiu" value={formatBRL(s.saiuCents)} hint="despesas pagas" />
         <div
           className={`col-span-2 sm:col-span-1 rounded-lg border p-3 sm:p-4 ${
-            positive ? "border-emerald-500/40 bg-emerald-500/5" : "border-destructive/50 bg-destructive/10"
+            positive ? "border-ok/40 bg-ok/5" : "border-bad/50 bg-bad/10"
           }`}
         >
           <p className="text-xs sm:text-sm text-text-secondary">Resultado</p>
-          <p className={`font-serif text-2xl sm:text-3xl mt-1 ${positive ? "text-emerald-300" : "text-red-300"}`}>
+          <p className={`font-serif text-2xl sm:text-3xl mt-1 ${positive ? "text-ok" : "text-bad"}`}>
             {positive ? "" : "− "}
             {formatBRL(Math.abs(s.resultadoCents))}
           </p>
@@ -131,11 +181,14 @@ function Totals({ s }: { s: FinanceSummary }) {
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3">
-        <div className={`rounded-lg border p-3 ${s.aPagarVencidoCents > 0 ? "border-destructive/50 bg-destructive/10" : "border-border-subtle bg-bg-card"}`}>
+        <Link
+          href="/admin/financeiro?aba=contas"
+          className={`block rounded-lg border p-3 transition-colors hover:border-border-gold ${s.aPagarVencidoCents > 0 ? "border-bad/50 bg-bad/10" : "border-border-subtle bg-bg-card"}`}
+        >
           <p className="text-xs text-text-secondary">A pagar</p>
           <p className="font-serif text-xl sm:text-2xl text-text-primary">{formatBRL(s.aPagarCents)}</p>
-          {s.aPagarVencidoCents > 0 && <p className="text-[11px] text-red-300">{formatBRL(s.aPagarVencidoCents)} vencido</p>}
-        </div>
+          {s.aPagarVencidoCents > 0 ? <p className="text-[11px] text-bad">{formatBRL(s.aPagarVencidoCents)} vencido</p> : <p className="text-[11px] text-text-muted">ver as contas</p>}
+        </Link>
         <div className="rounded-lg border border-border-subtle bg-bg-card p-3">
           <p className="text-xs text-text-secondary">A receber</p>
           <p className="font-serif text-xl sm:text-2xl text-text-primary">{formatBRL(s.aReceberCents)}</p>
@@ -206,8 +259,8 @@ function MargotCost() {
     : data.limiteUsd <= 0
       ? { text: "Desligada nas Regras (limite zero)", tone: "text-text-muted" }
       : !data.ligada
-        ? { text: "Pausada: limite do mês atingido", tone: "text-red-300" }
-        : { text: "Atendendo no site e no WhatsApp", tone: "text-emerald-300" };
+        ? { text: "Pausada: limite do mês atingido", tone: "text-bad" }
+        : { text: "Atendendo no site e no WhatsApp", tone: "text-ok" };
   return (
     <Panel title="Margot (IA) neste mês">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -233,7 +286,7 @@ function MargotCost() {
           </span>
         </div>
         <div className="h-2 rounded-full bg-bg-elevated overflow-hidden">
-          <div className={`h-full rounded-full ${pct >= 90 ? "bg-red-400" : "bg-gold"}`} style={{ width: `${Math.max(1, pct)}%` }} />
+          <div className={`h-full rounded-full ${pct >= 90 ? "bg-bad" : "bg-gold"}`} style={{ width: `${Math.max(1, pct)}%` }} />
         </div>
         <p className="text-xs text-text-muted mt-2">
           Estimativa pelos preços oficiais do modelo {data.modelo}. Ao bater o limite, o chat do site mostra o botão do seu
@@ -295,7 +348,7 @@ function Monthly({ s, today, onPick }: { s: FinanceSummary; today: string; onPic
                       entrou {formatBRL(m.entrouCents)} · saiu {formatBRL(m.saiuCents)}
                     </p>
                   </div>
-                  <span className={`font-serif text-lg tabular-nums ${r > 0 ? "text-emerald-300" : r < 0 ? "text-red-300" : "text-text-muted"}`}>
+                  <span className={`font-serif text-lg tabular-nums ${r > 0 ? "text-ok" : r < 0 ? "text-bad" : "text-text-muted"}`}>
                     {r === 0 ? "—" : `${r < 0 ? "− " : "+ "}${formatBRL(Math.abs(r))}`}
                   </span>
                 </button>
@@ -348,7 +401,7 @@ const toDraft = (e: ExpenseView): Draft => ({
   notes: e.notes,
 });
 
-function Expenses({ expenses, period }: { expenses?: ExpenseView[]; period: string }) {
+function Expenses({ expenses, period, view }: { expenses?: ExpenseView[]; period: string; view: "contas" | "pagas" }) {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState<Draft | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -414,7 +467,7 @@ function Expenses({ expenses, period }: { expenses?: ExpenseView[]; period: stri
 
   return (
     <Panel
-      title="Despesas"
+      title={view === "contas" ? "Contas a pagar" : "Despesas pagas"}
       action={
         !editing ? (
           <Button onClick={() => setEditing(emptyDraft())}>
@@ -431,31 +484,46 @@ function Expenses({ expenses, period }: { expenses?: ExpenseView[]; period: stri
         <Loading />
       ) : (
         <div className="space-y-6 mt-2">
-          {open.length > 0 && (
-            <ExpenseGroup title="A pagar" items={open} editing={editing} setEditing={setEditing} onSave={save} onPay={pay} onRemove={remove} busy={busy} error={error} />
-          )}
-          <ExpenseGroup
-            title="Pagas no período"
-            items={paid}
-            empty="Nenhuma despesa paga neste período."
-            editing={editing}
-            setEditing={setEditing}
-            onSave={save}
-            onRemove={remove}
-            busy={busy}
-            error={error}
-          />
-          {other.length > 0 && (
+          {view === "contas" && (
             <ExpenseGroup
-              title="Do período, pagas em outro mês"
-              items={other}
+              title="Em aberto"
+              items={open}
+              empty="Nenhuma conta a pagar. Quando você lançar um gasto como “a pagar”, ele aparece aqui."
               editing={editing}
               setEditing={setEditing}
               onSave={save}
+              onPay={pay}
               onRemove={remove}
               busy={busy}
               error={error}
             />
+          )}
+          {view === "pagas" && (
+            <>
+              <ExpenseGroup
+                title="Pagas no período"
+                items={paid}
+                empty="Nenhuma despesa paga neste período."
+                editing={editing}
+                setEditing={setEditing}
+                onSave={save}
+                onRemove={remove}
+                busy={busy}
+                error={error}
+              />
+              {other.length > 0 && (
+                <ExpenseGroup
+                  title="Do período, pagas em outro mês"
+                  items={other}
+                  editing={editing}
+                  setEditing={setEditing}
+                  onSave={save}
+                  onRemove={remove}
+                  busy={busy}
+                  error={error}
+                />
+              )}
+            </>
           )}
         </div>
       )}
@@ -510,7 +578,7 @@ function ExpenseGroup(props: {
                 </p>
                 {e.notes && <p className="text-xs text-text-muted mt-1 line-clamp-2">{e.notes}</p>}
               </button>
-              <span className={`font-serif text-lg tabular-nums ${e.status === "a_pagar" ? "text-amber-300" : "text-text-primary"}`}>
+              <span className={`font-serif text-lg tabular-nums ${e.status === "a_pagar" ? "text-warn" : "text-text-primary"}`}>
                 {formatBRL(e.amountCents)}
               </span>
               {onPay && (

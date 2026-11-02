@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { formatBRL } from "@/lib/gestor/rules";
-import { AdminHeader, api, Button, ErrorNote, Field, inputClass, Panel } from "@/components/gestor/ui";
+import { api, Button, ErrorNote, Field, inputClass, Panel } from "@/components/gestor/ui";
 
 interface Service {
   id: number;
@@ -24,9 +24,9 @@ const SOURCES = [
 ];
 
 const AVAILABILITY_TEXT: Record<string, { text: string; tone: string }> = {
-  livre: { text: "Data livre", tone: "text-emerald-300" },
-  provisoria: { text: "Data em reserva provisória de outro pedido", tone: "text-amber-300" },
-  ocupada: { text: "Data já reservada", tone: "text-red-300" },
+  livre: { text: "Data livre", tone: "text-ok" },
+  provisoria: { text: "Data em reserva provisória de outro pedido", tone: "text-warn" },
+  ocupada: { text: "Data já reservada", tone: "text-bad" },
 };
 
 export default function NewOrderPage() {
@@ -97,11 +97,10 @@ export default function NewOrderPage() {
   const total = services.filter((s) => serviceIds.includes(s.id)).reduce((sum, s) => sum + s.priceCents, 0);
 
   return (
-    <div className="min-h-screen bg-bg-primary">
-      <AdminHeader active="pedido" />
+    <div>
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
-        <Link href="/admin/dashboard" className="text-sm text-text-muted hover:text-text-primary">
-          ← Voltar à gestão
+        <Link href="/admin/pedidos" className="text-sm text-text-muted hover:text-text-primary">
+          ← Voltar aos pedidos
         </Link>
         <h1 className="font-serif text-3xl text-text-primary mt-3 mb-6">Novo pedido</h1>
 
@@ -134,7 +133,7 @@ export default function NewOrderPage() {
               <Field label="Data">
                 <input type="date" value={form.eventDate} onChange={set("eventDate")} className={inputClass} />
                 {availability && (
-                  <span className={`block text-xs ${availability.passado ? "text-red-300" : AVAILABILITY_TEXT[availability.status]?.tone}`}>
+                  <span className={`block text-xs ${availability.passado ? "text-bad" : AVAILABILITY_TEXT[availability.status]?.tone}`}>
                     {availability.passado ? "Essa data já passou" : AVAILABILITY_TEXT[availability.status]?.text}
                   </span>
                 )}

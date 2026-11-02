@@ -22,7 +22,7 @@ export default function LoginPage() {
     });
 
     if (res.ok) {
-      router.push("/admin/dashboard");
+      router.push("/admin/hoje");
     } else {
       const data = await res.json();
       setError(data.error ?? "Senha incorreta");
@@ -51,13 +51,13 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Senha"
-            className="w-full bg-bg-card border border-border-subtle text-text-primary placeholder-text-muted px-4 py-3 rounded font-sans text-sm focus:outline-none focus:border-gold/50 transition-colors"
+            className="w-full bg-bg-card border border-border-subtle text-text-primary placeholder:text-text-muted px-4 py-3 rounded font-sans text-sm focus:outline-none focus:border-gold/50 transition-colors"
             autoFocus
             required
           />
 
           {error && (
-            <p className="text-sm text-destructive font-sans">{error}</p>
+            <p className="text-sm text-bad font-sans">{error}</p>
           )}
 
           <button

@@ -56,13 +56,13 @@ function GalleryItem({ image }: { image: GalleryImage }) {
           value={coupleTag}
           onChange={(e) => setCoupleTag(e.target.value)}
           placeholder="Tag do casal"
-          className="w-full bg-bg-card border border-border-subtle text-text-primary placeholder-text-muted px-2 py-1 rounded font-sans text-xs focus:outline-none focus:border-gold/50 transition-colors"
+          className="w-full bg-bg-card border border-border-subtle text-text-primary placeholder:text-text-muted px-2 py-1 rounded font-sans text-xs focus:outline-none focus:border-gold/50 transition-colors"
         />
         <input
           value={location}
           onChange={(e) => setLocation(e.target.value)}
           placeholder="Local"
-          className="w-full bg-bg-card border border-border-subtle text-text-primary placeholder-text-muted px-2 py-1 rounded font-sans text-xs focus:outline-none focus:border-gold/50 transition-colors"
+          className="w-full bg-bg-card border border-border-subtle text-text-primary placeholder:text-text-muted px-2 py-1 rounded font-sans text-xs focus:outline-none focus:border-gold/50 transition-colors"
         />
         <button
           onClick={handleSave}
@@ -161,7 +161,7 @@ export default function GallerySection() {
             : "Selecionar fotos (até 20)"}
         </button>
         {uploadError && (
-          <p className="font-sans text-xs text-destructive">{uploadError}</p>
+          <p className="font-sans text-xs text-bad">{uploadError}</p>
         )}
       </div>
 

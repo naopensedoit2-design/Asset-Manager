@@ -113,16 +113,16 @@ export default function DatesSection() {
             <span className="text-gold">dourada</span>) para desbloquear.
           </p>
           <style>{`
-            .rdp-root { --rdp-accent-color: #C9A84C; --rdp-accent-background-color: rgba(201,168,76,0.15); color: #f5f0e8; font-family: 'Inter', sans-serif; }
-            .rdp-day_button { color: #f5f0e8; }
-            .rdp-day_button:hover { background: rgba(201,168,76,0.1); }
-            .rdp-selected .rdp-day_button { background: rgba(201,168,76,0.2) !important; color: #C9A84C !important; font-weight: 600; }
-            .rdp-today .rdp-day_button { color: #DFC070; font-weight: 600; }
-            .rdp-outside .rdp-day_button { color: #6b6560; }
-            .rdp-disabled .rdp-day_button { color: #3a3a3a; cursor: not-allowed; }
-            .rdp-nav button { color: #C9A84C; }
-            .rdp-month_caption { color: #f5f0e8; font-family: 'Playfair Display', serif; }
-            .rdp-weekday { color: #6b6560; font-size: 0.75rem; }
+            .rdp-root { --rdp-accent-color: var(--gold); --rdp-accent-background-color: var(--gold-muted); color: var(--text-primary); font-family: 'Inter', sans-serif; }
+            .rdp-day_button { color: var(--text-primary); }
+            .rdp-day_button:hover { background: var(--gold-muted); }
+            .rdp-selected .rdp-day_button { background: var(--gold-muted) !important; color: var(--gold) !important; font-weight: 600; box-shadow: inset 0 0 0 1px var(--border-gold); }
+            .rdp-today .rdp-day_button { color: var(--gold-light); font-weight: 600; }
+            .rdp-outside .rdp-day_button { color: var(--text-muted); }
+            .rdp-disabled .rdp-day_button { color: var(--text-muted); opacity: 0.45; cursor: not-allowed; }
+            .rdp-nav button { color: var(--gold); }
+            .rdp-month_caption { color: var(--text-primary); font-family: 'Playfair Display', serif; }
+            .rdp-weekday { color: var(--text-muted); font-size: 0.75rem; }
             .rdp-month_grid { border-collapse: separate; border-spacing: 2px; }
           `}</style>
           <DayPicker
@@ -148,7 +148,7 @@ export default function DatesSection() {
                 value={label}
                 onChange={(e) => setLabel(e.target.value)}
                 placeholder="Motivo (ex: Reservado)"
-                className="w-full bg-bg-card border border-border-subtle text-text-primary placeholder-text-muted px-3 py-2 rounded font-sans text-sm focus:outline-none focus:border-gold/50 transition-colors"
+                className="w-full bg-bg-card border border-border-subtle text-text-primary placeholder:text-text-muted px-3 py-2 rounded font-sans text-sm focus:outline-none focus:border-gold/50 transition-colors"
               />
               <div className="flex gap-2">
                 <button
@@ -196,7 +196,7 @@ export default function DatesSection() {
                     </div>
                     <button
                       onClick={() => handleUnblock(d.id)}
-                      className="text-text-muted hover:text-destructive transition-colors cursor-pointer ml-2"
+                      className="text-text-muted hover:text-bad transition-colors cursor-pointer ml-2"
                     >
                       <X className="w-4 h-4" />
                     </button>

@@ -8,15 +8,13 @@ import GallerySection from "./sections/GallerySection";
 import DatesSection from "./sections/DatesSection";
 import ConfigSection from "./sections/ConfigSection";
 import GestaoView from "@/components/gestor/GestaoView";
-import { AdminHeader } from "@/components/gestor/ui";
 
 function Dashboard() {
   const params = useSearchParams();
   const tab = params.get("aba") === "site" ? "site" : "gestao";
 
   return (
-    <div className="min-h-screen bg-bg-primary">
-      <AdminHeader active={tab} />
+    <div>
       <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6">
         {tab === "gestao" ? (
           <GestaoView />
@@ -36,7 +34,7 @@ function Dashboard() {
 
 export default function DashboardPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-bg-primary" />}>
+    <Suspense fallback={<div />}>
       <Dashboard />
     </Suspense>
   );

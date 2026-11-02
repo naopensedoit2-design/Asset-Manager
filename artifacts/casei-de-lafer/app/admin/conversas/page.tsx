@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { MessageCircle, PauseCircle } from "lucide-react";
-import { AdminHeader, api, ErrorNote, Loading, Panel } from "@/components/gestor/ui";
+import { api, ErrorNote, Loading, Panel } from "@/components/gestor/ui";
 import { formatDateBR } from "@/lib/gestor/rules";
 import { whenLabel, type ConversationSummary, type Status } from "@/components/gestor/wa";
 
@@ -53,8 +53,7 @@ export default function ConversationsPage() {
   const counts = { esperando: clients.filter((c) => c.waiting).length, pausadas: clients.filter((c) => c.paused).length };
 
   return (
-    <div className="min-h-screen bg-bg-primary">
-      <AdminHeader active="conversas" />
+    <div>
       <main className="max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-5">
         <div>
           <h1 className="font-serif text-3xl text-text-primary">Conversas</h1>
@@ -76,7 +75,7 @@ export default function ConversationsPage() {
           </Panel>
         )}
 
-        <div className="flex gap-2 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0" role="tablist">
+        <div className="flex gap-2 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0 lg:flex-wrap lg:overflow-visible" role="tablist">
           {(
             [
               ["todas", `Todas (${clients.length})`],
@@ -167,12 +166,12 @@ function ConversationRow({ c }: { c: ConversationSummary }) {
                 </span>
               )}
               {c.paused && (
-                <span className="text-[11px] border border-amber-500/40 text-amber-300 rounded-full px-2 py-0.5 inline-flex items-center gap-1">
+                <span className="text-[11px] border border-warn/40 text-warn rounded-full px-2 py-0.5 inline-flex items-center gap-1">
                   <PauseCircle className="w-3 h-3" /> Margot pausada
                 </span>
               )}
               {c.waiting && !c.paused && (
-                <span className="text-[11px] border border-sky-400/40 text-sky-300 rounded-full px-2 py-0.5">Esperando resposta</span>
+                <span className="text-[11px] border border-info/40 text-info rounded-full px-2 py-0.5">Esperando resposta</span>
               )}
             </span>
           )}
