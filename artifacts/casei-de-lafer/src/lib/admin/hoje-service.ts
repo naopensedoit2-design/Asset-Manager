@@ -43,7 +43,7 @@ export async function getHoje(now = new Date()): Promise<HojeData> {
   const today = todayISO(now);
   const since = new Date(now.getTime() - 24 * 3_600_000);
 
-  const [dash, conversations, approvals, openBills, usage, replies, active, routine, agenda] = await Promise.all([
+  const [dash, conversations, approvals, openBills, usage, replies, active, routine, agenda, linkedOrders] = await Promise.all([
     gestor.getDashboard(now),
     listConversations(),
     pendingApprovals(now),
@@ -55,7 +55,13 @@ export async function getHoje(now = new Date()): Promise<HojeData> {
     prisma.waContact.count({ where: { isOwner: false, lastMessageAt: { gte: since } } }),
     prisma.setting.findUnique({ where: { key: ROUTINE_KEY } }),
     googleAgenda(), // não falha: sem Google ou com o Google fora do ar, vem vazio
+    gestor.googleLinkedOrders(),
   ]);
+
+  const orderOf = (eventId: string) => {
+    const o = linkedOrders.get(eventId);
+    return o ? { id: o.orderId, client: o.client, status: o.status, statusLabel: o.statusLabel, place: o.place, time: o.time } : undefined;
+  };
 
   const settings = dash.settings;
   const whatsappConfigured = waMissing().length === 0;
@@ -108,7 +114,7 @@ export async function getHoje(now = new Date()): Promise<HojeData> {
       aPagarCents: openBills.reduce((sum, b) => sum + b.amountCents, 0),
       aPagarVencidoCents: overdue.reduce((sum, b) => sum + b.amountCents, 0),
     },
-    paradas: buildStops(dash.upcoming, today, 5, bookings(agenda.items, today)),
+    paradas: buildStops(dash.upcoming, today, 5, bookings(agenda.items, today).map((b) => ({ ...b, order: orderOf(b.id) }))),
     rotina: { ultimaExecucao: record?.at ?? null, resumoEnviado: record?.resumoEnviado ?? null, detalhe: record?.detalhe ?? null },
   };
 }
