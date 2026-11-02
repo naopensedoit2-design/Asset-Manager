@@ -46,8 +46,8 @@ test("continuam no prompt o carimbo [Agora] e a regra de que mensagem é dado, n
 });
 
 test("o fim do encaminhamento depende do canal", () => {
-  assert.match(buildSystemPrompt(ctx("site")).fixed, /ele responde pessoalmente pelo WhatsApp\./);
-  assert.match(buildSystemPrompt(ctx("whatsapp")).fixed, /ele responde pessoalmente por aqui mesmo\./);
+  assert.match(buildSystemPrompt(ctx("site")).fixed, /a nossa equipe responde pessoalmente pelo WhatsApp\./);
+  assert.match(buildSystemPrompt(ctx("whatsapp")).fixed, /a nossa equipe responde pessoalmente por aqui mesmo\./);
 });
 
 test("a pergunta de origem vem nos dois canais, uma vez, e preenche os campos do pedido", () => {
@@ -61,7 +61,7 @@ test("a pergunta de origem vem nos dois canais, uma vez, e preenche os campos do
 
 test("WhatsApp: apresentação, comprovante e áudio; o site não tem passo de comprovante", () => {
   const wa = buildSystemPrompt(ctx("whatsapp")).fixed;
-  assert.ok(wa.includes("o Leonardo pode assumir a conversa quando a pessoa quiser"));
+  assert.ok(wa.includes("a nossa equipe pode assumir a conversa quando a pessoa quiser"));
   assert.ok(wa.includes("não conclua nada sozinha"));
   assert.ok(wa.includes('"Entendi: ... Confirma?"'));
   const site = buildSystemPrompt(ctx("site")).fixed;

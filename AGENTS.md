@@ -56,6 +56,7 @@ Instagram ou indicação (fotógrafos, cerimonialistas como Celebre Gramado) →
 - **Mobile first.** O painel é usado principalmente pelo celular.
 - **Identidade visual:** a do site — fundo quase preto, dourado `#C9A84C`, Playfair Display nos títulos e Inter no texto (tokens em `app/globals.css`).
 - **Cores no painel (`/admin`):** use só as classes do tema (`text-gold`, `text-ok`, `text-warn`, `text-bad`, `text-info`, `bg-bg-card`, `border-border-subtle`…), nunca cor fixa (`text-emerald-300`, `#C9A84C`): o painel tem 4 temas e 6 cores de destaque, e uma cor fixa fica ilegível em algum deles. `src/lib/admin/look.test.ts` confere o contraste e `src/lib/admin/tokens.test.ts` barra cor fixa. O padrão (Clássico + ouro) continua sendo o visual do site.
+- **A Margot não diz o nome do dono a clientes:** ela fala "nossa equipe" (instruções em `src/lib/margot/prompt.ts`; respostas fixas em `src/lib/wa/customer.ts`, `src/lib/margot/agent.ts` e `app/api/margot/route.ts`; texto do botão em `app/orcamento/detalhado/page.tsx`). `src/lib/margot/nome-do-dono.test.ts` trava isso. O nome continua só onde é necessário: Termo (contrato), política de privacidade (LGPD), favorecido do Pix e tudo que é dito ao próprio dono (modo secretária, avisos, painel).
 - **Teste regra de negócio:** `pnpm --filter @workspace/casei-de-lafer run test`.
 - **Commits pequenos**, mensagens em português.
 - **Ao terminar**, entregue: o que foi feito, arquivos alterados, mudanças de schema, variáveis novas, como testar, o que ficou pendente.

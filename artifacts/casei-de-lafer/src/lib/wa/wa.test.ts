@@ -162,7 +162,7 @@ test("respostas curtas de confirmação", () => {
 
 // ─── Histórico ───────────────────────────────────────────────
 
-test("histórico alterna os papéis, começa pelo cliente e marca o Leonardo", () => {
+test("histórico alterna os papéis, começa pelo cliente e marca o que a equipe escreveu", () => {
   const m = (id: number, direction: string, author: string, text: string, extra: Record<string, string> = {}) => ({
     id,
     direction,
@@ -188,7 +188,7 @@ test("histórico alterna os papéis, começa pelo cliente e marca o Leonardo", (
     { role: "user", content: "Oi\nQuero orçamento" },
     { role: "assistant", content: "Claro! Qual a data?" },
     { role: "user", content: "[áudio] dia 5 de dezembro" },
-    { role: "assistant", content: "[Leonardo escreveu pessoalmente] Oi Ana, aqui é o Leonardo" },
+    { role: "assistant", content: "[A equipe escreveu pessoalmente] Oi Ana, aqui é o Leonardo" },
     { role: "user", content: "[imagem] comprovante" },
   ]);
   assert.equal(describe({ id: 1, direction: "in", author: "cliente", type: "document", text: "", fileName: "pix.pdf", status: "" }), "[documento: pix.pdf]");

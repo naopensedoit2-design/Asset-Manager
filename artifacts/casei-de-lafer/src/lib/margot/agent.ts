@@ -47,7 +47,7 @@ export const ORDER_FIELDS = {
     description: "Como conheceu, se a pessoa disser",
   },
   quem_indicou: { type: "string" },
-  resumo: { type: "string", description: "Resumo do que importa na conversa, para o Leonardo ler" },
+  resumo: { type: "string", description: "Resumo do que importa na conversa, para a equipe ler" },
 };
 
 const TOOLS: ToolDef[] = [
@@ -63,9 +63,9 @@ const TOOLS: ToolDef[] = [
     },
   },
   {
-    name: "encaminhar_para_leonardo",
+    name: "encaminhar_para_equipe",
     description:
-      "Avisa o Leonardo de algo que você não pode resolver (desconto, local fora da Serra, ensaio, dúvida fora do roteiro).",
+      "Avisa a equipe de algo que você não pode resolver (desconto, local fora da Serra, ensaio, dúvida fora do roteiro).",
     input_schema: {
       type: "object",
       properties: { motivo: { type: "string" } },
@@ -114,11 +114,11 @@ async function runTool(name: string, input: any, state: ToolState): Promise<unkn
       }
       return {
         ...r.resultado,
-        proximo_passo: "Falar com o Leonardo no WhatsApp para pagar o sinal e garantir a data.",
+        proximo_passo: "Falar com a nossa equipe no WhatsApp para pagar o sinal e garantir a data.",
       };
     }
 
-    if (name === "encaminhar_para_leonardo") {
+    if (name === "encaminhar_para_equipe") {
       state.encaminhado = true;
       const motivo = String(input?.motivo ?? "").slice(0, 500);
       await appendOrderNote(state.orderId, `[Margot pediu sua ajuda] ${motivo}`);
@@ -127,7 +127,7 @@ async function runTool(name: string, input: any, state: ToolState): Promise<unkn
         `chat do site: ${motivo}`,
         state.orderId,
       );
-      return { ok: true, instrucao: "Diga que o Leonardo responde pessoalmente pelo WhatsApp (botão abaixo da conversa)." };
+      return { ok: true, instrucao: "Diga que nossa equipe responde pessoalmente pelo WhatsApp (botão abaixo da conversa)." };
     }
 
     return { erro: `Ferramenta desconhecida: ${name}` };
@@ -157,7 +157,7 @@ export async function chat(
 
   if (result.exhausted) {
     return {
-      reply: "Vou pedir para o Leonardo continuar com você pelo WhatsApp, tudo bem? É só tocar no botão abaixo.",
+      reply: "Vou pedir para nossa equipe continuar com você pelo WhatsApp, tudo bem? É só tocar no botão abaixo.",
       orderId: state.orderId,
       encaminhado: true,
       usage,

@@ -63,7 +63,7 @@ const WA_TOOLS: ToolDef[] = [
   {
     name: "registrar_comprovante",
     description:
-      "Use quando a pessoa mandar o comprovante de um pagamento (imagem ou PDF). Envia ao Leonardo para conferir e confirmar.",
+      "Use quando a pessoa mandar o comprovante de um pagamento (imagem ou PDF). Envia à equipe para conferir e confirmar.",
     input_schema: {
       type: "object",
       properties: {
@@ -73,9 +73,9 @@ const WA_TOOLS: ToolDef[] = [
     },
   },
   {
-    name: "encaminhar_para_leonardo",
+    name: "encaminhar_para_equipe",
     description:
-      "Avisa o Leonardo no celular dele de algo que você não pode resolver (desconto, local fora da Serra, mudança depois da reserva, reclamação, pedido para falar com ele, parceria).",
+      "Avisa a equipe, no celular, de algo que você não pode resolver (desconto, local fora da Serra, mudança depois da reserva, reclamação, pedido para falar com uma pessoa, parceria).",
     input_schema: {
       type: "object",
       properties: { motivo: { type: "string", description: "O que a pessoa quer, em uma ou duas frases" } },
@@ -111,7 +111,7 @@ async function describeOrder(orderId: number): Promise<string> {
   const q = o.quotes[0];
   if (q) {
     lines.push(
-      `Orçamento: ${q.items.map((i) => i.name).join(" + ")} · total ${formatBRL(q.totalCents)} · sinal ${formatBRL(q.depositCents)}${q.discountCents ? ` · desconto ${formatBRL(q.discountCents)} (dado pelo Leonardo)` : ""}`,
+      `Orçamento: ${q.items.map((i) => i.name).join(" + ")} · total ${formatBRL(q.totalCents)} · sinal ${formatBRL(q.depositCents)}${q.discountCents ? ` · desconto ${formatBRL(q.discountCents)} (dado pela equipe)` : ""}`,
     );
   }
   if (o.publicToken && site) lines.push(`Link da proposta: ${site}/p/${o.publicToken}`);
@@ -168,7 +168,7 @@ async function runTool(name: string, input: any, s: State): Promise<unknown> {
       if (s.orderId) {
         const current = await prisma.order.findUnique({ where: { id: s.orderId }, select: { status: true } });
         if (current && (current.status === "reservado" || current.status === "confirmado")) {
-          return { erro: "Este pedido já está com a data reservada. Mudanças agora são com o Leonardo: use encaminhar_para_leonardo." };
+          return { erro: "Este pedido já está com a data reservada. Mudanças agora são com a nossa equipe: use encaminhar_para_equipe." };
         }
       }
       const r = await registerOrder({
@@ -248,7 +248,7 @@ async function runTool(name: string, input: any, s: State): Promise<unknown> {
         link_termo: termo,
         instrucao_pagamento: pix
           ? `Pix de ${formatBRL(amount)} para a chave ${pix}${s.settings.contractorName ? ` (${s.settings.contractorName})` : ""}. Depois é só mandar o comprovante por aqui.`
-          : "O Leonardo envia a chave Pix por aqui em seguida.",
+          : "Nossa equipe envia a chave Pix por aqui em seguida.",
       };
     }
 
@@ -291,7 +291,7 @@ async function runTool(name: string, input: any, s: State): Promise<unknown> {
           summary: `${who(s)} mandou um comprovante${valor ? ` de ${valor}` : ""} sem pedido registrado`,
           build: () => linkButtonMessage(body, "Abrir conversa", adminLink(`conversas/${s.contact.id}`)),
         });
-        return { ok: true, instrucao: "Agradeça e diga que o Leonardo confere e retorna em seguida." };
+        return { ok: true, instrucao: "Agradeça e diga que nossa equipe confere e retorna em seguida." };
       }
 
       const o = await gestor.getOrder(s.orderId);
@@ -314,10 +314,10 @@ async function runTool(name: string, input: any, s: State): Promise<unknown> {
         header,
         copy,
       );
-      return { ok: true, instrucao: "Agradeça e diga que o Leonardo confere e confirma a reserva em seguida." };
+      return { ok: true, instrucao: "Agradeça e diga que nossa equipe confere e confirma a reserva em seguida." };
     }
 
-    if (name === "encaminhar_para_leonardo") {
+    if (name === "encaminhar_para_equipe") {
       const motivo = String(input?.motivo ?? "").slice(0, 500);
       await appendOrderNote(s.orderId, `[Margot pediu sua ajuda] ${motivo}`);
       const recent = s.contact.notifiedAt && Date.now() - s.contact.notifiedAt.getTime() < 10 * 60_000;
@@ -330,13 +330,13 @@ async function runTool(name: string, input: any, s: State): Promise<unknown> {
         });
         await prisma.waContact.update({ where: { id: s.contact.id }, data: { notifiedAt: new Date() } });
       }
-      return { ok: true, instrucao: "Diga que o Leonardo já foi avisado e responde por aqui mesmo assim que puder." };
+      return { ok: true, instrucao: "Diga que nossa equipe já foi avisada e responde por aqui mesmo assim que puder." };
     }
 
     return { erro: `Ferramenta desconhecida: ${name}` };
   } catch (e) {
     if (e instanceof RuleError && e.code === "data_ocupada") {
-      return { erro: "Essa data acabou de ficar indisponível. Diga isso com gentileza e use encaminhar_para_leonardo." };
+      return { erro: "Essa data acabou de ficar indisponível. Diga isso com gentileza e use encaminhar_para_equipe." };
     }
     return toolError(e, name);
   }
@@ -366,7 +366,7 @@ async function fallbackReply(contact: WaContact) {
   if (recent) return;
   await sendText(
     contact,
-    "Olá! Recebemos sua mensagem. O Leonardo, da Eu Casei de Lafer, responde por aqui assim que possível. 💍",
+    "Olá! Recebemos sua mensagem. Nossa equipe responde por aqui assim que possível. 💍",
     { author: "sistema", kind: "resposta_automatica" },
   );
 }
@@ -454,7 +454,7 @@ export async function respondToClient(contact: WaContact, pending: WaMessage[]):
       usage: s.usage,
     });
     const text = result.exhausted
-      ? "Vou pedir para o Leonardo continuar com você por aqui, tudo bem? Ele já foi avisado."
+      ? "Vou pedir para nossa equipe continuar com você por aqui, tudo bem? Ela já foi avisada."
       : toWhatsApp(result.text);
     if (result.exhausted) await forwardToOwner(s.contact, meaningful, "a Margot se enrolou nesta conversa");
     if (text) await sendText(s.contact, text, { author: "margot" });
@@ -462,7 +462,7 @@ export async function respondToClient(contact: WaContact, pending: WaMessage[]):
     console.error("[whatsapp] Margot", e);
     await sendText(
       s.contact,
-      "Desculpe, tive um probleminha para responder agora. Já avisei o Leonardo e ele te responde por aqui em breve.",
+      "Desculpe, tive um probleminha para responder agora. Já avisei nossa equipe e ela te responde por aqui em breve.",
       { author: "sistema", kind: "erro" },
     );
     await forwardToOwner(s.contact, meaningful, `a Margot teve um erro: ${(e as Error).message.slice(0, 120)}`);
