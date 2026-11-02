@@ -23,6 +23,18 @@ const SOURCES = [
   { value: "outro", label: "Outro" },
 ];
 
+/** Casamento da Google Agenda que originou o pedido (vem de ?google=<id do evento>). */
+interface GoogleDraft {
+  id: string;
+  link: string;
+  name: string;
+  eventDate: string;
+  eventTime: string;
+  venue: string;
+  notes: string;
+  pedido: number | null;
+}
+
 const AVAILABILITY_TEXT: Record<string, { text: string; tone: string }> = {
   livre: { text: "Data livre", tone: "text-ok" },
   provisoria: { text: "Data em reserva provisória de outro pedido", tone: "text-warn" },
@@ -45,6 +57,32 @@ export default function NewOrderPage() {
   const [serviceIds, setServiceIds] = useState<number[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [googleId, setGoogleId] = useState("");
+
+  // "Criar pedido" na Hoje, na Agenda ou em Regras abre esta tela com o id do casamento da Google Agenda.
+  useEffect(() => {
+    setGoogleId(new URLSearchParams(window.location.search).get("google") ?? "");
+  }, []);
+
+  const { data: draft, error: draftError } = useQuery<GoogleDraft>({
+    queryKey: ["gestor-google-evento", googleId],
+    queryFn: () => api(`/api/admin/gestor/google/evento?id=${encodeURIComponent(googleId)}`),
+    enabled: googleId !== "",
+    retry: false,
+  });
+
+  useEffect(() => {
+    // Casamento que já tem pedido: não preenche nada, o aviso aponta para o pedido que existe.
+    if (!draft || draft.pedido) return;
+    setForm((f) => ({
+      ...f,
+      name: f.name || draft.name,
+      eventDate: f.eventDate || draft.eventDate,
+      eventTime: f.eventTime || draft.eventTime,
+      venue: f.venue || draft.venue,
+      notes: f.notes || draft.notes,
+    }));
+  }, [draft]);
 
   const { data: services = [] } = useQuery<Service[]>({
     queryKey: ["gestor-servicos"],
@@ -85,6 +123,7 @@ export default function NewOrderPage() {
           city: form.city,
           notes: form.notes,
           serviceIds,
+          ...(draft && !draft.pedido ? { googleEventId: draft.id } : {}),
         },
       });
       router.push(`/admin/pedidos/${result.order.id}`);
@@ -94,6 +133,7 @@ export default function NewOrderPage() {
     }
   }
 
+  const ownGoogleDate = !!draft && !draft.pedido && form.eventDate === draft.eventDate;
   const total = services.filter((s) => serviceIds.includes(s.id)).reduce((sum, s) => sum + s.priceCents, 0);
 
   return (
@@ -103,6 +143,40 @@ export default function NewOrderPage() {
           ← Voltar aos pedidos
         </Link>
         <h1 className="font-serif text-3xl text-text-primary mt-3 mb-6">Novo pedido</h1>
+
+        {googleId && draftError && (
+          <div className="mb-6">
+            <ErrorNote message={`${(draftError as Error).message} O formulário abaixo cria um pedido comum.`} />
+          </div>
+        )}
+        {draft && (
+          <div className="mb-6 rounded-lg border border-info bg-bg-card px-4 py-3 text-sm text-text-secondary">
+            {draft.pedido ? (
+              <p>
+                Esse casamento da sua Google Agenda já tem o{" "}
+                <Link href={`/admin/pedidos/${draft.pedido}`} className="text-text-primary underline underline-offset-2">
+                  pedido #{draft.pedido}
+                </Link>
+                .
+              </p>
+            ) : (
+              <p>
+                Casamento da sua Google Agenda
+                {draft.link && (
+                  <>
+                    {" "}
+                    (
+                    <a href={draft.link} target="_blank" rel="noreferrer" className="text-text-primary underline underline-offset-2">
+                      abrir
+                    </a>
+                    )
+                  </>
+                )}
+                . Preencha o WhatsApp do casal e os serviços. O pedido fica ligado a esse evento: a data dele não conta como conflito e o painel não cria outro evento na agenda.
+              </p>
+            )}
+          </div>
+        )}
 
         <form onSubmit={submit} className="space-y-6">
           <Panel title="Cliente">
@@ -132,10 +206,14 @@ export default function NewOrderPage() {
             <div className="grid sm:grid-cols-2 gap-4">
               <Field label="Data">
                 <input type="date" value={form.eventDate} onChange={set("eventDate")} className={inputClass} />
-                {availability && (
-                  <span className={`block text-xs ${availability.passado ? "text-bad" : AVAILABILITY_TEXT[availability.status]?.tone}`}>
-                    {availability.passado ? "Essa data já passou" : AVAILABILITY_TEXT[availability.status]?.text}
-                  </span>
+                {ownGoogleDate ? (
+                  <span className="block text-xs text-info">Data do casamento que já está na sua Google Agenda</span>
+                ) : (
+                  availability && (
+                    <span className={`block text-xs ${availability.passado ? "text-bad" : AVAILABILITY_TEXT[availability.status]?.tone}`}>
+                      {availability.passado ? "Essa data já passou" : AVAILABILITY_TEXT[availability.status]?.text}
+                    </span>
+                  )
                 )}
               </Field>
               <Field label="Horário">
@@ -179,7 +257,7 @@ export default function NewOrderPage() {
           </Panel>
 
           <ErrorNote message={error} />
-          <Button type="submit" disabled={saving} className="w-full sm:w-auto">
+          <Button type="submit" disabled={saving || !!draft?.pedido} className="w-full sm:w-auto">
             {saving ? "Criando…" : "Criar pedido"}
           </Button>
         </form>

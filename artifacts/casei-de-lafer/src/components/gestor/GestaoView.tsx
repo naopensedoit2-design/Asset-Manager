@@ -284,7 +284,7 @@ interface AgendaDay {
   status: string;
   orderId: number | null;
   origem: "pedido" | "bloqueio" | "google" | null;
-  google: { titulo: string; casamento: boolean } | null;
+  google: { id: string; titulo: string; casamento: boolean; pedido: number | null } | null;
 }
 
 function MonthCalendar({ today }: { today: string }) {
@@ -368,15 +368,23 @@ function MonthCalendar({ today }: { today: string }) {
         <span className="flex items-center gap-1.5"><i className="w-3 h-3 rounded-sm bg-gold" /> Confirmado</span>
         <span className="flex items-center gap-1.5"><i className="w-3 h-3 rounded-sm border border-gold" /> Reserva sem sinal</span>
         <span className="flex items-center gap-1.5"><i className="w-3 h-3 rounded-sm bg-text-primary/10" /> Bloqueio manual</span>
-        <span className="flex items-center gap-1.5"><i className="w-3 h-3 rounded-sm border border-dashed border-info" /> Google Agenda, sem pedido</span>
+        <span className="flex items-center gap-1.5"><i className="w-3 h-3 rounded-sm border border-dashed border-info" /> Google Agenda, sem reserva</span>
       </div>
       {googleDays.length > 0 && (
         <ul className="mt-4 space-y-1.5 text-sm" aria-label="Compromissos da Google Agenda neste mês">
           {googleDays.map((d) => (
-            <li key={d.data} className="flex items-baseline gap-2">
+            <li key={d.data} className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
               <span className="w-12 shrink-0 tabular-nums text-text-secondary">{formatDateBR(d.data).slice(0, 5)}</span>
               <span className="min-w-0 text-text-primary">{d.google!.titulo}</span>
               {d.google!.casamento && <Chip tone="info">casamento</Chip>}
+              {d.google!.casamento && d.google!.id && (
+                <Link
+                  href={d.google!.pedido ? `/admin/pedidos/${d.google!.pedido}` : `/admin/pedidos/novo?google=${encodeURIComponent(d.google!.id)}`}
+                  className="inline-flex min-h-9 items-center text-gold underline underline-offset-4"
+                >
+                  {d.google!.pedido ? `Pedido #${d.google!.pedido}` : "Criar pedido"}
+                </Link>
+              )}
             </li>
           ))}
         </ul>

@@ -257,8 +257,16 @@ export interface StopInput {
   payments: { status: string }[];
 }
 
+/**
+ * Casamento da Google Agenda; `order` quando já foi criado um pedido a partir dele (ainda sem reserva, por exemplo).
+ * `place` e `time` são os do pedido (o dono pode ter corrigido no formulário); vazios, vale o que está na agenda.
+ */
+export interface LinkedBooking extends Booking {
+  order?: { id: number; client: string; status: string; statusLabel: string; place?: string; time?: string };
+}
+
 export interface Stop {
-  /** pedido = pedido reservado ou confirmado; google = casamento que só está na Google Agenda, sem pedido no painel. */
+  /** pedido = pedido do painel; google = casamento que só está na Google Agenda, sem pedido no painel. */
   source: "pedido" | "google";
   orderId: number | null;
   client: string;
@@ -270,16 +278,17 @@ export interface Stop {
   days: number;
   when: string;
   pendingPayment: boolean;
-  /** Só nas paradas da Google Agenda: link do evento e os outros compromissos do mesmo dia. */
+  /** Só nas paradas da Google Agenda: link do evento, os outros compromissos do mesmo dia e o id do evento (para criar o pedido). */
   link: string;
   also: string[];
+  eventId: string;
 }
 
 /**
  * Próximos casamentos: os pedidos reservados/confirmados e, junto, os casamentos que estão só na Google Agenda.
  * Se o dia já tem pedido, o casamento da agenda não aparece de novo (é o mesmo).
  */
-export function buildStops(orders: StopInput[], today: string, limit = 5, google: Booking[] = []): Stop[] {
+export function buildStops(orders: StopInput[], today: string, limit = 5, google: LinkedBooking[] = []): Stop[] {
   const stops: Stop[] = [];
   for (const o of orders) {
     if (!o.eventDate) continue;
@@ -299,6 +308,7 @@ export function buildStops(orders: StopInput[], today: string, limit = 5, google
       pendingPayment: o.payments.some((p) => p.status === "a_receber" || p.status === "atrasado"),
       link: "",
       also: [],
+      eventId: "",
     });
   }
   const withOrder = new Set(stops.map((s) => s.eventDate));
@@ -306,21 +316,42 @@ export function buildStops(orders: StopInput[], today: string, limit = 5, google
     if (withOrder.has(g.date)) continue;
     const days = diffDays(today, g.date);
     if (days < 0) continue;
-    stops.push({
-      source: "google",
-      orderId: null,
-      client: g.title,
-      status: "google",
-      statusLabel: "Só na Google Agenda",
-      eventDate: g.date,
-      eventTime: g.time,
-      place: g.location,
-      days,
-      when: daysLabel(days),
-      pendingPayment: false,
-      link: g.link,
-      also: g.also,
-    });
+    // Casamento da Google que já virou pedido (ainda sem reserva): aparece como o pedido, não como "só na Google".
+    stops.push(
+      g.order
+        ? {
+            source: "pedido",
+            orderId: g.order.id,
+            client: g.order.client,
+            status: g.order.status,
+            statusLabel: g.order.statusLabel,
+            eventDate: g.date,
+            eventTime: g.order.time || g.time,
+            place: g.order.place || g.location,
+            days,
+            when: daysLabel(days),
+            pendingPayment: false,
+            link: "",
+            also: [],
+            eventId: "",
+          }
+        : {
+            source: "google",
+            orderId: null,
+            client: g.title,
+            status: "google",
+            statusLabel: "Só na Google Agenda",
+            eventDate: g.date,
+            eventTime: g.time,
+            place: g.location,
+            days,
+            when: daysLabel(days),
+            pendingPayment: false,
+            link: g.link,
+            also: g.also,
+            eventId: g.id,
+          },
+    );
   }
   return stops
     .sort((a, b) => a.days - b.days || Number(a.source === "google") - Number(b.source === "google") || (a.orderId ?? 0) - (b.orderId ?? 0))

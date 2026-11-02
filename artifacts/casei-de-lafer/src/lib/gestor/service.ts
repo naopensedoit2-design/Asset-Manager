@@ -3,8 +3,9 @@
 
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
-import { cleanTitle } from "@/lib/google/bookings";
-import { createOrderEvent, deleteOrderEvent, googleBusyDays, isConfigured as googleConfigured } from "@/lib/google/calendar";
+import { bookings, cleanTitle, orderDraft } from "@/lib/google/bookings";
+import { createOrderEvent, deleteOrderEvent, googleAgenda, googleBusyDays, isConfigured as googleConfigured } from "@/lib/google/calendar";
+import { encodeLink, LINK_PREFIX, linkKey, linksFromRows } from "@/lib/google/links";
 import {
   addDays,
   allowedTransitions,
@@ -16,6 +17,7 @@ import {
   computeKpis,
   dateToISO,
   formatBRL,
+  formatDateBR,
   DEFAULT_SERVICES,
   DEFAULT_SERVICES_VERSION,
   isDateString,
@@ -147,12 +149,15 @@ export async function getCalendarFacts(db: Tx | typeof prisma = prisma): Promise
   });
   // Compromissos da Google Agenda do Leonardo também ocupam o dia.
   const google = await googleBusyDays();
+  // Pedidos criados a partir de um casamento que já estava na Google Agenda (ver google/links.ts).
+  const links = linksFromRows(await db.setting.findMany({ where: { key: { startsWith: LINK_PREFIX } } }));
   const manual = blocked.map((b) => b.date.toISOString().slice(0, 10));
   return {
     blocked: [...manual, ...google.map((g) => g.date)],
     reservations: reservations.map((r) => ({ date: dateToISO(r.date)!, kind: r.kind, orderId: r.orderId })),
     manualBlocked: manual,
-    googleDays: google.map(({ date, summary, kind }) => ({ date, summary, kind })),
+    googleDays: google.map(({ date, summary, kind, eventId }) => ({ date, summary, kind, eventId })),
+    googleLinks: links,
   };
 }
 
@@ -205,7 +210,15 @@ export async function monthAgenda(year: unknown, month: unknown) {
         : g && !manual.has(d.data)
           ? "google"
           : "bloqueio";
-    return { ...d, origem, google: origem === "google" && g ? { titulo: cleanTitle(g.summary), casamento: g.kind === "casamento" } : null };
+    const pedido = g?.eventId ? (facts.googleLinks ?? []).find((l) => l.eventId === g.eventId)?.orderId ?? null : null;
+    return {
+      ...d,
+      origem,
+      google:
+        origem === "google" && g
+          ? { id: g.eventId ?? "", titulo: cleanTitle(g.summary), casamento: g.kind === "casamento", pedido }
+          : null,
+    };
   });
   return { ano: y, mes: m, dias };
 }
@@ -356,11 +369,35 @@ async function upsertClient(input: Record<string, any>, tx: Tx) {
   return tx.client.create({ data: { ...data, phone, notes: str(input?.notes) } });
 }
 
+/**
+ * Pedido que nasce de um casamento já anotado na Google Agenda (só pelo painel; a Margot e a API de agentes não ligam
+ * pedido a evento). O evento tem de existir, ser do mesmo dia do pedido e ainda não ter pedido.
+ */
+async function resolveGoogleLink(eventId: string, eventDate: string | null) {
+  const item = (await googleAgenda()).items.find((i) => i.id === eventId);
+  if (!item) {
+    throw new RuleError("evento_nao_encontrado", "Não achei esse casamento na Google Agenda (ela pode estar fora do ar). Tente de novo em instantes.", 404);
+  }
+  if (eventDate !== item.date) {
+    throw new RuleError(
+      "data_diferente",
+      `Esse casamento está na Google Agenda em ${formatDateBR(item.date)}. Deixe a data do pedido igual, ou crie um pedido sem ligar a ele.`,
+      409,
+    );
+  }
+  const links = linksFromRows(await prisma.setting.findMany({ where: { key: { startsWith: LINK_PREFIX } } }));
+  const taken = links.find((l) => l.eventId === eventId);
+  if (taken) throw new RuleError("evento_ja_ligado", `Esse casamento já tem o pedido #${taken.orderId}.`, 409);
+  return { eventId, date: item.date };
+}
+
 export async function createOrder(input: Record<string, any>, actor: Actor) {
   const eventDate = input.eventDate ? requireDate(input.eventDate, "a data do evento") : null;
   const serviceIds = Array.isArray(input.serviceIds)
     ? input.serviceIds.map((n: unknown) => requireInt(n, "serviceIds"))
     : [];
+  const googleEventId = actor === "admin" && typeof input.googleEventId === "string" ? input.googleEventId.trim() : "";
+  const googleLink = googleEventId ? await resolveGoogleLink(googleEventId, eventDate) : null;
 
   const id = await prisma.$transaction(async (tx) => {
     const client = await upsertClient(input.client ?? {}, tx);
@@ -377,8 +414,11 @@ export async function createOrder(input: Record<string, any>, actor: Actor) {
       },
     });
     await tx.orderHistory.create({
-      data: { orderId: order.id, toStatus: "novo", actor, note: "Pedido criado" },
+      data: { orderId: order.id, toStatus: "novo", actor, note: googleLink ? "Pedido criado a partir da Google Agenda" : "Pedido criado" },
     });
+    if (googleLink) {
+      await tx.setting.create({ data: { key: linkKey(order.id), value: encodeLink(googleLink.eventId, googleLink.date) } });
+    }
     return order.id;
   });
 
@@ -464,7 +504,11 @@ export async function changeStatus(id: unknown, to: unknown, actor: Actor, note 
     if (to === "reservado") await reserveInTx(order, settings, tx);
     if (to === "confirmado") await confirmInTx(order, settings, tx);
     if (to === "perdido" || to === "cancelado" || to === "novo" || to === "aguardando_resposta") {
-      if (to === "perdido" || to === "cancelado") await cancelPendingPayments(orderId, tx);
+      if (to === "perdido" || to === "cancelado") {
+        await cancelPendingPayments(orderId, tx);
+        // O casamento continua na Google Agenda do dono, mas já não tem pedido: volta a aparecer como "só na Google".
+        await tx.setting.deleteMany({ where: { key: linkKey(orderId) } });
+      }
       if (from === "reservado" || from === "confirmado") await releaseInTx(orderId, tx);
     }
 
@@ -474,6 +518,53 @@ export async function changeStatus(id: unknown, to: unknown, actor: Actor, note 
 
   await syncOrderCalendar(orderId);
   return getOrder(orderId);
+}
+
+// ─── Casamentos da Google Agenda que viram pedido (só o painel usa) ───
+
+/** Pedidos ligados a um casamento da Google Agenda, pelo id do evento. */
+export async function googleLinkedOrders() {
+  const links = linksFromRows(await prisma.setting.findMany({ where: { key: { startsWith: LINK_PREFIX } } }));
+  const out = new Map<string, { orderId: number; client: string; status: string; statusLabel: string; place: string; time: string }>();
+  if (!links.length) return out;
+  const orders = await prisma.order.findMany({
+    where: { id: { in: links.map((l) => l.orderId) } },
+    include: { client: { select: { name: true } } },
+  });
+  const byId = new Map(orders.map((o) => [o.id, o]));
+  for (const l of links) {
+    const o = byId.get(l.orderId);
+    if (!o) continue;
+    out.set(l.eventId, {
+      orderId: o.id,
+      client: o.client.name,
+      status: o.status,
+      statusLabel: STATUS_LABELS[o.status as OrderStatus] ?? o.status,
+      place: [o.venue, o.city].filter(Boolean).join(", "),
+      time: o.eventTime,
+    });
+  }
+  return out;
+}
+
+/** O que o Novo pedido já traz para um casamento da Google Agenda (nome do casal, data, hora, local). */
+export async function googleBookingDraft(eventId: unknown) {
+  const id = str(eventId, 300);
+  const agenda = await googleAgenda();
+  const booking = bookings(agenda.items, "0000-01-01").find((b) => b.id === id);
+  if (!booking) throw new RuleError("evento_nao_encontrado", "Não achei esse casamento na Google Agenda.", 404);
+  const linked = (await googleLinkedOrders()).get(id);
+  return { id, link: booking.link, ...orderDraft(booking), pedido: linked?.orderId ?? null };
+}
+
+/** De qual casamento da Google Agenda este pedido veio, se veio de um. */
+export async function orderGoogleLink(orderId: unknown) {
+  const id = requireInt(orderId, "id");
+  const row = await prisma.setting.findUnique({ where: { key: linkKey(id) } });
+  const link = row ? linksFromRows([row])[0] : undefined;
+  if (!link) return { vinculo: null };
+  const item = (await googleAgenda()).items.find((i) => i.id === link.eventId);
+  return { vinculo: { data: link.date, titulo: item ? cleanTitle(item.title) : null, link: item?.link ?? "" } };
 }
 
 // ─── Google Agenda ───────────────────────────────────────────
@@ -497,7 +588,7 @@ export async function syncOrderCalendar(orderId: number) {
     if (!order) return;
     for (const r of order.reservations) {
       if (!r.activeDate && r.googleEventId) {
-        await deleteOrderEvent(r.googleEventId);
+        await deleteOrderEvent(r.googleEventId, order.id);
         await prisma.reservation.update({ where: { id: r.id }, data: { googleEventId: null } });
       }
     }
@@ -542,6 +633,8 @@ async function reserveInTx(order: FullOrder, settings: Settings, tx: Tx) {
 
   const existing = order.reservations.find((r) => r.activeDate);
   if (!existing) {
+    // Pedido ligado a um casamento da Google Agenda: a reserva guarda o id desse evento, e o painel não cria outro.
+    const link = (facts.googleLinks ?? []).find((l) => l.orderId === order.id && l.date === date);
     try {
       await tx.reservation.create({
         data: {
@@ -550,6 +643,7 @@ async function reserveInTx(order: FullOrder, settings: Settings, tx: Tx) {
           activeDate: toDbDate(date),
           kind: "provisoria",
           expiresAt: new Date(Date.now() + settings.provisionalHours * 3_600_000),
+          googleEventId: link?.eventId ?? null,
         },
       });
     } catch (e: any) {
@@ -777,6 +871,8 @@ export async function getAlerts(now = new Date()) {
     now,
     settings,
     blocked: facts.blocked,
+    manualBlocked: facts.manualBlocked,
+    googleLinks: facts.googleLinks,
     orders: orders.map((o) => ({
       id: o.id,
       clientName: o.client.name,

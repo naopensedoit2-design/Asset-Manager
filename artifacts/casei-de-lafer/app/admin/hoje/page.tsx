@@ -277,7 +277,6 @@ function Stops({ stops }: { stops: Stop[] }) {
                     <>
                       <Chip tone="info">Só na Google Agenda</Chip>
                       <span className="text-xs text-text-secondary">Ainda sem pedido no painel</span>
-                      {s.link && <ExternalLink className="w-3.5 h-3.5 text-text-muted" aria-hidden="true" />}
                     </>
                   ) : (
                     <>
@@ -289,7 +288,7 @@ function Stops({ stops }: { stops: Stop[] }) {
               </>
             );
             return (
-              <li key={`${s.source}-${s.orderId ?? s.eventDate}`} className={`relative pl-11 ${last ? "" : "pb-6"}`}>
+              <li key={`${s.source}-${s.orderId ?? s.eventId ?? s.eventDate}`} className={`relative pl-11 ${last ? "" : "pb-6"}`}>
                 {!last && <span aria-hidden="true" className="absolute left-[15px] top-8 bottom-0 border-l-2 border-dashed border-border-gold" />}
                 <span
                   aria-hidden="true"
@@ -300,14 +299,27 @@ function Stops({ stops }: { stops: Stop[] }) {
                   {first ? <Car className="w-4 h-4" /> : <span className="w-2 h-2 rounded-full bg-gold" />}
                 </span>
                 {google ? (
-                  s.link ? (
-                    <a href={s.link} target="_blank" rel="noreferrer" className="group block -my-1 py-1">
-                      {body}
-                      <span className="sr-only"> (abre a Google Agenda em outra aba)</span>
-                    </a>
-                  ) : (
-                    <div className="group block -my-1 py-1">{body}</div>
-                  )
+                  <div className="-my-1 py-1">
+                    {body}
+                    <span className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2">
+                      {s.eventId && (
+                        <Link
+                          href={`/admin/pedidos/novo?google=${encodeURIComponent(s.eventId)}`}
+                          className="inline-flex min-h-11 items-center gap-1.5 rounded border border-border-subtle bg-bg-elevated px-4 text-sm text-text-primary transition-colors hover:border-border-gold"
+                        >
+                          Criar pedido
+                          <ChevronRight className="w-4 h-4 text-text-secondary" aria-hidden="true" />
+                        </Link>
+                      )}
+                      {s.link && (
+                        <a href={s.link} target="_blank" rel="noreferrer" className="inline-flex min-h-11 items-center gap-1.5 text-sm text-text-secondary underline underline-offset-4 hover:text-text-primary">
+                          Abrir na Google Agenda
+                          <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
+                          <span className="sr-only"> (abre em outra aba)</span>
+                        </a>
+                      )}
+                    </span>
+                  </div>
                 ) : (
                   <Link href={`/admin/pedidos/${s.orderId}`} className="group block -my-1 py-1">
                     {body}

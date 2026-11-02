@@ -228,11 +228,21 @@ export async function createOrderEvent(input: CalendarEventInput): Promise<strin
   return created.id as string;
 }
 
-export async function deleteOrderEvent(eventId: string) {
+/**
+ * Tira da agenda o evento que o próprio painel criou para o pedido. Só apaga se o evento tiver a marca do site
+ * (ecdlOrderId): casamento que o dono anotou à mão na agenda, e que um pedido apenas "adotou", nunca é apagado.
+ */
+export async function deleteOrderEvent(eventId: string, orderId?: number) {
+  const cal = encodeURIComponent(calendarId()!);
+  const id = encodeURIComponent(eventId);
   try {
-    await gfetch(`/calendars/${encodeURIComponent(calendarId()!)}/events/${encodeURIComponent(eventId)}`, { method: "DELETE" });
+    const event = (await gfetch(`/calendars/${cal}/events/${id}`)) as GoogleEvent | null;
+    const mark = event?.extendedProperties?.private?.["ecdlOrderId"];
+    if (!event || !mark) return; // sumiu, ou é compromisso do dono
+    if (orderId !== undefined && mark !== String(orderId)) return; // evento de outro pedido
+    await gfetch(`/calendars/${cal}/events/${id}`, { method: "DELETE" });
   } catch (e) {
     // 404/410: já foi apagado na agenda; segue em frente.
-    if (!/ 40[4]|410/.test((e as Error).message)) throw e;
+    if (!/ (404|410)\b/.test((e as Error).message)) throw e;
   }
 }

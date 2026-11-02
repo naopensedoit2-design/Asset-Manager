@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readAgenda, type GoogleEvent } from "./busy-days.ts";
-import { bookings, cleanTitle } from "./bookings.ts";
+import { bookings, cleanTitle, coupleName, orderDraft } from "./bookings.ts";
 
 const day = (id: string, summary: string, date: string, extra: Partial<GoogleEvent> = {}): GoogleEvent => ({
   id,
@@ -55,4 +55,30 @@ test("bookings: hora vem do evento principal; dia inteiro fica sem hora", () => 
     day("d", "Casamento Bia", "2026-12-12"),
   ]);
   assert.deepEqual(bookings(items, "2026-11-02").map((b) => b.time), ["16:30", ""]);
+});
+
+test("coupleName tira o rótulo do começo e deixa só quem casa", () => {
+  assert.equal(coupleName("Casamento Bia & Caio"), "Bia & Caio");
+  assert.equal(coupleName("Casamento Bia & Caio - Eu Casei de Lafer"), "Bia & Caio");
+  assert.equal(coupleName("Entrega de noiva: Lara e Rafa (Eu Casei de Lafer)"), "Lara e Rafa");
+  assert.equal(coupleName("Casamento - Rafael Mendes Costa"), "Rafael Mendes Costa");
+  assert.equal(coupleName("Pré-wedding Nina e Théo"), "Nina e Théo");
+  assert.equal(coupleName("Lucas e Nina"), "Lucas e Nina");
+  assert.equal(coupleName("Casamento"), "Casamento"); // sem nome nenhum: devolve o que há
+});
+
+test("orderDraft: o que Novo pedido já traz (nome, data, hora, local e a origem nas observações)", () => {
+  const { items } = readAgenda([
+    day("c1", "Casamento - Rafael Mendes Costa", "2026-12-19"),
+    day("c2", "Entrega de noiva: Lara e Rafa (Eu Casei de Lafer)", "2026-12-19", { location: "Igreja Matriz, Taquara" }),
+  ]);
+  const [b] = bookings(items, "2026-11-02");
+  assert.equal(b.id, "c2");
+  assert.deepEqual(orderDraft(b), {
+    name: "Lara e Rafa",
+    eventDate: "2026-12-19",
+    eventTime: "",
+    venue: "Igreja Matriz, Taquara",
+    notes: "Veio da Google Agenda: Entrega de noiva: Lara e Rafa\nTambém no dia: Casamento - Rafael Mendes Costa",
+  });
 });

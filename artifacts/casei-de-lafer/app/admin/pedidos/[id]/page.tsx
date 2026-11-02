@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { MessageCircle } from "lucide-react";
+import { ExternalLink, MessageCircle } from "lucide-react";
 import {
   calcQuote,
   formatBRL,
@@ -112,6 +112,30 @@ function MargotConversation({ orderId }: { orderId: number }) {
   );
 }
 
+/** Se o pedido nasceu de um casamento que já estava na Google Agenda, diz isso (e o que o painel faz e não faz com o evento). */
+function GoogleOrigin({ orderId }: { orderId: number }) {
+  const { data } = useQuery<{ vinculo: { data: string; titulo: string | null; link: string } | null }>({
+    queryKey: ["gestor-pedido-google", orderId],
+    queryFn: () => api(`/api/admin/gestor/pedidos/${orderId}/google`),
+    retry: false,
+  });
+  const v = data?.vinculo;
+  if (!v) return null;
+  return (
+    <p className="text-sm text-text-secondary">
+      Veio da Google Agenda
+      {v.titulo ? `: ${v.titulo}` : ` (evento de ${formatDateBR(v.data)}, que já não está lá)`}.{" "}
+      {v.link && (
+        <a href={v.link} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-text-primary underline underline-offset-2">
+          Abrir o evento <ExternalLink className="w-3.5 h-3.5" aria-hidden="true" />
+          <span className="sr-only"> (abre em outra aba)</span>
+        </a>
+      )}{" "}
+      O painel não cria outro evento nem apaga este.
+    </p>
+  );
+}
+
 function Summary({ order, onChange }: { order: OrderView; onChange: (o: OrderView) => void }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -163,6 +187,8 @@ function Summary({ order, onChange }: { order: OrderView; onChange: (o: OrderVie
           </a>
         </div>
       </div>
+
+      <GoogleOrigin orderId={order.id} />
 
       {order.proximosStatus.length > 0 && (
         <div className="flex flex-wrap gap-2">

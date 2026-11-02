@@ -39,7 +39,7 @@ Para quem for mexer no código: as cores vêm de `app/admin/theme.css`; as telas
 |---|---|---|---|
 | **WhatsApp da Margot** | No painel | Atende clientes, avisa você, aprova com um toque. | Variáveis da Meta (ver `docs/whatsapp.md`). **Conferir agora** testa a ligação de verdade. |
 | **Financeiro** | No painel | Pagamentos, despesas e contas a pagar; a Margot lança despesas pelo seu WhatsApp e só grava depois do seu “sim”. | — |
-| **Google Agenda** | No painel | Casamento confirmado entra na sua agenda; dias ocupados travam o site e a Margot; casamentos que só estão na agenda (sem pedido) aparecem com nome em Hoje, Agenda e Regras. | Conta de serviço e id da agenda (a agenda precisa estar compartilhada com a conta de serviço). |
+| **Google Agenda** | No painel | Casamento confirmado entra na sua agenda; dias ocupados travam o site e a Margot; casamentos que só estão na agenda (sem pedido) aparecem com nome em Hoje, Agenda e Regras, cada um com o botão **Criar pedido**: o Novo pedido já vem com nome, data, hora e local, e o pedido fica ligado ao evento (a data dele não conta como conflito, o painel não cria outro evento e, se o pedido for cancelado, o seu evento continua na agenda). | Conta de serviço e id da agenda (a agenda precisa estar compartilhada com a conta de serviço). |
 | **Rotina das 7h** | No painel | Confere alertas e manda o resumo do dia. | `CRON_SECRET`. A Vercel Hobby roda “dentro da hora”, por isso o aviso de atraso só aparece depois de 26 h. |
 | **IA da Margot** | No painel | Mostra o gasto do mês contra o limite. | `ANTHROPIC_API_KEY`. |
 | **Instagram** | Fora do painel | A Claude agenda no Metricool só os posts que você aprova. | Opcional: `INSTAGRAM_PANEL_URL` (link do painel do Instagram, para abrir direto daqui). |
