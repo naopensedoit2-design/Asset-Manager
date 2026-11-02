@@ -19,8 +19,9 @@ Uma data só comporta um evento (existe um único carro).
 - Saldo de 60% até 1 dia antes do evento.
 - Reserva provisória sem sinal expira em 48h (padrão).
 - Cancelamento: sinal não reembolsável (reserva de data). Ensaios: chuva forte permite remarcar sem custo em até 60 dias.
-- Ensaio Pré-Wedding: R$ 1.900, até 3h em um ponto de ensaio; o motorista a rigor é do dia do casamento.
-- Raio de atendimento: Serra Gaúcha; fora dela, deslocamento avaliado caso a caso.
+- Ensaio Pré-Wedding: R$ 1.900, até 3h com o carro em um único local de ensaio (segundo local é orçado à parte); chofer trajado a rigor só mediante solicitação, sem custo (já está no valor).
+- Raio de atendimento: Serra Gaúcha; fora dela, valor avaliado caso a caso.
+- **Os preços são "a partir de" (valor-base).** A Margot sempre diz "a partir de". A região de valor-base é o texto de Regras → Área de atendimento (banco, nunca o código). Cidade fora dela, ou trajeto da noiva até a cerimônia acima de ~10 km: a equipe confirma o valor final, e a Margot não apresenta total, sinal e saldo como definitivos nem manda o link da proposta (anota "valor por distância a confirmar" no resumo e usa `encaminhar_para_equipe`). Adicionais, pacotes e decoração também vão para a equipe. **A Margot nunca revela de onde o carro sai, a cidade-base, quilometragens nem o raio**: são parâmetros internos do dono e o repositório é público, então não os escreva aqui, em testes ou em exemplos.
 
 ### Jornada do cliente
 Instagram ou indicação (fotógrafos, cerimonialistas como Celebre Gramado) → landing page → WhatsApp → data, local e serviço → checagem de agenda → orçamento em PDF → aprovação → Termo Simplificado → Pix do sinal → data bloqueada → confirmações → evento → saldo e pós-venda.
@@ -56,6 +57,7 @@ Instagram ou indicação (fotógrafos, cerimonialistas como Celebre Gramado) →
 - **Mobile first.** O painel é usado principalmente pelo celular.
 - **Identidade visual:** a do site — fundo quase preto, dourado `#C9A84C`, Playfair Display nos títulos e Inter no texto (tokens em `app/globals.css`).
 - **Cores no painel (`/admin`):** use só as classes do tema (`text-gold`, `text-ok`, `text-warn`, `text-bad`, `text-info`, `bg-bg-card`, `border-border-subtle`…), nunca cor fixa (`text-emerald-300`, `#C9A84C`): o painel tem 4 temas e 6 cores de destaque, e uma cor fixa fica ilegível em algum deles. `src/lib/admin/look.test.ts` confere o contraste e `src/lib/admin/tokens.test.ts` barra cor fixa. O padrão (Clássico + ouro) continua sendo o visual do site.
+- **Tom da Margot:** anfitriã, acolhedora e com empatia, sem pressionar nem criar urgência. Serviços (entrega da noiva, saída dos noivos opcional, ensaio de até 3h, chofer sob solicitação, carro de 2 lugares, decoração a combinar) estão definidos no bloco `knowledge` de `src/lib/margot/prompt.ts` e travados em `prompt.test.ts`. Valor e regra de preço continuam vindo do banco.
 - **A Margot não diz o nome do dono a clientes:** ela fala "nossa equipe" (instruções em `src/lib/margot/prompt.ts`; respostas fixas em `src/lib/wa/customer.ts`, `src/lib/margot/agent.ts` e `app/api/margot/route.ts`; texto do botão em `app/orcamento/detalhado/page.tsx`). `src/lib/margot/nome-do-dono.test.ts` trava isso. O nome continua só onde é necessário: Termo (contrato), política de privacidade (LGPD), favorecido do Pix e tudo que é dito ao próprio dono (modo secretária, avisos, painel).
 - **Teste regra de negócio:** `pnpm --filter @workspace/casei-de-lafer run test`.
 - **Commits pequenos**, mensagens em português.
