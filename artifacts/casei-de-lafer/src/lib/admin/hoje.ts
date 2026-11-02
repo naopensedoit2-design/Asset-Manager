@@ -3,6 +3,7 @@
 // resolve sozinha e contas a pagar. Conversa que a Margot está cuidando não entra: o ponto é só mostrar exceções.
 
 import { diffDays, formatBRL, formatDateBR, type Alert } from "../gestor/rules.ts";
+import type { Booking } from "../google/bookings.ts";
 
 export type Tone = "urgente" | "atencao" | "info";
 export type QueueKind = "aprovacao" | "sistema" | "alerta" | "conversa" | "conta";
@@ -257,7 +258,9 @@ export interface StopInput {
 }
 
 export interface Stop {
-  orderId: number;
+  /** pedido = pedido reservado ou confirmado; google = casamento que só está na Google Agenda, sem pedido no painel. */
+  source: "pedido" | "google";
+  orderId: number | null;
   client: string;
   status: string;
   statusLabel: string;
@@ -267,15 +270,23 @@ export interface Stop {
   days: number;
   when: string;
   pendingPayment: boolean;
+  /** Só nas paradas da Google Agenda: link do evento e os outros compromissos do mesmo dia. */
+  link: string;
+  also: string[];
 }
 
-export function buildStops(orders: StopInput[], today: string, limit = 5): Stop[] {
+/**
+ * Próximos casamentos: os pedidos reservados/confirmados e, junto, os casamentos que estão só na Google Agenda.
+ * Se o dia já tem pedido, o casamento da agenda não aparece de novo (é o mesmo).
+ */
+export function buildStops(orders: StopInput[], today: string, limit = 5, google: Booking[] = []): Stop[] {
   const stops: Stop[] = [];
   for (const o of orders) {
     if (!o.eventDate) continue;
     const days = diffDays(today, o.eventDate);
     if (days < 0) continue;
     stops.push({
+      source: "pedido",
       orderId: o.id,
       client: o.client.name,
       status: o.status,
@@ -286,9 +297,34 @@ export function buildStops(orders: StopInput[], today: string, limit = 5): Stop[
       days,
       when: daysLabel(days),
       pendingPayment: o.payments.some((p) => p.status === "a_receber" || p.status === "atrasado"),
+      link: "",
+      also: [],
     });
   }
-  return stops.sort((a, b) => a.days - b.days || a.orderId - b.orderId).slice(0, limit);
+  const withOrder = new Set(stops.map((s) => s.eventDate));
+  for (const g of google) {
+    if (withOrder.has(g.date)) continue;
+    const days = diffDays(today, g.date);
+    if (days < 0) continue;
+    stops.push({
+      source: "google",
+      orderId: null,
+      client: g.title,
+      status: "google",
+      statusLabel: "Só na Google Agenda",
+      eventDate: g.date,
+      eventTime: g.time,
+      place: g.location,
+      days,
+      when: daysLabel(days),
+      pendingPayment: false,
+      link: g.link,
+      also: g.also,
+    });
+  }
+  return stops
+    .sort((a, b) => a.days - b.days || Number(a.source === "google") - Number(b.source === "google") || (a.orderId ?? 0) - (b.orderId ?? 0))
+    .slice(0, limit);
 }
 
 // ─── Formato que a API devolve ───────────────────────────────

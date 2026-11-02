@@ -5,5 +5,5 @@ import * as gestor from "@/lib/gestor/service";
 export const dynamic = "force-dynamic";
 
 export const GET = route(async (req: NextRequest) =>
-  ok(await gestor.monthAvailability(req.nextUrl.searchParams.get("ano"), req.nextUrl.searchParams.get("mes"))),
+  ok(await gestor.monthAgenda(req.nextUrl.searchParams.get("ano"), req.nextUrl.searchParams.get("mes"))),
 );

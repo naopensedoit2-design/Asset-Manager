@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, Bot, CalendarHeart, Car, ChevronRight, Clock, Info, MessageCircle, Plug, Receipt, RotateCw } from "lucide-react";
+import { AlertTriangle, Bot, CalendarHeart, Car, ChevronRight, Clock, ExternalLink, Info, MessageCircle, Plug, Receipt, RotateCw } from "lucide-react";
 import { api, Button, ErrorNote, Panel, StatusBadge } from "@/components/gestor/ui";
 import { useHoje } from "@/components/admin/hoje-query";
 import { useMargotToggle } from "@/components/admin/MargotSheet";
@@ -254,15 +254,42 @@ function Stops({ stops }: { stops: Stop[] }) {
       {stops.length === 0 ? (
         <div className="rounded-lg border border-border-subtle bg-bg-card px-5 py-6">
           <CalendarHeart className="w-6 h-6 text-text-muted" aria-hidden="true" />
-          <p className="mt-2 text-sm text-text-secondary">Nenhum casamento marcado pela frente. Quando um pedido ganhar data, ele aparece aqui.</p>
+          <p className="mt-2 text-sm text-text-secondary">Nenhum casamento marcado pela frente. Quando um pedido ganhar data, ou um casamento entrar na sua Google Agenda, ele aparece aqui.</p>
         </div>
       ) : (
         <ol className="rounded-lg border border-border-subtle bg-bg-card px-4 py-5 sm:px-5">
           {stops.map((s, i) => {
             const last = i === stops.length - 1;
             const first = i === 0;
+            const google = s.source === "google";
+            const body = (
+              <>
+                <p className="text-sm font-medium text-gold">
+                  {capitalize(s.when)} <span className="text-text-secondary font-normal">· {formatDateBR(s.eventDate).slice(0, 5)}</span>
+                </p>
+                <p className="font-serif text-xl leading-snug text-text-primary group-hover:underline underline-offset-4 decoration-border-gold">{s.client}</p>
+                {(s.eventTime || s.place) && (
+                  <p className="mt-0.5 text-sm text-text-secondary line-clamp-2">{[s.eventTime && `às ${s.eventTime}`, s.place].filter(Boolean).join(" · ")}</p>
+                )}
+                {s.also.length > 0 && <p className="mt-0.5 text-sm text-text-muted line-clamp-2">Também no dia: {s.also.join("; ")}</p>}
+                <span className="mt-2 flex flex-wrap items-center gap-2">
+                  {google ? (
+                    <>
+                      <Chip tone="info">Só na Google Agenda</Chip>
+                      <span className="text-xs text-text-secondary">Ainda sem pedido no painel</span>
+                      {s.link && <ExternalLink className="w-3.5 h-3.5 text-text-muted" aria-hidden="true" />}
+                    </>
+                  ) : (
+                    <>
+                      <StatusBadge status={s.status as OrderStatus} />
+                      {s.pendingPayment && <Chip tone="warn">Falta receber</Chip>}
+                    </>
+                  )}
+                </span>
+              </>
+            );
             return (
-              <li key={s.orderId} className={`relative pl-11 ${last ? "" : "pb-6"}`}>
+              <li key={`${s.source}-${s.orderId ?? s.eventDate}`} className={`relative pl-11 ${last ? "" : "pb-6"}`}>
                 {!last && <span aria-hidden="true" className="absolute left-[15px] top-8 bottom-0 border-l-2 border-dashed border-border-gold" />}
                 <span
                   aria-hidden="true"
@@ -272,19 +299,20 @@ function Stops({ stops }: { stops: Stop[] }) {
                 >
                   {first ? <Car className="w-4 h-4" /> : <span className="w-2 h-2 rounded-full bg-gold" />}
                 </span>
-                <Link href={`/admin/pedidos/${s.orderId}`} className="group block -my-1 py-1">
-                  <p className="text-sm font-medium text-gold">
-                    {capitalize(s.when)} <span className="text-text-secondary font-normal">· {formatDateBR(s.eventDate).slice(0, 5)}</span>
-                  </p>
-                  <p className="font-serif text-xl leading-snug text-text-primary group-hover:underline underline-offset-4 decoration-border-gold">{s.client}</p>
-                  {(s.eventTime || s.place) && (
-                    <p className="mt-0.5 text-sm text-text-secondary">{[s.eventTime && `às ${s.eventTime}`, s.place].filter(Boolean).join(" · ")}</p>
-                  )}
-                  <span className="mt-2 flex flex-wrap items-center gap-2">
-                    <StatusBadge status={s.status as OrderStatus} />
-                    {s.pendingPayment && <Chip tone="warn">Falta receber</Chip>}
-                  </span>
-                </Link>
+                {google ? (
+                  s.link ? (
+                    <a href={s.link} target="_blank" rel="noreferrer" className="group block -my-1 py-1">
+                      {body}
+                      <span className="sr-only"> (abre a Google Agenda em outra aba)</span>
+                    </a>
+                  ) : (
+                    <div className="group block -my-1 py-1">{body}</div>
+                  )
+                ) : (
+                  <Link href={`/admin/pedidos/${s.orderId}`} className="group block -my-1 py-1">
+                    {body}
+                  </Link>
+                )}
               </li>
             );
           })}

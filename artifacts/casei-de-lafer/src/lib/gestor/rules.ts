@@ -339,10 +339,13 @@ export function balanceDueDate(eventDate: string, daysBefore: number, today: str
 export type DayAvailability = "livre" | "provisoria" | "ocupada";
 
 export interface CalendarFacts {
-  /** Datas bloqueadas manualmente no calendário do site. */
+  /** Datas bloqueadas: as do calendário do site (manuais) e os dias ocupados na Google Agenda. */
   blocked: string[];
   /** Reservas ativas (provisórias ou confirmadas). */
   reservations: { date: string; kind: string; orderId: number }[];
+  /** Só para o painel do dono: quais bloqueios são manuais e quais vêm da Google Agenda (com o nome do compromisso). */
+  manualBlocked?: string[];
+  googleDays?: { date: string; summary: string; kind: string }[];
 }
 
 export function availabilityOf(
