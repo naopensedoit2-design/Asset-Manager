@@ -345,7 +345,12 @@ export interface CalendarFacts {
   reservations: { date: string; kind: string; orderId: number }[];
   /** Só para o painel do dono: quais bloqueios são manuais e quais vêm da Google Agenda (com o nome do compromisso). */
   manualBlocked?: string[];
-  googleDays?: { date: string; summary: string; kind: string }[];
+  googleDays?: { date: string; summary: string; kind: string; eventId?: string }[];
+  /**
+   * Pedidos criados a partir de um casamento que já estava na Google Agenda. O dia travado por esse evento é do próprio
+   * pedido: não conta como ocupado para ele (senão o pedido não conseguiria reservar a data do seu casamento).
+   */
+  googleLinks?: { orderId: number; date: string; eventId: string }[];
 }
 
 export function availabilityOf(
@@ -361,7 +366,15 @@ export function availabilityOf(
     };
   }
   const ownReservation = facts.reservations.find((r) => r.date === date && r.orderId === ignoreOrderId);
-  if (facts.blocked.includes(date) && !ownReservation) return { status: "ocupada", orderId: null };
+  if (facts.blocked.includes(date) && !ownReservation) {
+    // Só vale quando se sabe quais bloqueios são manuais (manualBlocked): sem essa informação, o bloqueio segue valendo.
+    const ownGoogleDay =
+      ignoreOrderId !== undefined &&
+      facts.manualBlocked !== undefined &&
+      !facts.manualBlocked.includes(date) &&
+      (facts.googleLinks ?? []).some((l) => l.orderId === ignoreOrderId && l.date === date);
+    if (!ownGoogleDay) return { status: "ocupada", orderId: null };
+  }
   return { status: "livre", orderId: null };
 }
 
@@ -434,12 +447,15 @@ export interface AlertInput {
     status: string;
   }[];
   blocked: string[];
+  /** Quais dos bloqueios são manuais, e os pedidos ligados a um casamento da Google (ver CalendarFacts). */
+  manualBlocked?: string[];
+  googleLinks?: CalendarFacts["googleLinks"];
 }
 
 const SEVERITY_ORDER: Record<AlertSeverity, number> = { urgente: 0, atencao: 1, info: 2 };
 
 export function computeAlerts(input: AlertInput): Alert[] {
-  const { now, settings, orders, reservations, payments, blocked } = input;
+  const { now, settings, orders, reservations, payments, blocked, manualBlocked, googleLinks } = input;
   const today = todayISO(now);
   const byId = new Map(orders.map((o) => [o.id, o]));
   const alerts: Alert[] = [];
@@ -448,7 +464,7 @@ export function computeAlerts(input: AlertInput): Alert[] {
   // Pedido aberto pedindo uma data já ocupada por outro pedido ou bloqueio.
   for (const order of orders) {
     if (!order.eventDate || !["novo", "orcamento_enviado", "aguardando_resposta"].includes(order.status)) continue;
-    const taken = availabilityOf(order.eventDate, { blocked, reservations }, order.id);
+    const taken = availabilityOf(order.eventDate, { blocked, reservations, manualBlocked, googleLinks }, order.id);
     if (taken.status !== "livre") {
       alerts.push({
         type: "data_em_conflito",

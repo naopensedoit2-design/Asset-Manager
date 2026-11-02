@@ -209,3 +209,52 @@ test("buildStops: o limite vale para pedidos e Google juntos, na ordem das datas
   const stops = buildStops([], today, 2, [g("2026-12-19"), g("2026-11-05"), g("2026-12-05")]);
   assert.deepEqual(stops.map((s) => s.eventDate), ["2026-11-05", "2026-12-05"]);
 });
+
+test("buildStops: casamento da Google que já virou pedido aparece como o pedido, com o status dele", () => {
+  const g = (id: string, date: string, order?: { id: number; client: string; status: string; statusLabel: string; place?: string; time?: string }) => ({
+    id,
+    date,
+    time: "",
+    title: `Casamento ${date}`,
+    also: [],
+    location: "Igreja Matriz",
+    link: "https://calendar.example/e",
+    ...(order ? { order } : {}),
+  });
+  const stops = buildStops([], today, 5, [
+    g("e1", "2026-12-05", { id: 7, client: "Bia & Caio", status: "novo", statusLabel: "Novo pedido" }),
+    g("e2", "2026-12-19"),
+  ]);
+  assert.deepEqual(
+    stops.map((s) => [s.source, s.orderId, s.client, s.statusLabel, s.eventId]),
+    [
+      ["pedido", 7, "Bia & Caio", "Novo pedido", ""],
+      ["google", null, "Casamento 2026-12-19", "Só na Google Agenda", "e2"],
+    ],
+  );
+});
+
+test("buildStops: pedido ligado a um casamento da Google mostra o local e a hora do pedido; vazios, os da agenda", () => {
+  const base = { id: 7, client: "Bia & Caio", status: "novo", statusLabel: "Novo pedido" };
+  const g = (id: string, date: string, order: typeof base & { place?: string; time?: string }) => ({
+    id,
+    date,
+    time: "15:00",
+    title: `Casamento ${date}`,
+    also: [],
+    location: "Igreja Matriz",
+    link: "",
+    order,
+  });
+  const stops = buildStops([], today, 5, [
+    g("e1", "2026-12-05", { ...base, place: "Estância Alto da Serra, Três Coroas", time: "17:00" }),
+    g("e2", "2026-12-19", { ...base, id: 8, place: "", time: "" }),
+  ]);
+  assert.deepEqual(
+    stops.map((s) => [s.orderId, s.place, s.eventTime]),
+    [
+      [7, "Estância Alto da Serra, Três Coroas", "17:00"],
+      [8, "Igreja Matriz", "15:00"],
+    ],
+  );
+});

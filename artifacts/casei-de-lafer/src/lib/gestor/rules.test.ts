@@ -73,6 +73,47 @@ test("data ocupada por reserva confirmada, provisória ou bloqueio manual", () =
   assert.equal(availabilityOf("2026-12-05", own, 1).status, "livre");
 });
 
+test("casamento que já estava na Google Agenda: o dia é do pedido ligado a ele, e só dele", () => {
+  const facts = {
+    blocked: ["2026-12-05", "2026-12-19"],
+    manualBlocked: ["2026-12-19"],
+    reservations: [{ date: "2026-12-12", kind: "provisoria", orderId: 4 }],
+    googleLinks: [{ orderId: 7, date: "2026-12-05", eventId: "ev-bia-caio" }],
+  };
+  // Para o pedido ligado, o dia travado só pela Google é livre; para qualquer outro, continua ocupado.
+  assert.equal(availabilityOf("2026-12-05", facts, 7).status, "livre");
+  assert.equal(availabilityOf("2026-12-05", facts, 8).status, "ocupada");
+  assert.equal(availabilityOf("2026-12-05", facts).status, "ocupada");
+  // Bloqueio manual no mesmo dia continua valendo, e o vínculo não vale em outra data.
+  const manual = { ...facts, manualBlocked: ["2026-12-05"] };
+  assert.equal(availabilityOf("2026-12-05", manual, 7).status, "ocupada");
+  assert.equal(availabilityOf("2026-12-19", facts, 7).status, "ocupada");
+  // Reserva de outro pedido no dia ainda conflita; sem saber quais bloqueios são manuais, nada muda.
+  const withReservation = { ...facts, reservations: [{ date: "2026-12-05", kind: "provisoria", orderId: 4 }] };
+  assert.equal(availabilityOf("2026-12-05", withReservation, 7).status, "provisoria");
+  const unknown = { blocked: facts.blocked, reservations: [], googleLinks: facts.googleLinks };
+  assert.equal(availabilityOf("2026-12-05", unknown, 7).status, "ocupada");
+});
+
+test("alerta de data em conflito não dispara para o pedido ligado ao próprio casamento da Google", () => {
+  const now = new Date("2026-11-02T12:00:00Z");
+  const base = {
+    now,
+    settings: DEFAULT_SETTINGS,
+    blocked: ["2026-12-05"],
+    manualBlocked: [],
+    orders: [
+      { id: 7, clientName: "Bia & Caio", status: "novo" as const, eventDate: "2026-12-05", updatedAt: now, createdAt: now },
+      { id: 8, clientName: "Lucas & Nina", status: "novo" as const, eventDate: "2026-12-05", updatedAt: now, createdAt: now },
+    ],
+    reservations: [],
+    payments: [],
+    googleLinks: [{ orderId: 7, date: "2026-12-05", eventId: "ev-bia-caio" }],
+  };
+  const conflicts = computeAlerts(base).filter((a) => a.type === "data_em_conflito");
+  assert.deepEqual(conflicts.map((a) => a.orderId), [8]);
+});
+
 test("saldo vence N dias antes do evento, nunca no passado", () => {
   assert.equal(balanceDueDate("2026-12-19", 7, "2026-10-14"), "2026-12-12");
   assert.equal(balanceDueDate("2026-10-17", 7, "2026-10-14"), "2026-10-14");
