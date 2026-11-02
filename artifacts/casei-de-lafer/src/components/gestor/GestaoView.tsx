@@ -15,6 +15,7 @@ import {
   type OrderStatus,
 } from "@/lib/gestor/rules";
 import type { OrderView } from "@/lib/gestor/service";
+import { Chip } from "@/components/admin/ui";
 import { api, Button, ErrorNote, Loading, Panel, StatusBadge } from "./ui";
 
 interface Dashboard {
@@ -277,9 +278,18 @@ const MONTHS = [
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
 ];
 
+/** Um dia do calendário do painel. `origem` diz de onde vem o dia ocupado; `google` traz o nome do compromisso. */
+interface AgendaDay {
+  data: string;
+  status: string;
+  orderId: number | null;
+  origem: "pedido" | "bloqueio" | "google" | null;
+  google: { titulo: string; casamento: boolean } | null;
+}
+
 function MonthCalendar({ today }: { today: string }) {
   const [cursor, setCursor] = useState({ y: Number(today.slice(0, 4)), m: Number(today.slice(5, 7)) });
-  const { data } = useQuery<{ dias: { data: string; status: string; orderId: number | null }[] }>({
+  const { data } = useQuery<{ dias: AgendaDay[] }>({
     queryKey: ["gestor-calendario", cursor.y, cursor.m],
     queryFn: () => api(`/api/admin/gestor/calendario?ano=${cursor.y}&mes=${cursor.m}`),
   });
@@ -291,6 +301,7 @@ function MonthCalendar({ today }: { today: string }) {
     });
 
   const days = data?.dias ?? [];
+  const googleDays = days.filter((d) => d.origem === "google");
   const lead = days.length ? new Date(`${days[0].data}T12:00:00Z`).getUTCDay() : 0;
 
   return (
@@ -321,18 +332,26 @@ function MonthCalendar({ today }: { today: string }) {
         ))}
         {days.map((d) => {
           const confirmed = d.status === "ocupada" && d.orderId;
-          const blocked = d.status === "ocupada" && !d.orderId;
+          const fromGoogle = d.origem === "google";
+          const blocked = d.status === "ocupada" && !d.orderId && !fromGoogle;
           const cls = confirmed
             ? "bg-gold text-bg-primary font-semibold"
             : d.status === "provisoria"
               ? "border border-gold text-gold"
-              : blocked
-                ? "bg-text-primary/10 text-text-secondary"
-                : d.data < today
-                  ? "text-text-muted"
-                  : "text-text-primary";
+              : fromGoogle
+                ? "border border-dashed border-info text-info font-semibold"
+                : blocked
+                  ? "bg-text-primary/10 text-text-secondary"
+                  : d.data < today
+                    ? "text-text-muted"
+                    : "text-text-primary";
+          const label = d.google ? `${formatDateBR(d.data)}: ${d.google.titulo} (Google Agenda)` : undefined;
           const inner = (
-            <span className={`flex items-center justify-center aspect-square rounded text-sm ${cls} ${d.data === today ? "ring-1 ring-text-secondary" : ""}`}>
+            <span
+              title={label}
+              aria-label={label}
+              className={`flex items-center justify-center aspect-square rounded text-sm ${cls} ${d.data === today ? "ring-1 ring-text-secondary" : ""}`}
+            >
               {Number(d.data.slice(8))}
             </span>
           );
@@ -349,7 +368,19 @@ function MonthCalendar({ today }: { today: string }) {
         <span className="flex items-center gap-1.5"><i className="w-3 h-3 rounded-sm bg-gold" /> Confirmado</span>
         <span className="flex items-center gap-1.5"><i className="w-3 h-3 rounded-sm border border-gold" /> Reserva sem sinal</span>
         <span className="flex items-center gap-1.5"><i className="w-3 h-3 rounded-sm bg-text-primary/10" /> Bloqueio manual</span>
+        <span className="flex items-center gap-1.5"><i className="w-3 h-3 rounded-sm border border-dashed border-info" /> Google Agenda, sem pedido</span>
       </div>
+      {googleDays.length > 0 && (
+        <ul className="mt-4 space-y-1.5 text-sm" aria-label="Compromissos da Google Agenda neste mês">
+          {googleDays.map((d) => (
+            <li key={d.data} className="flex items-baseline gap-2">
+              <span className="w-12 shrink-0 tabular-nums text-text-secondary">{formatDateBR(d.data).slice(0, 5)}</span>
+              <span className="min-w-0 text-text-primary">{d.google!.titulo}</span>
+              {d.google!.casamento && <Chip tone="info">casamento</Chip>}
+            </li>
+          ))}
+        </ul>
+      )}
     </Panel>
   );
 }

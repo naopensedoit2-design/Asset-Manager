@@ -3,6 +3,7 @@
 
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { cleanTitle } from "@/lib/google/bookings";
 import { createOrderEvent, deleteOrderEvent, googleBusyDays, isConfigured as googleConfigured } from "@/lib/google/calendar";
 import {
   addDays,
@@ -146,9 +147,12 @@ export async function getCalendarFacts(db: Tx | typeof prisma = prisma): Promise
   });
   // Compromissos da Google Agenda do Leonardo também ocupam o dia.
   const google = await googleBusyDays();
+  const manual = blocked.map((b) => b.date.toISOString().slice(0, 10));
   return {
-    blocked: [...blocked.map((b) => b.date.toISOString().slice(0, 10)), ...google.map((g) => g.date)],
+    blocked: [...manual, ...google.map((g) => g.date)],
     reservations: reservations.map((r) => ({ date: dateToISO(r.date)!, kind: r.kind, orderId: r.orderId })),
+    manualBlocked: manual,
+    googleDays: google.map(({ date, summary, kind }) => ({ date, summary, kind })),
   };
 }
 
@@ -159,20 +163,51 @@ export async function checkAvailability(date: unknown) {
   return { data: d, status: result.status, livre: result.status === "livre", passado: d < todayISO() };
 }
 
-export async function monthAvailability(year: unknown, month: unknown) {
+function parseMonth(year: unknown, month: unknown) {
   const y = Number(year);
   const m = Number(month);
   if (!Number.isInteger(y) || !Number.isInteger(m) || m < 1 || m > 12) {
     throw new RuleError("mes_invalido", "Informe ano e mês (1 a 12).", 400);
   }
-  const facts = await getCalendarFacts();
+  return { y, m };
+}
+
+function monthDays(y: number, m: number, facts: CalendarFacts) {
   const first = `${y}-${String(m).padStart(2, "0")}-01`;
   const days: { data: string; status: string; orderId: number | null }[] = [];
   for (let d = first; d.slice(0, 7) === first.slice(0, 7); d = addDays(d, 1)) {
     const a = availabilityOf(d, facts);
     days.push({ data: d, status: a.status, orderId: a.orderId });
   }
-  return { ano: y, mes: m, dias: days };
+  return days;
+}
+
+export async function monthAvailability(year: unknown, month: unknown) {
+  const { y, m } = parseMonth(year, month);
+  return { ano: y, mes: m, dias: monthDays(y, m, await getCalendarFacts()) };
+}
+
+/**
+ * Calendário do painel (só o dono vê): a disponibilidade do mês e, nos dias travados pela Google Agenda, o nome do
+ * compromisso. A API para agentes (/api/v1) continua usando monthAvailability, que não leva nome de compromisso.
+ */
+export async function monthAgenda(year: unknown, month: unknown) {
+  const { y, m } = parseMonth(year, month);
+  const facts = await getCalendarFacts();
+  const manual = new Set(facts.manualBlocked ?? []);
+  const google = new Map((facts.googleDays ?? []).map((g) => [g.date, g]));
+  const dias = monthDays(y, m, facts).map((d) => {
+    const g = google.get(d.data);
+    const origem: "pedido" | "bloqueio" | "google" | null = d.orderId
+      ? "pedido"
+      : d.status === "livre"
+        ? null
+        : g && !manual.has(d.data)
+          ? "google"
+          : "bloqueio";
+    return { ...d, origem, google: origem === "google" && g ? { titulo: cleanTitle(g.summary), casamento: g.kind === "casamento" } : null };
+  });
+  return { ano: y, mes: m, dias };
 }
 
 // ─── Pedidos ─────────────────────────────────────────────────

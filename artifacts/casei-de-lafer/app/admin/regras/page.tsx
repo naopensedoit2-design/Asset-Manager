@@ -69,9 +69,25 @@ interface GoogleStatus {
   ok?: boolean;
   erro?: string | null;
   contaDeServico?: string;
+  nomeDaAgenda?: string | null;
   diasOcupados?: number;
   proximos?: { date: string; summary: string }[];
+  /** Casamentos achados na agenda (um por dia), de hoje em diante. */
+  casamentos?: { date: string; time: string; title: string; also: string[]; location: string; link: string }[];
+  /** Outros compromissos que também travam dias. */
+  outros?: { date: string; titulo: string }[];
+  deixadosDeFora?: {
+    repetidos: number;
+    cancelados: number;
+    lembretes: number;
+    disponiveis: number;
+    muitoLongos: number;
+    listaDisponiveis?: { date: string; titulo: string }[];
+  };
 }
+
+/** Quantos "outros compromissos" aparecem antes do "e mais N". */
+const OTHERS_VISIBLE = 6;
 
 function GoogleCard() {
   const { data, refetch, isFetching } = useQuery<GoogleStatus>({
@@ -107,21 +123,78 @@ function GoogleCard() {
           no site, e cada casamento confirmado aparece na agenda sozinho.
         </p>
       ) : data.ok ? (
-        <div className="space-y-2 text-sm">
-          <p className="text-ok">Conectada. {data.diasOcupados} dia(s) ocupado(s) nos próximos 2 anos.</p>
-          {data.proximos && data.proximos.length > 0 && (
-            <ul className="text-text-secondary">
-              {data.proximos.map((d) => (
-                <li key={d.date}>
-                  {formatDateBR(d.date)} · {d.summary}
-                </li>
-              ))}
-            </ul>
-          )}
-          <p className="text-xs text-text-muted">
-            Só compromissos únicos bloqueiam o dia. Eventos que se repetem (rotina, trabalho, aniversários) são ignorados.
-            Para um compromisso único não bloquear, marque-o como "Disponível" na Google Agenda.
+        <div className="space-y-4 text-sm">
+          <p className="text-ok">
+            Conectada{data.nomeDaAgenda ? ` à agenda “${data.nomeDaAgenda}”` : ""}. {data.diasOcupados} dia(s) ocupado(s) nos próximos 2 anos.
           </p>
+
+          <div>
+            <p className="text-text-primary">Casamentos que o painel achou na agenda ({data.casamentos?.length ?? 0})</p>
+            {data.casamentos && data.casamentos.length > 0 ? (
+              <ul className="mt-1 space-y-0.5 text-text-secondary">
+                {data.casamentos.map((c) => (
+                  <li key={c.date}>
+                    {formatDateBR(c.date)} ·{" "}
+                    {c.link ? (
+                      <a href={c.link} target="_blank" rel="noreferrer" className="underline underline-offset-2">
+                        {c.title}
+                      </a>
+                    ) : (
+                      c.title
+                    )}{" "}
+                    <span className="text-text-muted">· trava o dia</span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="mt-1 text-text-muted">
+                Nenhum. O painel reconhece pelo título: casamento, noiva, noivo, ensaio, pré-wedding ou “Eu Casei de Lafer”.
+              </p>
+            )}
+          </div>
+
+          {data.outros && data.outros.length > 0 && (
+            <div>
+              <p className="text-text-primary">Outros compromissos que também travam dias ({data.outros.length})</p>
+              <ul className="mt-1 space-y-0.5 text-text-secondary">
+                {data.outros.slice(0, OTHERS_VISIBLE).map((o, i) => (
+                  <li key={`${o.date}-${i}`}>
+                    {formatDateBR(o.date)} · {o.titulo}
+                  </li>
+                ))}
+              </ul>
+              {data.outros.length > OTHERS_VISIBLE && <p className="mt-1 text-text-muted">e mais {data.outros.length - OTHERS_VISIBLE}.</p>}
+            </div>
+          )}
+
+          <p className="text-xs text-text-muted">
+            Casamento sempre trava o dia, mesmo marcado como “Disponível”. Lembretes (título começando com “Lembrete”) e eventos que se repetem
+            (rotina, trabalho, aniversários) não travam. Para outro compromisso único não travar, marque-o como “Disponível” na Google Agenda.
+            {data.deixadosDeFora && (
+              <>
+                {" "}
+                Deixados de fora: {data.deixadosDeFora.repetidos} repetidos, {data.deixadosDeFora.lembretes} lembretes, {data.deixadosDeFora.disponiveis} marcados como
+                “Disponível”.
+              </>
+            )}
+          </p>
+          {data.deixadosDeFora?.listaDisponiveis && data.deixadosDeFora.listaDisponiveis.length > 0 && (
+            <details className="text-xs text-text-secondary">
+              <summary className="cursor-pointer text-text-muted">
+                {data.deixadosDeFora.disponiveis === 1
+                  ? "Ver o compromisso marcado como “Disponível”"
+                  : `Ver os ${data.deixadosDeFora.disponiveis} marcados como “Disponível”`}
+              </summary>
+              <ul className="mt-1 space-y-0.5">
+                {data.deixadosDeFora.listaDisponiveis.map((o, i) => (
+                  <li key={`${o.date}-${i}`}>
+                    {formatDateBR(o.date)} · {o.titulo}
+                  </li>
+                ))}
+              </ul>
+              <p className="mt-1 text-text-muted">Se um deles é casamento, coloque “Casamento” no título que o painel passa a travar o dia.</p>
+            </details>
+          )}
           <Button variant="ghost" onClick={sendPending}>
             Enviar pedidos confirmados para a agenda
           </Button>

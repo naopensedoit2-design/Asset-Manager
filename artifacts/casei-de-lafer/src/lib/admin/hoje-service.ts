@@ -8,6 +8,8 @@ import { monthUsage } from "@/lib/margot/usage";
 import { parseAction } from "@/lib/wa/actions";
 import { listConversations } from "@/lib/wa/admin";
 import { waMissing } from "@/lib/wa/config";
+import { bookings } from "@/lib/google/bookings";
+import { googleAgenda } from "@/lib/google/calendar";
 import { buildQueue, buildStops, type HojeData, type PendingApproval, type WaitingConversation } from "./hoje";
 import { buildRoutineRecord, parseRoutine, ROUTINE_KEY, type SummaryResult } from "./routine";
 
@@ -41,7 +43,7 @@ export async function getHoje(now = new Date()): Promise<HojeData> {
   const today = todayISO(now);
   const since = new Date(now.getTime() - 24 * 3_600_000);
 
-  const [dash, conversations, approvals, openBills, usage, replies, active, routine] = await Promise.all([
+  const [dash, conversations, approvals, openBills, usage, replies, active, routine, agenda] = await Promise.all([
     gestor.getDashboard(now),
     listConversations(),
     pendingApprovals(now),
@@ -52,6 +54,7 @@ export async function getHoje(now = new Date()): Promise<HojeData> {
     }),
     prisma.waContact.count({ where: { isOwner: false, lastMessageAt: { gte: since } } }),
     prisma.setting.findUnique({ where: { key: ROUTINE_KEY } }),
+    googleAgenda(), // não falha: sem Google ou com o Google fora do ar, vem vazio
   ]);
 
   const settings = dash.settings;
@@ -105,7 +108,7 @@ export async function getHoje(now = new Date()): Promise<HojeData> {
       aPagarCents: openBills.reduce((sum, b) => sum + b.amountCents, 0),
       aPagarVencidoCents: overdue.reduce((sum, b) => sum + b.amountCents, 0),
     },
-    paradas: buildStops(dash.upcoming, today),
+    paradas: buildStops(dash.upcoming, today, 5, bookings(agenda.items, today)),
     rotina: { ultimaExecucao: record?.at ?? null, resumoEnviado: record?.resumoEnviado ?? null, detalhe: record?.detalhe ?? null },
   };
 }

@@ -3,7 +3,9 @@
 // "Fazer alterações nos eventos". Variáveis: GOOGLE_SERVICE_ACCOUNT_JSON e GOOGLE_CALENDAR_ID.
 
 import { createSign } from "node:crypto";
-import { busyDays, type GoogleEvent } from "./busy-days";
+import { todayISO } from "@/lib/gestor/rules";
+import { bookings } from "./bookings";
+import { readAgenda, type AgendaRead, type GoogleEvent } from "./busy-days";
 
 interface ServiceAccount {
   client_email: string;
@@ -12,6 +14,8 @@ interface ServiceAccount {
 
 const API = process.env["GOOGLE_API_BASE"] || "https://www.googleapis.com/calendar/v3";
 const TOKEN_URL = process.env["GOOGLE_TOKEN_URL"] || "https://oauth2.googleapis.com/token";
+/** Sem limite, um Google lento seguraria o painel e a Margot. Passou disso, vale o último resultado bom. */
+const TIMEOUT_MS = 10_000;
 
 function readAccount(): ServiceAccount | null {
   const raw = process.env["GOOGLE_SERVICE_ACCOUNT_JSON"]?.trim();
@@ -61,6 +65,7 @@ async function accessToken(): Promise<string> {
       grant_type: "urn:ietf:params:oauth:grant-type:jwt-bearer",
       assertion: `${unsigned}.${signature}`,
     }),
+    signal: AbortSignal.timeout(TIMEOUT_MS),
   });
   const json = (await res.json().catch(() => ({}))) as { access_token?: string; expires_in?: number; error_description?: string };
   if (!res.ok || !json.access_token) throw new Error(`Google recusou o acesso: ${json.error_description ?? res.status}`);
@@ -70,6 +75,7 @@ async function accessToken(): Promise<string> {
 
 async function gfetch(path: string, init: RequestInit = {}) {
   const res = await fetch(`${API}${path}`, {
+    signal: AbortSignal.timeout(TIMEOUT_MS),
     ...init,
     headers: { authorization: `Bearer ${await accessToken()}`, "content-type": "application/json", ...(init.headers ?? {}) },
   });
@@ -79,15 +85,23 @@ async function gfetch(path: string, init: RequestInit = {}) {
   return json;
 }
 
-// ─── Leitura: dias ocupados ──────────────────────────────────
+// ─── Leitura: compromissos e dias ocupados ───────────────────
 
-let busyCache: { at: number; days: { date: string; summary: string }[] } | null = null;
+const EMPTY: AgendaRead = { items: [], days: [], counts: { eventos: 0, unicos: 0, repetidos: 0, cancelados: 0, doSite: 0 } };
+
+let agendaCache: { at: number; read: AgendaRead } | null = null;
 let lastError: string | null = null;
+let failedAt = 0;
 
-/** Dias ocupados de hoje até 2 anos à frente. Cache de 2 minutos; se o Google falhar, devolve vazio. */
-export async function googleBusyDays(): Promise<{ date: string; summary: string }[]> {
-  if (!isConfigured()) return [];
-  if (busyCache && Date.now() - busyCache.at < 120_000) return busyCache.days;
+/**
+ * Compromissos únicos de ontem até 2 anos à frente, com os dias que travam (regras em busy-days.ts).
+ * Cache de 2 minutos. Se o Google falhar, devolve o último resultado bom (ou vazio), guarda o erro para o painel
+ * mostrar e espera 30 segundos antes de tentar de novo, para uma queda do Google não atrasar cada tela.
+ */
+export async function googleAgenda(): Promise<AgendaRead> {
+  if (!isConfigured()) return EMPTY;
+  if (agendaCache && Date.now() - agendaCache.at < 120_000) return agendaCache.read;
+  if (failedAt && Date.now() - failedAt < 30_000) return agendaCache?.read ?? EMPTY;
   try {
     const timeMin = new Date(Date.now() - 86_400_000).toISOString();
     const timeMax = new Date(Date.now() + 730 * 86_400_000).toISOString();
@@ -100,33 +114,75 @@ export async function googleBusyDays(): Promise<{ date: string; summary: string 
       events.push(...(page?.items ?? []));
       pageToken = page?.nextPageToken;
     } while (pageToken);
-    const days = busyDays(events);
-    busyCache = { at: Date.now(), days };
+    const read = readAgenda(events);
+    agendaCache = { at: Date.now(), read };
     lastError = null;
-    return days;
+    failedAt = 0;
+    return read;
   } catch (e) {
     lastError = (e as Error).message;
+    failedAt = Date.now();
     console.error("[google] leitura da agenda", e);
-    return busyCache?.days ?? [];
+    return agendaCache?.read ?? EMPTY;
   }
 }
 
+/** Dias ocupados de hoje até 2 anos à frente. */
+export async function googleBusyDays() {
+  return (await googleAgenda()).days;
+}
+
 export function clearBusyCache() {
-  busyCache = null;
+  agendaCache = null;
+  failedAt = 0;
+}
+
+/** Nome da agenda que o robô está lendo (ajuda a conferir se é a agenda certa). Nunca falha. */
+async function calendarName(): Promise<string | null> {
+  try {
+    const cal = await gfetch(`/calendars/${encodeURIComponent(calendarId()!)}`);
+    return typeof cal?.summary === "string" ? cal.summary : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function calendarStatus() {
   if (!readAccount()) return { configurada: false, motivo: "Falta GOOGLE_SERVICE_ACCOUNT_JSON na Vercel." };
   if (!calendarId()) return { configurada: false, motivo: "Falta GOOGLE_CALENDAR_ID na Vercel." };
   clearBusyCache();
-  const days = await googleBusyDays();
+  const read = await googleAgenda();
+  const ok = lastError === null;
+  const today = todayISO();
+  const upcoming = read.items.filter((i) => i.endDate >= today);
   return {
     configurada: true,
-    ok: lastError === null,
+    ok,
     erro: lastError,
     contaDeServico: serviceAccountEmail(),
-    diasOcupados: days.length,
-    proximos: days.slice(0, 5),
+    nomeDaAgenda: ok ? await calendarName() : null,
+    diasOcupados: read.days.length,
+    proximos: read.days.slice(0, 5),
+    /** Casamentos achados na agenda (um por dia), de hoje em diante. */
+    casamentos: bookings(read.items, today),
+    /** Outros compromissos que também travam dias: o que não é casamento nem lembrete. */
+    outros: upcoming
+      .filter((i) => i.blocks && i.kind !== "casamento")
+      .slice(0, 40)
+      .map((i) => ({ date: i.date, titulo: i.title })),
+    /** O que o painel leu e deixou de fora. */
+    deixadosDeFora: {
+      repetidos: read.counts.repetidos,
+      cancelados: read.counts.cancelados,
+      lembretes: upcoming.filter((i) => i.ignoredBecause === "lembrete").length,
+      disponiveis: upcoming.filter((i) => i.ignoredBecause === "disponivel").length,
+      muitoLongos: upcoming.filter((i) => i.ignoredBecause === "muito_longo").length,
+      /** Quais são os marcados "Disponível": se um casamento sem a palavra "casamento" no título ficou aqui, dá para ver. */
+      listaDisponiveis: upcoming
+        .filter((i) => i.ignoredBecause === "disponivel")
+        .slice(0, 20)
+        .map((i) => ({ date: i.date, titulo: i.title })),
+    },
   };
 }
 

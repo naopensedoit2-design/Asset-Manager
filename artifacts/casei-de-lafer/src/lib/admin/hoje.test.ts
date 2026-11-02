@@ -170,3 +170,42 @@ test("buildStops: só o que ainda vai acontecer, na ordem das datas, com o texto
   assert.equal(stops[1].place, "Igreja Matriz, Taquara");
   assert.equal(buildStops([o(1, "2026-11-03"), o(2, "2026-11-04")], today, 1).length, 1);
 });
+
+test("buildStops: casamento que só está na Google Agenda entra com o nome, o link e a etiqueta; sem pedido no painel", () => {
+  const stops = buildStops([], today, 5, [
+    { date: "2026-12-05", time: "", title: "Casamento Bia & Caio", also: [], location: "", link: "https://calendar.example/bia" },
+    { date: "2026-12-19", time: "16:00", title: "Entrega de noiva: Lara e Rafa", also: ["Casamento - Rafael Mendes Costa"], location: "Igreja Matriz, Taquara", link: "https://calendar.example/lara" },
+  ]);
+  assert.deepEqual(stops.map((s) => [s.source, s.orderId, s.client, s.eventDate, s.when]), [
+    ["google", null, "Casamento Bia & Caio", "2026-12-05", "em 36 dias"],
+    ["google", null, "Entrega de noiva: Lara e Rafa", "2026-12-19", "em 50 dias"],
+  ]);
+  assert.equal(stops[0].statusLabel, "Só na Google Agenda");
+  assert.equal(stops[0].link, "https://calendar.example/bia");
+  assert.deepEqual(stops[1].also, ["Casamento - Rafael Mendes Costa"]);
+  assert.equal(stops[1].place, "Igreja Matriz, Taquara");
+  assert.equal(stops[1].pendingPayment, false);
+});
+
+test("buildStops: dia que já tem pedido no painel não repete o da Google; passado não entra; pedido vem antes no mesmo dia", () => {
+  const order = {
+    id: 7,
+    status: "confirmado",
+    statusLabel: "Confirmado",
+    eventDate: "2026-11-14",
+    eventTime: "",
+    city: "Taquara",
+    venue: "",
+    client: { name: "Casal 7" },
+    payments: [],
+  };
+  const g = (date: string, title: string) => ({ date, time: "", title, also: [], location: "", link: "" });
+  const stops = buildStops([order], today, 5, [g("2026-11-14", "Casamento Casal 7"), g("2026-10-20", "Casamento antigo"), g("2026-11-14", "Outro casamento no mesmo dia"), g("2026-11-28", "Casamento Lucas e Nina")]);
+  assert.deepEqual(stops.map((s) => [s.source, s.client]), [["pedido", "Casal 7"], ["google", "Casamento Lucas e Nina"]]);
+});
+
+test("buildStops: o limite vale para pedidos e Google juntos, na ordem das datas", () => {
+  const g = (date: string) => ({ date, time: "", title: `Casamento ${date}`, also: [], location: "", link: "" });
+  const stops = buildStops([], today, 2, [g("2026-12-19"), g("2026-11-05"), g("2026-12-05")]);
+  assert.deepEqual(stops.map((s) => s.eventDate), ["2026-11-05", "2026-12-05"]);
+});

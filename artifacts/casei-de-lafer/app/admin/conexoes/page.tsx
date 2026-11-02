@@ -189,9 +189,24 @@ const TZ = "America/Sao_Paulo";
 /** Teste de verdade: chama a Meta ou o Google (as mesmas verificações do cartão em Regras). */
 async function runCheck(kind: "whatsapp" | "agenda"): Promise<CheckResult> {
   if (kind === "agenda") {
-    const g = await api<{ configurada: boolean; motivo?: string; ok?: boolean; erro?: string | null; diasOcupados?: number }>("/api/admin/gestor/google");
+    const g = await api<{
+      configurada: boolean;
+      motivo?: string;
+      ok?: boolean;
+      erro?: string | null;
+      diasOcupados?: number;
+      nomeDaAgenda?: string | null;
+      casamentos?: unknown[];
+    }>("/api/admin/gestor/google");
     if (!g.configurada) return { tone: "warn", text: `Ainda não configurada. ${g.motivo ?? ""}`.trim() };
-    if (g.ok) return { tone: "ok", text: `O Google respondeu. ${g.diasOcupados ?? 0} dia(s) ocupado(s) nos próximos 2 anos.` };
+    if (g.ok) {
+      const quem = g.nomeDaAgenda ? ` Agenda lida: “${g.nomeDaAgenda}”.` : "";
+      const n = g.casamentos?.length ?? 0;
+      return {
+        tone: "ok",
+        text: `O Google respondeu.${quem} ${g.diasOcupados ?? 0} dia(s) ocupado(s) nos próximos 2 anos, ${n} deles com casamento (veja a lista em Regras).`,
+      };
+    }
     return { tone: "bad", text: `Configurada, mas o Google recusou: ${g.erro ?? "erro desconhecido"}` };
   }
   const w = await api<{
