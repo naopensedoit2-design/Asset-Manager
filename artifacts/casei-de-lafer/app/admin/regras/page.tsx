@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { formatBRL, formatDateBR, parseBRLToCents, SETTING_LABELS, type Settings } from "@/lib/gestor/rules";
 import { api, Button, ErrorNote, Field, inputClass, Loading, Panel } from "@/components/gestor/ui";
@@ -73,7 +74,7 @@ interface GoogleStatus {
   diasOcupados?: number;
   proximos?: { date: string; summary: string }[];
   /** Casamentos achados na agenda (um por dia), de hoje em diante. */
-  casamentos?: { date: string; time: string; title: string; also: string[]; location: string; link: string }[];
+  casamentos?: { id: string; date: string; time: string; title: string; also: string[]; location: string; link: string; pedido?: number | null }[];
   /** Outros compromissos que também travam dias. */
   outros?: { date: string; titulo: string }[];
   deixadosDeFora?: {
@@ -131,18 +132,26 @@ function GoogleCard() {
           <div>
             <p className="text-text-primary">Casamentos que o painel achou na agenda ({data.casamentos?.length ?? 0})</p>
             {data.casamentos && data.casamentos.length > 0 ? (
-              <ul className="mt-1 space-y-0.5 text-text-secondary">
+              <ul className="mt-1 text-text-secondary">
                 {data.casamentos.map((c) => (
-                  <li key={c.date}>
-                    {formatDateBR(c.date)} ·{" "}
-                    {c.link ? (
-                      <a href={c.link} target="_blank" rel="noreferrer" className="underline underline-offset-2">
-                        {c.title}
-                      </a>
-                    ) : (
-                      c.title
-                    )}{" "}
-                    <span className="text-text-muted">· trava o dia</span>
+                  <li key={c.date} className="flex flex-wrap items-center justify-between gap-x-3">
+                    <span className="min-w-0 py-1">
+                      {formatDateBR(c.date)} ·{" "}
+                      {c.link ? (
+                        <a href={c.link} target="_blank" rel="noreferrer" className="underline underline-offset-2">
+                          {c.title}
+                        </a>
+                      ) : (
+                        c.title
+                      )}{" "}
+                      <span className="text-text-muted">· trava o dia</span>
+                    </span>
+                    <Link
+                      href={c.pedido ? `/admin/pedidos/${c.pedido}` : `/admin/pedidos/novo?google=${encodeURIComponent(c.id)}`}
+                      className="inline-flex min-h-9 shrink-0 items-center text-gold underline underline-offset-4"
+                    >
+                      {c.pedido ? `Pedido #${c.pedido}` : "Criar pedido"}
+                    </Link>
                   </li>
                 ))}
               </ul>
