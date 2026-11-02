@@ -129,7 +129,7 @@ export async function appendOrderNote(orderId: number | null, note: string) {
 export function toolError(e: unknown, tool: string) {
   if (e instanceof RuleError) return { erro: e.message };
   console.error(`[margot] ferramenta ${tool}`, e);
-  return { erro: "Falha interna ao consultar o sistema. Encaminhe para o Leonardo." };
+  return { erro: "Falha interna ao consultar o sistema. Encaminhe para a nossa equipe." };
 }
 
 export { normalizePhone };

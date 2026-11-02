@@ -12,7 +12,7 @@ Nada disso exige VPS nem computador ligado: roda no próprio site, na Vercel.
 - Escreve para o número da Margot (pelo site, Instagram ou indicação).
 - A Margot se apresenta como assistente virtual, confere a data, monta o orçamento e manda o link da proposta.
 - Para fechar, pede nome completo, CPF e endereço, segura a data por 48h e manda o link do termo e a chave Pix.
-- O cliente manda o comprovante. A Margot agradece e diz que o Leonardo confere.
+- O cliente manda o comprovante. A Margot agradece e diz que a equipe confere.
 - Áudios dos clientes são transcritos automaticamente (se a chave de voz estiver configurada).
 
 **Para você (Leonardo)**

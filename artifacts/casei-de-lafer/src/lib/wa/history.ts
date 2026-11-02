@@ -55,7 +55,7 @@ function visible(m: StoredMessage): boolean {
 
 /**
  * Converte a conversa em turnos alternados (exigência da API): começa pela pessoa,
- * junta mensagens seguidas do mesmo lado e marca o que o Leonardo escreveu pessoalmente.
+ * junta mensagens seguidas do mesmo lado e marca o que a equipe escreveu pessoalmente.
  */
 export function buildHistory(rows: StoredMessage[], opts: { maxTurns?: number; maxChars?: number } = {}): TextTurn[] {
   const maxTurns = opts.maxTurns ?? 30;
@@ -67,7 +67,7 @@ export function buildHistory(rows: StoredMessage[], opts: { maxTurns?: number; m
     let content = describe(m);
     if (!content) continue;
     const role: TextTurn["role"] = m.direction === "in" ? "user" : "assistant";
-    if (role === "assistant" && m.author === "leonardo") content = `[Leonardo escreveu pessoalmente] ${content}`;
+    if (role === "assistant" && m.author === "leonardo") content = `[A equipe escreveu pessoalmente] ${content}`;
     if (role === "assistant" && m.author === "sistema") content = `[mensagem automática] ${content}`;
     const last = turns[turns.length - 1];
     if (last && last.role === role) last.content += `\n${content}`;

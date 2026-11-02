@@ -185,12 +185,12 @@ export default function OrcamentoDetalhado() {
         {showWhatsapp && (
           <div className="mt-6 border border-border-gold bg-bg-card rounded-xl p-4 sm:p-5">
             <p className="font-serif text-lg text-text-primary">
-              {state.orderId ? "Seu orçamento está registrado" : "Continue com o Leonardo"}
+              {state.orderId ? "Seu orçamento está registrado" : "Continue com a nossa equipe"}
             </p>
             <p className="text-sm text-text-secondary mt-1">
               {state.orderId
-                ? "Para garantir a data, fale com o Leonardo no WhatsApp. Ele já recebeu o seu pedido."
-                : "Ele responde pessoalmente pelo WhatsApp."}
+                ? "Para garantir a data, fale com a nossa equipe no WhatsApp. Ela já recebeu o seu pedido."
+                : "Nossa equipe responde pessoalmente pelo WhatsApp."}
             </p>
             <a
               href={state.whatsappUrl!}
@@ -198,7 +198,7 @@ export default function OrcamentoDetalhado() {
               rel="noreferrer"
               className="mt-4 w-full inline-flex items-center justify-center gap-3 bg-gold hover:bg-gold-light text-black font-semibold text-sm py-3.5 rounded transition-colors"
             >
-              <FaWhatsapp className="w-5 h-5" /> Falar com o Leonardo
+              <FaWhatsapp className="w-5 h-5" /> Falar com a nossa equipe
             </a>
           </div>
         )}

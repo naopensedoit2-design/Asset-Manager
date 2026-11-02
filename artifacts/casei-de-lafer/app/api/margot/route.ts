@@ -28,7 +28,7 @@ async function whatsappUrl(orderId: number | null, name?: string) {
   const cfg = await prisma.siteConfig.findFirst().catch(() => null);
   const number = cfg?.whatsappNumber || process.env["WHATSAPP_NUMBER"] || "";
   const text = orderId
-    ? `Olá, Leonardo! ${name ? `Aqui é ${name}. ` : ""}Fiz o orçamento com a Margot pelo site (pedido #${orderId}) e quero garantir a data.`
+    ? `Olá! ${name ? `Aqui é ${name}. ` : ""}Fiz o orçamento com a Margot pelo site (pedido #${orderId}) e quero garantir a data.`
     : "Olá! Estava falando com a Margot no site e gostaria de continuar o atendimento por aqui.";
   return number ? `https://wa.me/${number}?text=${encodeURIComponent(text)}` : null;
 }
@@ -72,7 +72,7 @@ export const POST = route(async (req: NextRequest) => {
   // Chave "Margot responde no chat do site" desligada (Regras ou "pausar Margot" pelo WhatsApp): não chama a IA.
   if (!settings.margotSite || !process.env["ANTHROPIC_API_KEY"] || (await overMonthlyLimit(settings.margotLimitUsd))) {
     return ok({
-      reply: "Nosso atendimento automático está em manutenção agora. Fale com o Leonardo pelo WhatsApp, ele responde rapidinho.",
+      reply: "Nosso atendimento automático está em manutenção agora. Fale com nossa equipe pelo WhatsApp, ela responde rapidinho.",
       orderId,
       encaminhado: true,
       whatsappUrl: await whatsappUrl(orderId),
@@ -92,7 +92,7 @@ export const POST = route(async (req: NextRequest) => {
   } catch (e) {
     console.error("[margot]", e);
     return ok({
-      reply: "Tive um probleminha para responder agora. Se preferir, continue com o Leonardo pelo WhatsApp.",
+      reply: "Tive um probleminha para responder agora. Se preferir, continue com nossa equipe pelo WhatsApp.",
       orderId,
       encaminhado: true,
       whatsappUrl: await whatsappUrl(orderId),
