@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { FaWhatsapp } from "react-icons/fa";
 import { ArrowUp, RotateCcw } from "lucide-react";
+import { codigoDaConversa } from "@/lib/landing/origem";
 
 interface Message {
   role: "user" | "assistant";
@@ -27,8 +28,17 @@ const GREETING: Message = {
 const SUGGESTIONS = ["Quero ver se a minha data está livre", "Quanto custa a chegada da noiva?", "Como funciona a saída dos noivos?"];
 
 const STORAGE_KEY = "margot-conversa-v1";
-const newId = () =>
+const newUuid = () =>
   typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`;
+// O código da conversa leva na frente o botão e a campanha da página inicial (?b=topo&c=...): é como se conta
+// quantas conversas cada botão trouxe. Sem esses dados no endereço, o código é só o uuid, como sempre foi.
+const newId = () => {
+  try {
+    return codigoDaConversa(window.location.search, newUuid());
+  } catch {
+    return newUuid(); // no servidor não existe window; o código que vale é o gerado no navegador
+  }
+};
 const emptyState = (): State => ({ conversationId: newId(), messages: [GREETING], orderId: null, whatsappUrl: null, encaminhado: false });
 
 function load(): State {
