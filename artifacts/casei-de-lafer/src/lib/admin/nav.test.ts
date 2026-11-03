@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { activeTab, hidesTabBar, isBare } from "./nav.ts";
+import { activeTab, hidesTabBar, hidesTopBar, isBare } from "./nav.ts";
 
 test("cada rota liga a aba certa", () => {
   assert.equal(activeTab("/admin/hoje"), "hoje");
@@ -29,6 +29,13 @@ test("o menu inferior some só dentro de uma conversa", () => {
   assert.equal(hidesTabBar("/admin/conversas/7/"), true);
   assert.equal(hidesTabBar("/admin/conversas"), false);
   assert.equal(hidesTabBar("/admin/pedidos/7"), false);
+});
+
+test("o topo do painel no celular some junto com o menu, dentro de uma conversa", () => {
+  assert.equal(hidesTopBar("/admin/conversas/7"), true);
+  assert.equal(hidesTopBar("/admin/conversas/7/"), true);
+  assert.equal(hidesTopBar("/admin/conversas"), false);
+  assert.equal(hidesTopBar("/admin/hoje"), false);
 });
 
 test("a tela de entrada não tem moldura", () => {
