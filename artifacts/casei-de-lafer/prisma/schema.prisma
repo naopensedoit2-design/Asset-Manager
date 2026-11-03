@@ -222,6 +222,7 @@ model WaContact {
   ignoredAt     DateTime? // conversa ignorada: a Margot não responde, o dono não é avisado e nada conta como não lida
   ignoredReason String      @default("") // manual | encaminhada | figurinha | video | contato | localizacao (src/lib/wa/triage.ts)
   blockedAt     DateTime? // bloqueado no WhatsApp pela API da Meta: a pessoa não consegue mais escrever
+  pinOrder      Int? // fixada à mão no topo da lista (menor = mais acima); vazio = ordem automática (src/lib/wa/ordem.ts)
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   messages      WaMessage[]

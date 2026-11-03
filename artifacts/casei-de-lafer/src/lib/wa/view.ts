@@ -22,7 +22,7 @@ interface Viewable {
 
 const MEDIA_TYPES = ["image", "sticker", "audio", "video", "document"];
 /** Tipos que o WhatsApp manda sem conteúdo útil: aparecem como aviso, nunca como balão vazio. */
-const NOTICE_TYPES = ["unsupported", "unknown", "system", "ephemeral", "request_welcome", "order"];
+export const NOTICE_TYPES = ["unsupported", "unknown", "system", "ephemeral", "request_welcome", "order"];
 
 /** Qual desenho usar para a mensagem. Avisos com foto (ex.: comprovante com botões) chegam como "interactive": decide pelo arquivo. */
 export function viewKind(m: Viewable): MessageView {

@@ -67,7 +67,8 @@ export async function getHoje(now = new Date()): Promise<HojeData> {
   const whatsappConfigured = waMissing().length === 0;
 
   const waiting: WaitingConversation[] = conversations
-    .filter((c) => c.waiting)
+    // Aviso do WhatsApp sem conteúdo (enquete, "ver uma vez", chamada…) não tem o que responder: não entra na fila.
+    .filter((c) => c.waiting && !c.onlyNotice)
     .map((c) => ({
       id: c.id,
       name: c.clientName ?? (c.name || c.phone),
