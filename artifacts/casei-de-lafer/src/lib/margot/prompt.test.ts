@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { buildSystemPrompt, type PromptContext } from "./prompt.ts";
-import { DEFAULT_SETTINGS } from "../gestor/rules.ts";
+import { DEFAULT_SETTINGS, formatBRL } from "../gestor/rules.ts";
 
 // Regras do prompt que o briefing exige e que um texto novo não pode apagar sem querer.
 // (Texto no prompt não impede uma ação; quem impede é o código. Aqui só se garante que a regra está escrita.)
@@ -75,6 +75,90 @@ test("preço, sinal e saldo vêm do banco: o texto escrito à mão não tem R$ n
   assert.ok(!fixed.includes("R$"), "R$ escrito à mão no prompt");
   assert.ok(fixed.includes("sinal de 37%"));
   assert.ok(!fixed.includes("40%"), "40% escrito à mão no prompt");
+});
+
+// Margot v0.2: anfitriã, preço "a partir de", distância confirmada pela equipe e a base do carro nunca revelada.
+
+test("o tom é de anfitriã: acolhe, tem empatia e não pressiona", () => {
+  for (const channel of CHANNELS) {
+    const { fixed } = buildSystemPrompt(ctx(channel));
+    for (const trecho of ["Você é uma anfitriã", "empatia pelo momento", "sem pressionar", "sem criar urgência artificial"]) {
+      assert.ok(fixed.includes(trecho), `${channel}: falta "${trecho}"`);
+    }
+    assert.ok(!fixed.includes("Amigável e formal"), `${channel}: sobrou o tom antigo`);
+  }
+});
+
+test("os serviços estão definidos como o dono descreveu: entrega da noiva, saída opcional, chofer, 2 lugares, ensaio de até 3 horas", () => {
+  for (const channel of CHANNELS) {
+    const { fixed } = buildSystemPrompt(ctx(channel));
+    for (const trecho of [
+      "buscamos a noiva onde ela estiver",
+      "até cerca de 10 km",
+      'Nunca diga que é "só a entrada"',
+      "Saída dos noivos: opcional",
+      "chofer trajado a rigor está disponível mediante solicitação, sem custo adicional",
+      "Tem só 2 lugares",
+      "até 3 horas num único local de ensaio",
+      "Um segundo local é orçado à parte",
+    ]) {
+      assert.ok(fixed.includes(trecho), `${channel}: falta "${trecho}"`);
+    }
+  }
+});
+
+test("decoração do carro é opcional e combinada com a equipe: o prompt não promete item nem diz que está incluso", () => {
+  for (const channel of CHANNELS) {
+    const { fixed } = buildSystemPrompt(ctx(channel));
+    assert.ok(fixed.includes("Decoração do carro: é opcional e combinada caso a caso"), channel);
+    assert.ok(!/decoração floral/i.test(fixed), `${channel}: voltou a promessa de decoração floral inclusa`);
+  }
+});
+
+test("preço e distância: valor-base \"a partir de\", cidade distante e trajeto longo vão para a equipe, sem total definitivo", () => {
+  for (const channel of CHANNELS) {
+    const { fixed } = buildSystemPrompt(ctx(channel));
+    for (const trecho of [
+      'diga sempre "a partir de" antes do valor',
+      "valor por distância a confirmar",
+      "não apresente total, sinal e saldo como definitivos",
+      "valor por distância (cidade fora da região de valor-base ou trajeto longo da noiva)",
+      "estamos abertos a sugestões",
+      "Nunca invente pacote, desconto nem preço",
+    ]) {
+      assert.ok(fixed.includes(trecho), `${channel}: falta "${trecho}"`);
+    }
+  }
+  // O link da proposta só é retido no WhatsApp; no site o botão do WhatsApp já leva para a equipe.
+  assert.ok(buildSystemPrompt(ctx("whatsapp")).fixed.includes("nem envie o link_proposta"));
+});
+
+test("nunca revela de onde o carro sai: nem o prompt traz a base ou o raio, nem a Margot pode repeti-los", () => {
+  for (const channel of CHANNELS) {
+    const { fixed, variable } = buildSystemPrompt(ctx(channel));
+    const tudo = `${fixed}\n${variable}`;
+    assert.ok(fixed.includes("Nunca revele de onde o carro sai"), channel);
+    assert.ok(fixed.includes("parâmetros internos"), channel);
+    assert.ok(!/parob[ée]/i.test(tudo), `${channel}: a cidade-base está escrita à mão no prompt`);
+    assert.ok(!/200\s?km/i.test(tudo), `${channel}: o raio está escrito à mão no prompt`);
+  }
+});
+
+test("Deslocamento: sem regra cadastrada só Gramado e Canela têm valor-base; com regra, o texto do dono entra marcado como interno", () => {
+  const sem = buildSystemPrompt(ctx("whatsapp")).fixed;
+  assert.ok(sem.includes("ainda não há regra cadastrada; trate só Gramado e Canela como região de valor-base"));
+  const com = buildSystemPrompt(ctx("whatsapp", { settings: { ...DEFAULT_SETTINGS, serviceArea: "Valor-base: Gramado, Canela e Caxias do Sul." } })).fixed;
+  assert.ok(com.includes("Valor-base: Gramado, Canela e Caxias do Sul."));
+  assert.ok(com.includes("regra interna, para você decidir"));
+  assert.ok(!com.includes("ainda não há regra cadastrada"));
+});
+
+test("a lista de serviços é dita como valores-base e continua vindo do banco", () => {
+  const { fixed } = buildSystemPrompt(
+    ctx("site", { services: [{ id: 7, name: "Carro da Noiva", description: "Chegada da noiva.", priceCents: 240000, isAddon: false }] }),
+  );
+  assert.ok(fixed.includes("# Serviços e preços atuais (valores-base)"));
+  assert.ok(fixed.includes(`[id 7] Carro da Noiva: ${formatBRL(240000)}.`)); // o preço é o do banco, formatado pelo código
 });
 
 test("o texto variável traz o dia de hoje e a conversa", () => {
