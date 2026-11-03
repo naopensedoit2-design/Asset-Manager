@@ -557,6 +557,17 @@ export async function googleBookingDraft(eventId: unknown) {
   return { id, link: booking.link, ...orderDraft(booking), pedido: linked?.orderId ?? null };
 }
 
+/** Casamentos de hoje em diante na Google Agenda, com o que o pedido já traria e o pedido que já existe, se existir. */
+export async function listGoogleBookings() {
+  const [agenda, linked] = await Promise.all([googleAgenda(), googleLinkedOrders()]);
+  return bookings(agenda.items, todayISO()).map((b) => ({
+    id: b.id,
+    ...orderDraft(b),
+    also: b.also,
+    pedido: linked.get(b.id)?.orderId ?? null,
+  }));
+}
+
 /** De qual casamento da Google Agenda este pedido veio, se veio de um. */
 export async function orderGoogleLink(orderId: unknown) {
   const id = requireInt(orderId, "id");

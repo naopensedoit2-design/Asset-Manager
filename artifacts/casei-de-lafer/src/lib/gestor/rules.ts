@@ -280,7 +280,9 @@ export function parseBRLToCents(input: string | number): number | null {
   if (typeof input === "number") return Number.isFinite(input) ? Math.round(input * 100) : null;
   const cleaned = input.replace(/[^\d,.-]/g, "");
   if (!cleaned) return null;
-  const normalized = cleaned.includes(",") ? cleaned.replace(/\./g, "").replace(",", ".") : cleaned;
+  // Sem vírgula, ponto seguido de exatamente 3 dígitos é separador de milhar ("1.500" = R$ 1.500, "2.600" = R$ 2.600).
+  const thousands = !cleaned.includes(",") && /^-?\d{1,3}(\.\d{3})+$/.test(cleaned);
+  const normalized = cleaned.includes(",") ? cleaned.replace(/\./g, "").replace(",", ".") : thousands ? cleaned.replace(/\./g, "") : cleaned;
   const n = Number(normalized);
   return Number.isFinite(n) ? Math.round(n * 100) : null;
 }

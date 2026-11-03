@@ -25,6 +25,7 @@ Nada disso exige VPS nem computador ligado: roda no próprio site, na Vercel.
   - "quanto entrou esse mês?"
   - "lança 150 de gasolina" (ou mande a foto da nota)
   - "o sinal do pedido 14 caiu"
+  - "cria o pedido do casamento de 05/12, WhatsApp 51 99999-0000, total 2.400" (ela lê a Google Agenda para trazer nome, data, hora e local; se o dia tiver "casamento" e "entrega de noiva", pergunta qual é a data)
   - "manda para a Ana que o motorista chega 15h antes"
   - "pausa a Margot com a Ana" / "pode voltar a atender a Ana"
   - **"pausar Margot" / "retomar Margot"**: interruptor geral. Pausada, ela não responde mais nenhum cliente (WhatsApp e chat do site); o que chegar aparece em Conversas e avisa você. Vale na hora e funciona mesmo sem IA (sem chave ou com o limite do mês estourado). O mesmo liga/desliga está em Regras ("Margot responde clientes no WhatsApp" e "Margot responde no chat do site")
@@ -182,7 +183,7 @@ O WhatsApp só deixa a empresa mandar mensagem livre até 24h depois da sua últ
   - `store.ts`: contatos, mensagens, janela de 24h, travas.
   - `process.ts`: caminho de cada mensagem.
   - `customer.ts`: Margot com clientes.
-  - `secretary.ts`: modo secretária.
+  - `secretary.ts`: modo secretária. Criar pedido (`criar_pedido`, com `casamentos_da_agenda`): regras puras em `pedido.ts` (testadas); `actions.ts` grava só depois do Confirmar, com `createOrder` (ligado ao evento da Google Agenda quando há) e orçamento sem marcar como enviado; o pedido nasce como "novo" e a data só é reservada com o sinal.
   - `actions.ts`: ações que esperam o "sim" do Leonardo.
   - `notify.ts`: avisos para o Leonardo, com modelo e fila fora da janela.
   - `voice.ts`: transcrição e voz.
