@@ -35,6 +35,38 @@
   --color-bad:   var(--bad);
   --color-info:  var(--info);
 
+  /* ─── Conversas no estilo do WhatsApp (valores em app/admin/theme.css; só o painel os define) ─── */
+  --color-wa-bar: var(--wa-bar);
+  --color-wa-bar-text: var(--wa-bar-text);
+  --color-wa-bar-muted: var(--wa-bar-muted);
+  --color-wa-in: var(--wa-in);
+  --color-wa-out: var(--wa-out);
+  --color-wa-text: var(--wa-text);
+  --color-wa-time: var(--wa-time);
+  --color-wa-time-out: var(--wa-time-out);
+  --color-wa-tick-read: var(--wa-tick-read);
+  --color-wa-lbl-margot: var(--wa-lbl-margot);
+  --color-wa-lbl-voce: var(--wa-lbl-voce);
+  --color-wa-lbl-auto: var(--wa-lbl-auto);
+  --color-wa-link: var(--wa-link);
+  --color-wa-err: var(--wa-err);
+  --color-wa-pill: var(--wa-pill);
+  --color-wa-pill-text: var(--wa-pill-text);
+  --color-wa-notice: var(--wa-notice);
+  --color-wa-notice-text: var(--wa-notice-text);
+  --color-wa-input: var(--wa-input);
+  --color-wa-input-text: var(--wa-input-text);
+  --color-wa-placeholder: var(--wa-placeholder);
+  --color-wa-composer: var(--wa-composer);
+  --color-wa-send: var(--wa-send);
+  --color-wa-send-text: var(--wa-send-text);
+  --color-wa-accent: var(--wa-accent);
+  --color-wa-badge: var(--wa-badge);
+  --color-wa-badge-text: var(--wa-badge-text);
+  --color-wa-overlay: var(--wa-overlay);
+  --color-wa-overlay-text: var(--wa-overlay-text);
+  --color-wa-sub: var(--wa-sub);
+
   /* ─── Semantic mappings (Shadcn compatibility) ───────── */
   --color-background:        #0a0a0a;
   --color-foreground:        #f5f0e8;
