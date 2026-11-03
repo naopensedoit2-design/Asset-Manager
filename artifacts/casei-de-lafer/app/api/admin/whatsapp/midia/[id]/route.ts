@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { downloadMedia, explainError } from "@/lib/wa/client";
 import { createMediaCache, type CachedMedia } from "@/lib/wa/media-cache";
+import { disposition, downloadName, mediaCsp } from "@/lib/wa/media-file";
 import { contentRange, MAX_SLICE, parseByteRange } from "@/lib/wa/range";
 import { prisma } from "@/lib/prisma";
 
@@ -21,14 +22,6 @@ const cache = createMediaCache({ maxBytes: 48 * 1024 * 1024, ttlMs: 5 * 60_000 }
  * rodaria com o acesso do Leonardo.
  */
 const INLINE = /^(image\/(jpeg|png|webp|gif)|audio\/[\w.+-]+|video\/[\w.+-]+|application\/pdf)$/;
-
-/** Content-Disposition que aguenta qualquer nome de arquivo (acento, emoji): cabeçalho HTTP só aceita Latin-1. */
-function disposition(kind: "inline" | "attachment", name: string): string {
-  if (!name) return kind;
-  const ascii = name.replace(/[^\x20-\x7e]/g, "_").replace(/["\\]/g, "_");
-  const utf8 = encodeURIComponent(name).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
-  return `${kind}; filename="${ascii}"; filename*=UTF-8''${utf8}`;
-}
 
 /** Arquivo grande, pedido inteiro (sem Range): vai aos poucos, porque resposta em fluxo não tem o limite de 4,5 MB. */
 function streamOf(data: Buffer): ReadableStream<Uint8Array> {
@@ -59,17 +52,21 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   }
 
   const declared = (file.mime || known.mediaMime || "application/octet-stream").split(";")[0].trim().toLowerCase();
-  const inline = INLINE.test(declared);
+  // ?baixar=1 (botão "Baixar" do painel) salva o arquivo em vez de abrir, para o caso de o navegador não tocar o formato.
+  const download = req.nextUrl.searchParams.get("baixar") === "1";
+  const inline = INLINE.test(declared) && !download;
   const size = file.data.length;
+  const csp = mediaCsp(declared);
   const headers: Record<string, string> = {
-    "Content-Type": inline ? declared : "application/octet-stream",
-    "Content-Disposition": disposition(inline ? "inline" : "attachment", known.fileName || (inline ? "" : "arquivo")),
+    "Content-Type": INLINE.test(declared) ? declared : "application/octet-stream",
+    "Content-Disposition": inline
+      ? disposition("inline", known.fileName)
+      : disposition("attachment", downloadName(known.fileName, declared, mediaId)),
     "Accept-Ranges": "bytes",
     "Cache-Control": "private, max-age=86400",
-    // Mesmo que alguém consiga abrir o arquivo como página, nada nele executa. (PDF fica de fora: o visualizador
-    // do Chrome não abre PDF com esta regra, e um PDF não roda script na página.)
+    // Mesmo que alguém consiga abrir o arquivo como página, nada nele executa (ver media-file.ts).
     "X-Content-Type-Options": "nosniff",
-    ...(declared === "application/pdf" ? {} : { "Content-Security-Policy": "default-src 'none'; sandbox" }),
+    ...(csp ? { "Content-Security-Policy": csp } : {}),
   };
 
   const range = parseByteRange(req.headers.get("range"), size);
