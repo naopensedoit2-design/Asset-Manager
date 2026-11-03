@@ -30,6 +30,8 @@ Cada toque nos botões é contado por botão (`topo`, `valores`, `final`, `rodap
 - Só grava em produção (`VERCEL_ENV=production`): as prévias da Vercel usam o banco de produção e não podem sujar o número. Só conta GET (o HEAD de verificadores de link não entra).
 - No máximo 300 linhas por dia; passou disso, campanhas novas viram `outra`.
 - Para ler: `select key, value from "Setting" where key like 'clique:%' order by key desc;`
+- Conversas que cada botão trouxe: o `/conversar` repassa `?b=botão&c=campanha` ao chat e o chat guarda isso no começo do código da conversa (`topo.nome-da-campanha.<uuid>`, regra em `src/lib/landing/origem.ts`; campanha cortada em 18 caracteres; sem campanha, `sem-campanha`). Só aparecem conversas que chamaram a IA (o que fica em `AiUsage`). Para contar:
+  `select split_part("conversationId", '.', 1) as botao, split_part("conversationId", '.', 2) as campanha, count(distinct "conversationId") as conversas from "AiUsage" where channel = 'site' and split_part("conversationId", '.', 1) in ('topo','valores','final','rodape','outro') group by 1, 2 order by 3 desc;`
 - `/whatsapp` e `/conversar` estão fora da busca (`public/robots.txt`).
 
 ## Atualização da página

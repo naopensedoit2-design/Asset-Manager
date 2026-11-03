@@ -60,7 +60,7 @@ export const SERVICOS = {
     { titulo: "Traje de motorista", texto: "Sem custo, se você pedir." },
     { titulo: "Decoração", texto: "Opcional, combinada com a nossa equipe." },
   ],
-  nota: "O valor final depende do local do casamento e é confirmado pela nossa equipe no orçamento. Fora da Serra Gaúcha, avaliamos caso a caso.",
+  nota: "O valor final é confirmado pela nossa equipe no orçamento. Fora da Serra Gaúcha, avaliamos caso a caso.",
   semValores: "Os valores são confirmados pela nossa equipe no orçamento.",
   // Descrição de cada serviço pelo nome cadastrado no painel (sem diferenciar maiúsculas e acentos).
   descricoes: {
