@@ -557,23 +557,52 @@ export async function googleBookingDraft(eventId: unknown) {
   return { id, link: booking.link, ...orderDraft(booking), pedido: linked?.orderId ?? null };
 }
 
+/** Liga um pedido já existente a um casamento da Google Agenda do mesmo dia (o que o "Novo pedido" faz ao criar). */
+export async function linkOrderToGoogle(orderId: unknown, eventId: unknown) {
+  const id = requireInt(orderId, "id");
+  const order = await loadOrder(id);
+  if (["perdido", "cancelado", "realizado"].includes(order.status)) {
+    throw new RuleError("status_invalido", "Reabra o pedido antes de ligar à Google Agenda.", 409);
+  }
+  const existing = await prisma.setting.findUnique({ where: { key: linkKey(id) } });
+  if (existing) throw new RuleError("ja_ligado", "Este pedido já está ligado a um casamento da Google Agenda.", 409);
+  const link = await resolveGoogleLink(str(eventId, 300), dateToISO(order.eventDate));
+  await prisma.$transaction(async (tx) => {
+    await tx.setting.create({ data: { key: linkKey(id), value: encodeLink(link.eventId, link.date) } });
+    await tx.orderHistory.create({
+      data: { orderId: id, fromStatus: order.status, toStatus: order.status, actor: "admin", note: "Ligado ao casamento da Google Agenda" },
+    });
+  });
+  return orderGoogleLink(id);
+}
+
 /** Casamentos de hoje em diante na Google Agenda, com o que o pedido já traria e o pedido que já existe, se existir. */
 export async function listGoogleBookings() {
   const [agenda, linked] = await Promise.all([googleAgenda(), googleLinkedOrders()]);
   return bookings(agenda.items, todayISO()).map((b) => ({
     id: b.id,
     ...orderDraft(b),
+    title: b.title,
     also: b.also,
     pedido: linked.get(b.id)?.orderId ?? null,
   }));
 }
 
-/** De qual casamento da Google Agenda este pedido veio, se veio de um. */
+/**
+ * De qual casamento da Google Agenda este pedido veio, se veio de um. Sem vínculo, sugere o casamento da agenda no
+ * mesmo dia que ainda não tem pedido (ex.: pedido cancelado e reaberto perde o vínculo, e o dia passa a aparecer ocupado).
+ */
 export async function orderGoogleLink(orderId: unknown) {
   const id = requireInt(orderId, "id");
   const row = await prisma.setting.findUnique({ where: { key: linkKey(id) } });
   const link = row ? linksFromRows([row])[0] : undefined;
-  if (!link) return { vinculo: null };
+  if (!link) {
+    const order = await prisma.order.findUnique({ where: { id }, select: { eventDate: true, status: true } });
+    const date = dateToISO(order?.eventDate ?? null);
+    if (!order || !date || ["perdido", "cancelado", "realizado"].includes(order.status)) return { vinculo: null, sugestao: null };
+    const free = (await listGoogleBookings()).find((b) => b.eventDate === date && b.pedido === null);
+    return { vinculo: null, sugestao: free ? { id: free.id, titulo: free.title } : null };
+  }
   const item = (await googleAgenda()).items.find((i) => i.id === link.eventId);
   return { vinculo: { data: link.date, titulo: item ? cleanTitle(item.title) : null, link: item?.link ?? "" } };
 }
