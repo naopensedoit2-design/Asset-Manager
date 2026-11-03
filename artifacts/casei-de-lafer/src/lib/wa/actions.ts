@@ -7,6 +7,8 @@ import * as gestor from "@/lib/gestor/service";
 import { payExpensePart, saveExpense } from "@/lib/gestor/finance-service";
 import { categoryLabel } from "@/lib/gestor/finance";
 import { formatBRL, formatDateBR, RuleError } from "@/lib/gestor/rules";
+import { itensDoOrcamento, lerPedido, type PedidoNovo } from "./pedido";
+import { phoneVariants } from "./phone";
 import { buttonsMessage, type Header } from "./client";
 import { notifyOwner } from "./notify";
 import { sendText } from "./send";
@@ -28,6 +30,7 @@ export type Action =
       };
     }
   | { tipo: "mensagem"; contato: number; texto: string }
+  | { tipo: "pedido"; pedido: PedidoNovo }
   // Abater parte de (ou quitar) uma conta a pagar. `saldoCents` é o saldo que o Leonardo viu na confirmação.
   | { tipo: "abatimento"; conta: number; valorCents: number; saldoCents: number; data: string };
 
@@ -37,6 +40,10 @@ export function parseAction(raw: string): Action | null {
     if (a?.tipo === "pagamento" && Number.isInteger(a.pedido) && (a.pagamento === "sinal" || a.pagamento === "saldo")) return a;
     if (a?.tipo === "despesa" && a.despesa && Number.isInteger(a.despesa.valorCents)) return a;
     if (a?.tipo === "mensagem" && Number.isInteger(a.contato) && typeof a.texto === "string") return a;
+    if (a?.tipo === "pedido") {
+      const pedido = lerPedido(a.pedido);
+      return pedido ? { tipo: "pedido", pedido } : null;
+    }
     if (
       a?.tipo === "abatimento" &&
       Number.isInteger(a.conta) &&
@@ -91,6 +98,7 @@ export async function resolveAction(owner: WaContact, rowId: number, confirm: bo
     if (action.tipo === "pagamento") return await confirmPayment(action.pedido, action.pagamento);
     if (action.tipo === "despesa") return await createExpense(action.despesa);
     if (action.tipo === "abatimento") return await payExpense(action);
+    if (action.tipo === "pedido") return await createOrderFromChat(action.pedido);
     return await messageClient(action.contato, action.texto);
   } catch (e) {
     // Deixa tentar de novo se falhou.
@@ -163,6 +171,41 @@ async function createExpense(d: Extract<Action, { tipo: "despesa" }>["despesa"])
   return `✅ Despesa lançada: ${e.description} · ${formatBRL(e.amountCents)} · ${categoryLabel(e.category)}${
     e.status === "a_pagar" ? ` · a pagar${e.dueDate ? ` até ${formatDateBR(e.dueDate)}` : ""}` : " · paga"
   }. Já aparece no Financeiro.`;
+}
+
+async function createOrderFromChat(p: PedidoNovo): Promise<string> {
+  const services = await gestor.listServices({ activeOnly: true });
+  const items = itensDoOrcamento(p.servicos, services, p.valorCents);
+  // Mantém o telefone já cadastrado (pode estar na forma sem o nono dígito).
+  const known = await prisma.client.findFirst({ where: { phone: { in: phoneVariants(p.telefone) } }, select: { phone: true } });
+  const { order } = await gestor.createOrder(
+    {
+      client: { name: p.nome, phone: known?.phone ?? p.telefone, source: "outro" },
+      eventDate: p.data,
+      eventTime: p.horario,
+      venue: p.local,
+      city: p.cidade,
+      serviceIds: p.servicos,
+      notes: `Pedido criado pelo WhatsApp (Margot), a pedido do Leonardo.${p.notas ? `\n${p.notas}` : ""}`,
+      googleEventId: p.evento ?? "",
+    },
+    "admin",
+  );
+  const where = [order.venue, order.city].filter(Boolean).join(", ");
+  const lines = [`✅ Pedido #${order.id} criado: ${order.client.name} · ${formatDateBR(p.data)}${where ? ` · ${where}` : ""}.`];
+  if (!items.length) {
+    lines.push("Ainda sem orçamento: registre os serviços e o valor no painel (Gestão).");
+    return lines.join("\n");
+  }
+  try {
+    const { totais } = await gestor.createQuote(order.id, { items, markSent: false }, "admin");
+    lines.push(`Total ${formatBRL(totais.totalCents)} · sinal ${formatBRL(totais.depositCents)} · saldo ${formatBRL(totais.balanceCents)}.`);
+    lines.push(`Quando o sinal cair, me diga "deu baixa no sinal do #${order.id}" que eu reservo a data.`);
+  } catch (e) {
+    if (!(e instanceof RuleError)) console.error("[whatsapp] orçamento do pedido criado pelo WhatsApp", e);
+    lines.push(`O pedido foi criado, mas o orçamento não: ${e instanceof RuleError ? e.message : "deu um erro"}. Registre no painel.`);
+  }
+  return lines.join("\n");
 }
 
 async function payExpense(a: Extract<Action, { tipo: "abatimento" }>): Promise<string> {

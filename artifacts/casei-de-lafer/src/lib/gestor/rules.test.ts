@@ -136,6 +136,15 @@ test("valores em reais viram centavos", () => {
   assert.equal(parseBRLToCents(""), null);
 });
 
+test("ponto de milhar sem vírgula não vira centavos", () => {
+  assert.equal(parseBRLToCents("2.600"), 260000);
+  assert.equal(parseBRLToCents("1.500"), 150000);
+  assert.equal(parseBRLToCents("R$ 12.500"), 1250000);
+  assert.equal(parseBRLToCents("1.250.000"), 125000000);
+  assert.equal(parseBRLToCents("2.5"), 250);
+  assert.equal(parseBRLToCents("150"), 15000);
+});
+
 test("configurações inválidas voltam ao padrão e validação barra absurdos", () => {
   const s = parseSettings([
     { key: "depositPercent", value: "30" },
