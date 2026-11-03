@@ -9,9 +9,11 @@ interface Props {
   canais: Canais;
   /** Datas já reservadas (aaaa-mm-dd). Vazio = não mostra calendário (um calendário vazio diria "tudo livre"). */
   datasReservadas: string[];
+  /** Mês que o calendário abre (aaaa-mm, fuso de São Paulo). Vem do servidor para o HTML e o navegador mostrarem o mesmo mês. */
+  mesInicial: string;
 }
 
-export default function Final({ canais, datasReservadas }: Props) {
+export default function Final({ canais, datasReservadas, mesInicial }: Props) {
   const calendario = datasReservadas.length > 0;
   return (
     <SectionWrapper id="data" tight aria-labelledby="titulo-final" className="bg-bg-secondary">
@@ -23,7 +25,7 @@ export default function Final({ canais, datasReservadas }: Props) {
           <p className="mt-4 text-text-secondary">{FINAL.texto}</p>
           <CtaBloco slot="final" canais={canais} className="mt-8" />
         </div>
-        {calendario && <CalendarioPublico reservadas={datasReservadas} />}
+        {calendario && <CalendarioPublico reservadas={datasReservadas} mesInicial={mesInicial} />}
       </div>
     </SectionWrapper>
   );

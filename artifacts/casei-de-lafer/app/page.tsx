@@ -8,6 +8,7 @@ import Servicos from "@/components/landing/Servicos";
 import Topo from "@/components/landing/Topo";
 import { normalizar, OG } from "@/lib/landing/conteudo";
 import { getDadosLanding } from "@/lib/landing/dados";
+import { mesSaoPaulo } from "@/lib/landing/toques";
 import { idDoYoutube } from "@/lib/landing/youtube";
 
 // A página é montada no servidor e guardada por 60 segundos: abre rápido e já chega com foto, valores e regras.
@@ -35,7 +36,7 @@ export default async function Page() {
       <Servicos servicos={dados.servicos} canais={canais} />
       <ComoFunciona regras={dados.regras} />
       <Perguntas regras={dados.regras} precoEnsaioCentavos={precoEnsaio} />
-      <Final canais={canais} datasReservadas={dados.datasReservadas} />
+      <Final canais={canais} datasReservadas={dados.datasReservadas} mesInicial={mesSaoPaulo(new Date())} />
       <Rodape temWhatsapp={dados.temWhatsapp} />
     </main>
   );

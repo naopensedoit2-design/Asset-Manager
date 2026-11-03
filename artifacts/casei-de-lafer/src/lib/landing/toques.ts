@@ -21,6 +21,9 @@ export function diaSaoPaulo(agora: Date): string {
   return partes; // en-CA já formata aaaa-mm-dd
 }
 
+/** Mês no fuso de São Paulo (aaaa-mm). Servidor (UTC) e navegador (Brasil) discordam do mês nas últimas 3 horas dele. */
+export const mesSaoPaulo = (agora: Date): string => diaSaoPaulo(agora).slice(0, 7);
+
 export const prefixoDoDia = (dia: string) => `${PREFIXO}${dia}:`;
 
 export function chaveDoToque(dia: string, canal: Canal, botao: Botao | "outro", campanha: string): string {

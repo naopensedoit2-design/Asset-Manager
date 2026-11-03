@@ -10,10 +10,17 @@ const DIAS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
 
 const seta = "flex h-11 w-11 items-center justify-center text-text-secondary transition-colors hover:text-gold " + foco;
 
+// "2026-11" -> 1º de novembro de 2026 no fuso de quem está lendo. Sem new Date() aqui: o servidor roda em UTC e o
+// navegador no Brasil, e nas últimas 3 horas do mês eles discordam de qual mês é.
+const primeiroDia = (aaaaMm: string) => {
+  const [ano, mes] = aaaaMm.split("-").map(Number);
+  return new Date(ano, mes - 1, 1);
+};
+
 // Só mostra o que é verdade: as datas já reservadas pelo negócio (as datas vêm do servidor). O resto do mês não é
 // prometido como livre, porque a agenda também depende de compromissos que o público não vê.
-export default function CalendarioPublico({ reservadas }: { reservadas: string[] }) {
-  const [mes, setMes] = useState(() => new Date());
+export default function CalendarioPublico({ reservadas, mesInicial }: { reservadas: string[]; mesInicial: string }) {
+  const [mes, setMes] = useState(() => primeiroDia(mesInicial));
   const ocupadas = new Set(reservadas);
 
   const dias = eachDayOfInterval({ start: startOfMonth(mes), end: endOfMonth(mes) });
