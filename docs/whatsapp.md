@@ -154,6 +154,8 @@ O WhatsApp só deixa a empresa mandar mensagem livre até 24h depois da sua últ
 | Erro 131042 | Falta o cartão na conta do WhatsApp (Parte 9). |
 | Avisos só chegam quando você escreve para a Margot | O modelo `aviso_margot` ainda não foi aprovado, ou o nome está diferente. |
 | A Margot respondeu algo que não devia | Pause a conversa (botão em Conversas) e responda você. Se for grave ou parecer repetir, mande **pausar Margot** no seu WhatsApp (corta todas as conversas e o chat do site). Os ajustes de comportamento ficam em `src/lib/margot/prompt.ts`. |
+| Uma foto, vídeo ou áudio mostra "indisponível" ou "Não consegui tocar" | A Meta guarda a mídia por cerca de 30 dias; depois disso o arquivo some e não há como recuperar. Antes disso, toque em **Baixar** (o celular pode não tocar aquele formato, como alguns vídeos gravados em HEVC). Vídeos grandes chegam em pedaços; se travar, confira se o aparelho está com internet. |
+| Chegou algo que o painel não mostra (enquete, "ver uma vez", chamada) | O WhatsApp não entrega esses tipos para o número da Margot pela API. O painel avisa que a pessoa mandou, sem o conteúdo. Peça para a pessoa reenviar como foto ou texto. |
 
 ---
 
@@ -173,6 +175,9 @@ O WhatsApp só deixa a empresa mandar mensagem livre até 24h depois da sua últ
   - `voice.ts`: transcrição e voz.
   - `summary.ts`: resumo diário (chamado por `/api/cron/diario`).
   - `admin.ts`: tela Conversas.
+  - `view.ts`: como cada tipo de mensagem aparece no painel (texto, foto, vídeo, áudio, figurinha, documento, localização, contato, reação, avisos). Puro, com testes em `view.test.ts`. Mensagem sem arquivo ou de tipo desconhecido vira um aviso em português, nunca um balão vazio.
+  - `range.ts` e `media-cache.ts`: mídia em pedaços. A Vercel recusa resposta de função acima de 4,5 MB e o iPhone só toca vídeo e áudio se o servidor entender o cabeçalho `Range`; por isso `/api/admin/whatsapp/midia/[id]` responde 206 com pedaços de até 4 MB e guarda o arquivo baixado da Meta por 5 minutos (até 48 MB por instância) para o player pedir vários pedaços sem baixar tudo de novo. Só abre mídia que está em alguma conversa; tipos que o navegador poderia executar (HTML, SVG, script) são entregues como download, com `nosniff` e CSP restrita.
+- Tela da conversa: `app/admin/conversas/[id]/page.tsx` (cabeçalho, papel de parede, caixa de resposta) e `src/components/gestor/wa-message.tsx` (balões e mídia). O visual (papel de parede, rabinho, hora e tiques dentro do balão) fica em `app/admin/whatsapp.css`; as cores são os tokens `--wa-*` de `app/admin/theme.css`, um conjunto por tema, com contraste conferido em `src/lib/admin/look.test.ts`. Dentro de uma conversa o topo e o menu inferior do painel somem no celular (`hidesTopBar`/`hidesTabBar` em `src/lib/admin/nav.ts`), como no WhatsApp.
 - Números brasileiros: o WhatsApp às vezes identifica celulares sem o nono dígito. Toda comparação usa `phoneVariants` (com e sem o 9).
 - Tabelas: `WaContact` e `WaMessage` (novas). `AiUsage` ganhou `cacheReadTokens` e `cacheWriteTokens`.
 - Variáveis opcionais: `WHATSAPP_OWNER_TEMPLATE` (padrão `aviso_margot`), `WHATSAPP_TEMPLATE_LANG` (`pt_BR`), `WHATSAPP_GRAPH_VERSION` (`v25.0`), `WHATSAPP_API_BASE` (só para testes), `WHATSAPP_DEBOUNCE_MS`, `VOICE_API_BASE`, `TRANSCRIBE_MODEL` (`gpt-4o-mini-transcribe`), `TTS_MODEL` (`gpt-4o-mini-tts`), `TTS_VOICE` (`coral`).
