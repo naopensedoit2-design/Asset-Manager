@@ -66,7 +66,7 @@ export const SERVICOS = {
   descricoes: {
     "carro da noiva": `A noiva chega ao local da cerimônia no ${MP}.`,
     "saida dos noivos": "Adicional ao Carro da Noiva: o carro permanece depois da chegada da noiva para um segundo deslocamento no mesmo local.",
-    "ensaio pre-wedding": "Até 3 horas com o carro, em um único local. O traje de motorista é reservado para o casamento.",
+    "ensaio pre-wedding": "Até 3 horas com o carro, em um único local.",
   } as Record<string, string>,
   aPartirDe: "a partir de",
 };
