@@ -3,43 +3,36 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { MessageCircle, PauseCircle } from "lucide-react";
+import { BellOff, Ban, MessageCircle, PauseCircle, User } from "lucide-react";
 import { api, ErrorNote, Loading, Panel } from "@/components/gestor/ui";
 import { formatDateBR } from "@/lib/gestor/rules";
 import { whenLabel, type ConversationSummary, type Status } from "@/components/gestor/wa";
+import { Ticks } from "@/components/gestor/wa-message";
+import { ignoreLabel } from "@/lib/wa/triage";
+import { initials, previewBody, previewWho } from "@/lib/wa/view";
 
-const MEDIA_LABEL: Record<string, string> = {
-  image: "📷 Foto",
-  audio: "🎤 Áudio",
-  document: "📄 Documento",
-  video: "🎬 Vídeo",
-  sticker: "Figurinha",
-  location: "📍 Localização",
-  template: "Aviso modelo",
-};
-
-function preview(c: ConversationSummary): string {
-  const l = c.last;
-  if (!l) return "Sem mensagens";
-  const who = l.direction === "in" ? "" : l.author === "leonardo" ? "Você: " : l.author === "margot" ? "Margot: " : "Automático: ";
-  const body = l.text || MEDIA_LABEL[l.type] || "Mensagem";
-  const media = l.text && MEDIA_LABEL[l.type] && l.type !== "template" ? `${MEDIA_LABEL[l.type]} · ` : "";
-  return `${who}${media}${body}`;
-}
-
-function initials(name: string) {
-  const parts = name.replace(/[^\p{L}\s&]/gu, "").split(/\s|&/).filter(Boolean);
-  return (parts[0]?.[0] ?? "?").toUpperCase() + (parts[1]?.[0] ?? "").toUpperCase();
-}
-
-type Filter = "todas" | "esperando" | "pausadas";
+type Filter = "todas" | "esperando" | "pausadas" | "ignoradas";
 
 export default function ConversationsPage() {
   const [filter, setFilter] = useState<Filter>("todas");
+  const showingIgnored = filter === "ignoradas";
   const { data, error, isLoading } = useQuery<ConversationSummary[]>({
     queryKey: ["wa-conversas"],
     queryFn: () => api("/api/admin/whatsapp/conversas"),
     refetchInterval: 10_000,
+  });
+  // As ignoradas só são buscadas quando a aba é aberta; o número da aba vem do contador leve (o mesmo do menu).
+  const ignoredList = useQuery<ConversationSummary[]>({
+    queryKey: ["wa-conversas-ignoradas"],
+    queryFn: () => api("/api/admin/whatsapp/conversas?ignoradas=1"),
+    refetchInterval: 10_000,
+    enabled: showingIgnored,
+  });
+  const { data: counter } = useQuery<{ total: number; ignoradas?: number }>({
+    queryKey: ["wa-nao-lidas"],
+    queryFn: () => api("/api/admin/whatsapp/nao-lidas"),
+    refetchInterval: 30_000,
+    retry: false,
   });
   const { data: status } = useQuery<Status>({
     queryKey: ["wa-status-curto"],
@@ -49,8 +42,12 @@ export default function ConversationsPage() {
 
   const clients = (data ?? []).filter((c) => !c.isOwner);
   const owner = (data ?? []).find((c) => c.isOwner);
-  const shown = clients.filter((c) => (filter === "esperando" ? c.waiting : filter === "pausadas" ? c.paused : true));
+  const ignored = (ignoredList.data ?? []).filter((c) => !c.isOwner);
+  const ignoredTotal = showingIgnored && ignoredList.data ? ignored.length : (counter?.ignoradas ?? 0);
+  const shown = showingIgnored ? ignored : clients.filter((c) => (filter === "esperando" ? c.waiting : filter === "pausadas" ? c.paused : true));
   const counts = { esperando: clients.filter((c) => c.waiting).length, pausadas: clients.filter((c) => c.paused).length };
+  const listLoading = showingIgnored ? ignoredList.isLoading : isLoading;
+  const listError = showingIgnored ? ignoredList.error : error;
 
   return (
     <div>
@@ -81,6 +78,7 @@ export default function ConversationsPage() {
               ["todas", `Todas (${clients.length})`],
               ["esperando", `Esperando resposta (${counts.esperando})`],
               ["pausadas", `Margot pausada (${counts.pausadas})`],
+              ["ignoradas", `Ignoradas (${ignoredTotal})`],
             ] as [Filter, string][]
           ).map(([key, label]) => (
             <button
@@ -88,8 +86,10 @@ export default function ConversationsPage() {
               role="tab"
               aria-selected={filter === key}
               onClick={() => setFilter(key)}
-              className={`shrink-0 px-3 py-1.5 rounded-full text-sm border transition-colors cursor-pointer ${
-                filter === key ? "border-gold/60 bg-gold-muted text-gold" : "border-border-subtle text-text-secondary hover:text-text-primary"
+              className={`shrink-0 px-3.5 py-1.5 rounded-full text-sm border transition-colors cursor-pointer ${
+                filter === key
+                  ? "border-transparent bg-wa-out text-wa-text font-medium"
+                  : "border-border-subtle text-text-secondary hover:text-text-primary"
               }`}
             >
               {label}
@@ -97,30 +97,40 @@ export default function ConversationsPage() {
           ))}
         </div>
 
-        {isLoading ? (
+        {showingIgnored && (
+          <p className="text-sm text-text-muted">
+            A Margot não responde nem avisa estas conversas, e elas não contam como não lidas. Toque numa para ler, reativar ou bloquear.
+          </p>
+        )}
+
+        {listLoading ? (
           <Loading />
-        ) : error ? (
-          <ErrorNote message={(error as Error).message} />
+        ) : listError ? (
+          <ErrorNote message={(listError as Error).message} />
         ) : shown.length === 0 ? (
           <Panel>
             <div className="text-center py-6">
-              <MessageCircle className="w-8 h-8 text-text-muted mx-auto" />
+              {showingIgnored ? <BellOff className="w-8 h-8 text-text-muted mx-auto" /> : <MessageCircle className="w-8 h-8 text-text-muted mx-auto" />}
               <p className="text-sm text-text-secondary mt-3">
-                {clients.length === 0 ? "Nenhuma conversa ainda. Quando alguém escrever para o número da Margot, aparece aqui." : "Nada neste filtro."}
+                {showingIgnored
+                  ? "Nenhuma conversa ignorada. Mensagem em massa de número novo (encaminhada, só figurinha, vídeo…) cai aqui sozinha; você também pode tocar em Ignorar dentro de uma conversa."
+                  : clients.length === 0
+                    ? "Nenhuma conversa ainda. Quando alguém escrever para o número da Margot, aparece aqui."
+                    : "Nada neste filtro."}
               </p>
             </div>
           </Panel>
         ) : (
-          <ul className="bg-bg-card border border-border-subtle rounded-lg divide-y divide-border-subtle overflow-hidden">
+          <ul className="bg-bg-card border border-border-subtle rounded-lg overflow-hidden">
             {shown.map((c) => (
               <ConversationRow key={c.id} c={c} />
             ))}
           </ul>
         )}
 
-        {owner && (
+        {owner && !showingIgnored && (
           <div>
-            <p className="text-xs uppercase tracking-wider text-text-muted mb-2">Sua conversa com a Margot</p>
+            <p className="text-sm text-text-muted mb-2">Sua conversa com a Margot</p>
             <ul className="bg-bg-card border border-border-subtle rounded-lg overflow-hidden">
               <ConversationRow c={{ ...owner, name: "Você (modo secretária)", clientName: null }} />
             </ul>
@@ -133,44 +143,66 @@ export default function ConversationsPage() {
 
 function ConversationRow({ c }: { c: ConversationSummary }) {
   const title = c.clientName || c.name || c.phone;
+  const letters = initials(title);
+  const l = c.last;
+  const unread = c.unread > 0;
   return (
-    <li>
-      <Link href={`/admin/conversas/${c.id}`} className="flex gap-3 px-4 py-3.5 hover:bg-bg-elevated transition-colors">
+    <li className="group">
+      <Link href={`/admin/conversas/${c.id}`} className="flex items-center gap-3 pl-4 hover:bg-bg-elevated transition-colors">
         <span
-          aria-hidden
-          className={`w-11 h-11 shrink-0 rounded-full flex items-center justify-center font-serif text-lg ${
-            c.isOwner ? "bg-gold text-bg-primary" : "bg-bg-elevated text-gold border border-border-gold"
+          aria-hidden="true"
+          className={`w-12 h-12 shrink-0 rounded-full flex items-center justify-center text-lg font-medium ${
+            c.isOwner ? "bg-gold text-bg-primary" : "bg-bg-elevated text-text-secondary border border-border-subtle"
           }`}
         >
-          {initials(title)}
+          {letters || <User className="w-6 h-6" />}
         </span>
-        <span className="min-w-0 flex-1">
+        {/* O traço entre as conversas começa depois da foto, como no WhatsApp. */}
+        <span className="min-w-0 flex-1 py-3 pr-4 border-b border-border-subtle group-last:border-b-0">
           <span className="flex items-baseline gap-2">
-            <span className={`truncate ${c.unread > 0 ? "text-text-primary font-semibold" : "text-text-primary"}`}>{title}</span>
-            <span className={`ml-auto shrink-0 text-xs ${c.unread > 0 ? "text-gold" : "text-text-muted"}`}>{whenLabel(c.lastMessageAt)}</span>
+            <span className={`truncate text-[17px] ${unread ? "text-text-primary font-semibold" : "text-text-primary"}`}>{title}</span>
+            <span className={`ml-auto shrink-0 text-xs ${unread ? "text-wa-accent font-medium" : "text-text-muted"}`}>{whenLabel(c.lastMessageAt)}</span>
           </span>
-          <span className="flex items-center gap-2 mt-0.5">
-            <span className={`truncate text-sm ${c.unread > 0 ? "text-text-secondary" : "text-text-muted"}`}>{preview(c)}</span>
-            {c.unread > 0 && (
-              <span className="ml-auto shrink-0 min-w-5 h-5 px-1.5 rounded-full bg-gold text-bg-primary text-[11px] font-semibold flex items-center justify-center">
-                {c.unread}
+          <span className="flex items-center gap-1.5 mt-0.5">
+            {l && l.direction === "out" && (
+              <span className="shrink-0 text-text-muted">
+                <Ticks status={l.status} />
+              </span>
+            )}
+            <span className={`truncate text-sm ${unread ? "text-text-primary" : "text-text-muted"}`}>
+              {l ? `${previewWho(l)}${previewBody(l)}` : "Sem mensagens"}
+            </span>
+            {unread && (
+              <span className="ml-auto shrink-0 min-w-5 h-5 px-1.5 rounded-full bg-wa-badge text-wa-badge-text text-[11px] font-semibold flex items-center justify-center">
+                <span aria-hidden="true">{c.unread > 99 ? "99+" : c.unread}</span>
+                <span className="sr-only">{c.unread === 1 ? "1 mensagem não lida" : `${c.unread} mensagens não lidas`}</span>
               </span>
             )}
           </span>
-          {(c.order || c.paused || c.waiting) && !c.isOwner && (
+          {(c.order || c.paused || c.waiting || c.ignored) && !c.isOwner && (
             <span className="flex flex-wrap gap-1.5 mt-1.5">
+              {c.ignored && (
+                <span className="text-[11px] border border-border-subtle text-text-secondary rounded-full px-2 py-0.5 inline-flex items-center gap-1">
+                  <BellOff className="w-3 h-3" aria-hidden="true" /> {ignoreLabel(c.ignoredReason)}
+                </span>
+              )}
+              {c.blocked && (
+                <span className="text-[11px] border border-bad/40 text-bad rounded-full px-2 py-0.5 inline-flex items-center gap-1">
+                  <Ban className="w-3 h-3" aria-hidden="true" /> Bloqueada no WhatsApp
+                </span>
+              )}
               {c.order && (
                 <span className="text-[11px] border border-border-gold text-gold-light rounded-full px-2 py-0.5">
                   #{c.order.id} · {c.order.statusLabel}
                   {c.order.eventDate ? ` · ${formatDateBR(c.order.eventDate)}` : ""}
                 </span>
               )}
-              {c.paused && (
+              {c.paused && !c.ignored && (
                 <span className="text-[11px] border border-warn/40 text-warn rounded-full px-2 py-0.5 inline-flex items-center gap-1">
-                  <PauseCircle className="w-3 h-3" /> Margot pausada
+                  <PauseCircle className="w-3 h-3" aria-hidden="true" /> Margot pausada
                 </span>
               )}
-              {c.waiting && !c.paused && (
+              {c.waiting && !c.paused && !c.ignored && (
                 <span className="text-[11px] border border-info/40 text-info rounded-full px-2 py-0.5">Esperando resposta</span>
               )}
             </span>

@@ -232,7 +232,7 @@ function compactOrder(o: gestor.OrderView) {
 
 async function waitingConversations() {
   const contacts = await prisma.waContact.findMany({
-    where: { isOwner: false, lastMessageAt: { gte: new Date(Date.now() - 7 * 86_400_000) } },
+    where: { isOwner: false, ignoredAt: null, lastMessageAt: { gte: new Date(Date.now() - 7 * 86_400_000) } },
     orderBy: { lastMessageAt: "desc" },
     take: 15,
     include: { messages: { where: { type: { not: "reaction" } }, orderBy: { id: "desc" }, take: 1 } },

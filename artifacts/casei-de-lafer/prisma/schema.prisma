@@ -219,6 +219,9 @@ model WaContact {
   unread        Int         @default(0)
   lockedUntil   DateTime? // processamento em andamento (evita respostas duplicadas)
   notifiedAt    DateTime? // último aviso ao Leonardo sobre esta conversa (evita excesso)
+  ignoredAt     DateTime? // conversa ignorada: a Margot não responde, o dono não é avisado e nada conta como não lida
+  ignoredReason String      @default("") // manual | encaminhada | figurinha | video | contato | localizacao (src/lib/wa/triage.ts)
+  blockedAt     DateTime? // bloqueado no WhatsApp pela API da Meta: a pessoa não consegue mais escrever
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   messages      WaMessage[]
@@ -234,7 +237,7 @@ model WaMessage {
   direction    String // in | out
   author       String // cliente | margot | leonardo | sistema
   type         String    @default("text") // text | image | audio | document | interactive | template | ...
-  kind         String    @default("") // aviso | confirmacao | resumo_diario | rascunho ...
+  kind         String    @default("") // aviso | confirmacao | resumo_diario | rascunho ... (entrada: "encaminhada")
   text         String    @default("")
   mediaId      String    @default("")
   mediaMime    String    @default("")

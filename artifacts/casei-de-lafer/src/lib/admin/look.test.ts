@@ -193,6 +193,52 @@ test("as letras também são legíveis sobre as tintas que o painel usa (etiquet
   assert.deepEqual(falhas, [], `\n${falhas.join("\n")}`);
 });
 
+/** "rgba(11, 20, 26, 0.6)" → cor em hexadecimal + opacidade (para misturar com o fundo). */
+function fromRgba(css: string): { hex: string; alpha: number } {
+  const m = /^rgba\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*([\d.]+)\s*\)$/.exec(css.trim());
+  assert.ok(m, `esperava rgba(…), veio ${css}`);
+  const hex = `#${[m[1], m[2], m[3]].map((n) => Number(n).toString(16).padStart(2, "0")).join("")}`;
+  return { hex, alpha: Number(m[4]) };
+}
+
+test("conversa no estilo do WhatsApp: toda letra é legível sobre o balão, a barra, o campo e os avisos", () => {
+  const falhas: string[] = [];
+  for (const t of THEMES) {
+    const v = resolved(t.key, "ouro");
+    const check = (nome: string, a: string, b: string, min: number) => {
+      const c = contrast(a, b);
+      if (c < min) falhas.push(`${t.key} ${nome}: ${c.toFixed(2)} (mínimo ${min}) — ${a} sobre ${b}`);
+    };
+    const sub = fromRgba(v["--wa-sub"]);
+    for (const [lado, bg] of [["que chega", v["--wa-in"]], ["que sai", v["--wa-out"]]] as const) {
+      const quadro = blend(sub.hex, sub.alpha, bg); // quadro de documento, localização ou contato dentro do balão
+      check(`texto no balão ${lado}`, v["--wa-text"], bg, 7);
+      check(`texto no quadro dentro do balão ${lado}`, v["--wa-text"], quadro, 7);
+      check(`link no balão ${lado}`, v["--wa-link"], bg, 4.5);
+      check(`erro no balão ${lado}`, v["--wa-err"], bg, 4.5);
+    }
+    check("hora no balão que chega", v["--wa-time"], v["--wa-in"], 4.5);
+    check("hora no balão que sai", v["--wa-time-out"], v["--wa-out"], 4.5);
+    check("tique azul (lida) no balão que sai", v["--wa-tick-read"], v["--wa-out"], 3);
+    for (const lbl of ["--wa-lbl-margot", "--wa-lbl-voce", "--wa-lbl-auto"]) check(`${lbl} no balão que sai`, v[lbl], v["--wa-out"], 4.5);
+    for (const lbl of ["--wa-lbl-margot", "--wa-lbl-voce"]) check(`${lbl} no balão que chega`, v[lbl], v["--wa-in"], 4.5);
+    check("texto da barra de cima", v["--wa-bar-text"], v["--wa-bar"], 4.5);
+    check("texto apagado da barra de cima", v["--wa-bar-muted"], v["--wa-bar"], 4.5);
+    check("dia (pílula)", v["--wa-pill-text"], v["--wa-pill"], 4.5);
+    check("aviso", v["--wa-notice-text"], v["--wa-notice"], 4.5);
+    check("texto digitado", v["--wa-input-text"], v["--wa-input"], 7);
+    check("dica do campo", v["--wa-placeholder"], v["--wa-input"], 4.5);
+    check("dica sobre a barra de baixo", v["--wa-placeholder"], v["--wa-composer"], 4.5);
+    check("ícone de enviar", v["--wa-send-text"], v["--wa-send"], 4.5);
+    check("número de não lidas", v["--wa-badge-text"], v["--wa-badge"], 4.5);
+    for (const bg of ["--bg-primary", "--bg-card", "--bg-elevated"]) check(`verde de destaque em ${bg}`, v["--wa-accent"], v[bg], 4.5);
+    // Hora sobre foto: no pior caso a foto é toda branca.
+    const ov = fromRgba(v["--wa-overlay"]);
+    check("hora sobre foto clara", v["--wa-overlay-text"], blend(ov.hex, ov.alpha, "#ffffff"), 4.5);
+  }
+  assert.deepEqual(falhas, [], `\n${falhas.join("\n")}`);
+});
+
 test("o site público não muda: os padrões do :root são os de sempre", () => {
   assert.equal(rootDefaults["--gold"], "#C9A84C");
   assert.equal(rootDefaults["--bg-primary"], "#0a0a0a");

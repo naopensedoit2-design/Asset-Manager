@@ -13,6 +13,12 @@ export interface ConversationSummary {
   unread: number;
   lastMessageAt: string | null;
   waiting: boolean;
+  /** Conversa ignorada: a Margot não responde, o dono não é avisado e nada conta como não lida. */
+  ignored: boolean;
+  /** Por que (manual, encaminhada, figurinha, video, contato, localizacao); vazio quando não está ignorada. */
+  ignoredReason: string;
+  /** Bloqueada no WhatsApp: a pessoa não consegue mais escrever. */
+  blocked: boolean;
   order: { id: number; status: string; statusLabel: string; eventDate: string | null } | null;
   last: { direction: string; author: string; type: string; text: string; status: string; at: string } | null;
 }
