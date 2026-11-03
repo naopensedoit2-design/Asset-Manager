@@ -16,6 +16,7 @@ export interface InboundMessage {
   buttonId: string; // id do botão tocado (interactive/button)
   replyTo: string; // wamid da mensagem citada, se houver
   reactionTo: string; // wamid da mensagem que recebeu a reação
+  forwarded: boolean; // "Encaminhada" (ou encaminhada muitas vezes): típico de corrente e lista de transmissão
 }
 
 export interface StatusUpdate {
@@ -121,6 +122,7 @@ export function parseWebhook(body: unknown): ParsedWebhook {
           buttonId,
           replyTo: s(obj(m.context).id),
           reactionTo: type === "reaction" ? s(obj(m.reaction).message_id) : "",
+          forwarded: obj(m.context).forwarded === true || obj(m.context).frequently_forwarded === true,
         });
       }
 

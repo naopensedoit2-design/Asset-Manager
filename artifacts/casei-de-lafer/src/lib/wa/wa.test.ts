@@ -104,6 +104,23 @@ test("webhook: texto, áudio, imagem, documento, botão, localização e reaçã
   assert.equal(u.text, "Message type unknown");
 });
 
+test("webhook: mensagem encaminhada é marcada (corrente e lista de transmissão)", () => {
+  const base = { from: "555481112222", timestamp: "1760000000" };
+  const parsed = parseWebhook(
+    payload([
+      { ...base, id: "f1", type: "text", text: { body: "Bom dia!" }, context: { forwarded: true } },
+      { ...base, id: "f2", type: "video", video: { id: "m", mime_type: "video/mp4" }, context: { frequently_forwarded: true } },
+      { ...base, id: "f3", type: "text", text: { body: "oi" }, context: { from: "555100000000", id: "wamid.X" } }, // resposta a uma mensagem
+      { ...base, id: "f4", type: "text", text: { body: "oi" } },
+      { ...base, id: "f5", type: "text", text: { body: "oi" }, context: { forwarded: "true" } }, // só o booleano verdadeiro vale
+    ]),
+  );
+  assert.deepEqual(
+    parsed.messages.map((m) => m.forwarded),
+    [true, true, false, false, false],
+  );
+});
+
 test("webhook: status de entrega e falha; outros objetos são ignorados", () => {
   const parsed = parseWebhook(
     payload([], {

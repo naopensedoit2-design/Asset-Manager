@@ -1,4 +1,5 @@
 import "./theme.css";
+import "./whatsapp.css";
 import type { Metadata } from "next";
 import AdminShell from "@/components/admin/AdminShell";
 import { prePaintScript } from "@/lib/admin/look";

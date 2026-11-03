@@ -17,6 +17,11 @@ export function hidesTabBar(pathname: string): boolean {
   return /^\/admin\/conversas\/[^/]+\/?$/.test(pathname);
 }
 
+/** Dentro de uma conversa o topo do painel (celular) também some: o cabeçalho da conversa, com o botão de voltar, ocupa o lugar. */
+export function hidesTopBar(pathname: string): boolean {
+  return hidesTabBar(pathname);
+}
+
 /** Telas sem moldura do painel (a de entrada). */
 export function isBare(pathname: string): boolean {
   return pathname === "/admin/login" || pathname.startsWith("/admin/login/");

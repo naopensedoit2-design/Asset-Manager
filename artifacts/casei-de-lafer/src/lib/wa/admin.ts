@@ -1,9 +1,10 @@
 // O que o painel (/admin/conversas) precisa: lista de conversas, histórico, resposta do Leonardo e pausa da Margot.
 
+import type { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { RuleError, STATUS_LABELS, type OrderStatus } from "@/lib/gestor/rules";
 import { siteUrl } from "@/lib/gestor/service";
-import { explainError, phoneExtras, phoneInfo, registerNumber, subscribeApp, type PhoneExtras } from "./client";
+import { blockUsers, explainError, phoneExtras, phoneInfo, registerNumber, subscribeApp, unblockUsers, WaApiError, type PhoneExtras } from "./client";
 import { waCanSend, waConfig, waMissing } from "./config";
 import { truncate } from "./format";
 import { notifyOwner } from "./notify";
@@ -34,11 +35,18 @@ function contactView(c: WaContact) {
     unread: c.unread,
     lastMessageAt: c.lastMessageAt?.toISOString() ?? null,
     lastInboundAt: c.lastInboundAt?.toISOString() ?? null,
+    ignored: Boolean(c.ignoredAt),
+    ignoredReason: c.ignoredAt ? c.ignoredReason || "manual" : "",
+    blocked: Boolean(c.blockedAt),
   };
 }
 
-export async function listConversations(filter: { orderId?: number } = {}) {
-  let where = {};
+/**
+ * Lista de conversas. Sem filtro: as que a Margot atende (as ignoradas saem da lista).
+ * `ignored: true`: só as ignoradas, para a aba "Ignoradas". `orderId`: as do pedido, ignoradas ou não.
+ */
+export async function listConversations(filter: { orderId?: number; ignored?: boolean } = {}) {
+  let where: Prisma.WaContactWhereInput = filter.ignored ? { ignoredAt: { not: null }, isOwner: false } : { ignoredAt: null };
   if (filter.orderId) {
     const o = await prisma.order.findUnique({ where: { id: filter.orderId }, include: { client: true } });
     if (!o) return [];
@@ -111,9 +119,15 @@ export async function markConversationRead(id: number) {
   await prisma.waContact.update({ where: { id }, data: { unread: 0 } });
 }
 
+/** Mensagens não lidas das conversas que a Margot atende (as ignoradas não contam). */
 export async function unreadTotal() {
-  const agg = await prisma.waContact.aggregate({ where: { isOwner: false }, _sum: { unread: true } });
+  const agg = await prisma.waContact.aggregate({ where: { isOwner: false, ignoredAt: null }, _sum: { unread: true } });
   return agg._sum.unread ?? 0;
+}
+
+/** Quantas conversas estão ignoradas (número da aba "Ignoradas"). */
+export async function ignoredCount() {
+  return prisma.waContact.count({ where: { isOwner: false, ignoredAt: { not: null } } });
 }
 
 /** Leonardo responde pelo painel: a mensagem sai pelo número da Margot e ela pausa nesta conversa. */
@@ -123,6 +137,7 @@ export async function sendAsLeonardo(id: number, text: string) {
   if (!waCanSend()) throw new RuleError("whatsapp_desligado", "O WhatsApp ainda não está configurado (veja Regras).", 503);
   const contact = await prisma.waContact.findUnique({ where: { id } });
   if (!contact) throw new RuleError("conversa_nao_encontrada", "Conversa não encontrada.", 404);
+  if (contact.blockedAt) throw new RuleError("bloqueado", "Esta pessoa está bloqueada no WhatsApp. Desbloqueie para responder.", 409);
   if (!windowOpen(contact)) {
     throw new RuleError(
       "janela_fechada",
@@ -136,13 +151,82 @@ export async function sendAsLeonardo(id: number, text: string) {
     const until = new Date(Date.now() + MANUAL_PAUSE_HOURS * 3_600_000);
     const keep = contact.pausedUntil && contact.pausedUntil > until ? contact.pausedUntil : until;
     // notifiedAt zerado: a próxima mensagem da pessoa é novidade e deve chegar no celular dele.
-    await prisma.waContact.update({ where: { id }, data: { pausedUntil: keep, unread: 0, notifiedAt: null } });
+    // Quem recebe resposta dele deixa de ser "ignorada": senão o que a pessoa responder passaria batido.
+    const wake = contact.ignoredAt ? { ignoredAt: null, ignoredReason: "" } : {};
+    await prisma.waContact.update({ where: { id }, data: { pausedUntil: keep, unread: 0, notifiedAt: null, ...wake } });
   }
   return getConversation(id);
 }
 
 export async function setPaused(id: number, paused: boolean) {
   await prisma.waContact.update({ where: { id }, data: { pausedUntil: paused ? PAUSED_FOREVER : null } });
+  return getConversation(id);
+}
+
+// ─── Ignorar e bloquear ──────────────────────────────────────
+
+async function contactOrThrow(id: number) {
+  const contact = await prisma.waContact.findUnique({ where: { id } });
+  if (!contact) throw new RuleError("conversa_nao_encontrada", "Conversa não encontrada.", 404);
+  return contact;
+}
+
+/** O que chegou antes de ignorar não deve ser respondido: fica como tratado. */
+const settlePending = (contactId: number) =>
+  prisma.waMessage.updateMany({ where: { contactId, direction: "in", handledAt: null }, data: { handledAt: new Date() } });
+
+/**
+ * Ignorar: a Margot não responde, o dono não é avisado e nada conta como não lida (as mensagens continuam
+ * guardadas, na aba "Ignoradas"). Reativar desfaz. Ignorar à mão vale até o dono reativar.
+ */
+export async function setIgnored(id: number, ignored: boolean) {
+  const contact = await contactOrThrow(id);
+  if (ignored) {
+    if (contact.isOwner) throw new RuleError("conversa_do_dono", "Esta é a sua própria conversa com a Margot: não dá para ignorar.", 400);
+    await prisma.waContact.update({ where: { id }, data: { ignoredAt: contact.ignoredAt ?? new Date(), ignoredReason: "manual", unread: 0 } });
+    await settlePending(id);
+  } else {
+    if (contact.blockedAt) throw new RuleError("bloqueado", "Esta pessoa está bloqueada no WhatsApp. Desbloqueie antes de reativar.", 409);
+    await prisma.waContact.update({ where: { id }, data: { ignoredAt: null, ignoredReason: "" } });
+  }
+  return getConversation(id);
+}
+
+const BLOCK_WINDOW_TEXT = "O WhatsApp só deixa bloquear quem escreveu nas últimas 24 horas.";
+
+/**
+ * Bloquear no WhatsApp (API de bloqueio da Meta): a pessoa não consegue mais escrever para o número da Margot.
+ * A Meta só aceita quem escreveu nas últimas 24 horas. Bloquear também ignora a conversa.
+ */
+export async function blockContact(id: number) {
+  if (!waCanSend()) throw new RuleError("whatsapp_desligado", "O WhatsApp ainda não está configurado (veja Regras).", 503);
+  const contact = await contactOrThrow(id);
+  if (contact.isOwner) throw new RuleError("conversa_do_dono", "Este é o seu número: não dá para bloquear.", 400);
+  if (contact.blockedAt) return getConversation(id);
+  if (!windowOpen(contact)) throw new RuleError("fora_da_janela", BLOCK_WINDOW_TEXT, 409);
+  try {
+    await blockUsers([contact.waId]);
+  } catch (e) {
+    if (e instanceof WaApiError && e.code === 131047) throw new RuleError("fora_da_janela", BLOCK_WINDOW_TEXT, 409);
+    throw new RuleError("falha_bloqueio", explainError(e), 502);
+  }
+  const now = new Date();
+  await prisma.waContact.update({ where: { id }, data: { blockedAt: now, ignoredAt: contact.ignoredAt ?? now, ignoredReason: "manual", unread: 0 } });
+  await settlePending(id);
+  return getConversation(id);
+}
+
+/** Desfaz o bloqueio no WhatsApp. A conversa continua ignorada até o dono reativar. */
+export async function unblockContact(id: number) {
+  if (!waCanSend()) throw new RuleError("whatsapp_desligado", "O WhatsApp ainda não está configurado (veja Regras).", 503);
+  const contact = await contactOrThrow(id);
+  if (!contact.blockedAt) return getConversation(id);
+  try {
+    await unblockUsers([contact.waId]);
+  } catch (e) {
+    throw new RuleError("falha_desbloqueio", explainError(e), 502);
+  }
+  await prisma.waContact.update({ where: { id }, data: { blockedAt: null } });
   return getConversation(id);
 }
 

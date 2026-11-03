@@ -6,7 +6,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, LogOut, Palette } from "lucide-react";
 import { api } from "@/components/gestor/ui";
-import { activeTab, hidesTabBar, isBare } from "@/lib/admin/nav";
+import { activeTab, hidesTabBar, hidesTopBar, isBare } from "@/lib/admin/nav";
 import AppearanceSheet from "./AppearanceSheet";
 import { useHoje } from "./hoje-query";
 import { LookProvider } from "./look-context";
@@ -54,6 +54,7 @@ function Frame({ children }: { children: React.ReactNode }) {
 
   const current = activeTab(pathname);
   const hideBar = hidesTabBar(pathname);
+  const hideTop = hidesTopBar(pathname);
   const badges: Record<string, { count: number; tone: "bad" | "gold" } | undefined> = {
     hoje: hoje.data && hoje.data.fila.length ? { count: hoje.data.fila.length, tone: "bad" } : undefined,
     conversas: unread && unread.total > 0 ? { count: unread.total, tone: "gold" } : undefined,
@@ -119,8 +120,10 @@ function Frame({ children }: { children: React.ReactNode }) {
         </aside>
 
         <div className="lg:pl-[248px]">
-          {/* Topo: celular */}
-          <header className="lg:hidden sticky top-0 z-40 bg-bg-secondary/95 backdrop-blur border-b border-border-subtle pt-[env(safe-area-inset-top)]">
+          {/* Topo: celular (dentro de uma conversa quem aparece é o cabeçalho dela, como no WhatsApp) */}
+          <header
+            className={`lg:hidden sticky top-0 z-40 bg-bg-secondary/95 backdrop-blur border-b border-border-subtle pt-[env(safe-area-inset-top)] ${hideTop ? "hidden" : ""}`}
+          >
             <div className="h-14 px-4 flex items-center gap-3">
               <Link href="/admin/hoje" className="min-w-0 truncate font-serif text-[17px] leading-none text-text-primary">
                 Eu casei de Lafer

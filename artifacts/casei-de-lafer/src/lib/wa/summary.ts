@@ -15,7 +15,7 @@ export async function dailySummary(now = new Date()) {
   const tomorrow = addDays(today, 1);
   const d = await gestor.getDashboard(now);
   const waiting = await prisma.waContact.findMany({
-    where: { isOwner: false, lastInboundAt: { gte: new Date(now.getTime() - 3 * 86_400_000) } },
+    where: { isOwner: false, ignoredAt: null, lastInboundAt: { gte: new Date(now.getTime() - 3 * 86_400_000) } },
     include: { messages: { where: { type: { not: "reaction" } }, orderBy: { id: "desc" }, take: 1 } },
   });
   const unanswered = await Promise.all(waiting.filter((c) => c.messages[0]?.direction === "in").map((c) => contactLabel(c)));
