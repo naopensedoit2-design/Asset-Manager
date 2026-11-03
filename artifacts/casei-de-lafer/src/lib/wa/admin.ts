@@ -8,9 +8,11 @@ import { blockUsers, explainError, phoneExtras, phoneInfo, registerNumber, subsc
 import { waCanSend, waConfig, waMissing } from "./config";
 import { truncate } from "./format";
 import { notifyOwner } from "./notify";
+import { idsDeOrdem, ordenar, proximaPosicaoNoTopo } from "./ordem";
 import { formatPhone, phoneVariants } from "./phone";
 import { sendText } from "./send";
 import { isPaused, ownerPhone, PAUSED_FOREVER, windowOpen, type WaContact } from "./store";
+import { NOTICE_TYPES } from "./view";
 import { voiceReady } from "./voice";
 
 /** Ao responder pelo painel, a Margot fica quieta nesta conversa por este tempo. */
@@ -38,6 +40,8 @@ function contactView(c: WaContact) {
     ignored: Boolean(c.ignoredAt),
     ignoredReason: c.ignoredAt ? c.ignoredReason || "manual" : "",
     blocked: Boolean(c.blockedAt),
+    pinned: c.pinOrder !== null,
+    pinOrder: c.pinOrder,
   };
 }
 
@@ -52,24 +56,29 @@ export async function listConversations(filter: { orderId?: number; ignored?: bo
     if (!o) return [];
     where = { OR: [{ orderId: o.id }, { waId: { in: phoneVariants(o.client.phone) } }] };
   }
-  const contacts = await prisma.waContact.findMany({
-    where,
-    orderBy: { lastMessageAt: { sort: "desc", nulls: "last" } },
-    take: 100,
-    // Última mensagem que conta (reação não pede resposta).
-    include: { messages: { where: { type: { not: "reaction" } }, orderBy: { id: "desc" }, take: 1 } },
-  });
+  // Última mensagem que conta (reação não pede resposta).
+  const include = { messages: { where: { type: { not: "reaction" } }, orderBy: { id: "desc" }, take: 1 } } satisfies Prisma.WaContactInclude;
+  const recent = await prisma.waContact.findMany({ where, orderBy: { lastMessageAt: { sort: "desc", nulls: "last" } }, take: 100, include });
+  // A sua conversa e as fixadas à mão aparecem sempre, mesmo que as 100 mais recentes não incluam.
+  const always =
+    filter.ignored || filter.orderId
+      ? []
+      : await prisma.waContact.findMany({ where: { ignoredAt: null, OR: [{ isOwner: true }, { pinOrder: { not: null } }], id: { notIn: recent.map((c) => c.id) } }, include });
+  const contacts = [...recent, ...always];
   const clients = await prisma.client.findMany({
     where: { id: { in: contacts.map((c) => c.clientId).filter((n): n is number => n !== null) } },
     select: { id: true, name: true },
   });
-  return Promise.all(
+  const rows = await Promise.all(
     contacts.map(async (c) => {
       const last = c.messages[0];
+      const order = await orderInfo(c);
+      const onlyNotice = last?.direction === "in" && NOTICE_TYPES.includes(last.type);
       return {
         ...contactView(c),
         clientName: clients.find((x) => x.id === c.clientId)?.name ?? null,
-        order: await orderInfo(c),
+        order,
+        onlyNotice,
         last: last
           ? {
               direction: last.direction,
@@ -84,6 +93,8 @@ export async function listConversations(filter: { orderId?: number; ignored?: bo
       };
     }),
   );
+  // Só a lista principal tem ordem própria; "Ignoradas" e a do pedido seguem a data da última mensagem.
+  return filter.ignored || filter.orderId ? rows : ordenar(rows.map((r) => ({ ...r, hasOrder: r.order !== null, pinOrder: r.pinOrder })));
 }
 
 export async function getConversation(id: number) {
@@ -190,6 +201,31 @@ export async function setIgnored(id: number, ignored: boolean) {
     await prisma.waContact.update({ where: { id }, data: { ignoredAt: null, ignoredReason: "" } });
   }
   return getConversation(id);
+}
+
+/** Fixa a conversa no topo da lista (acima das fixadas anteriores) ou solta de volta na ordem automática. */
+export async function setPinned(id: number, pinned: boolean) {
+  const contact = await contactOrThrow(id);
+  if (contact.isOwner) throw new RuleError("conversa_do_dono", "A sua conversa com a Margot já fica sempre no topo.", 400);
+  if (pinned) {
+    if (contact.pinOrder === null) {
+      const all = await prisma.waContact.findMany({ where: { pinOrder: { not: null } }, select: { pinOrder: true } });
+      await prisma.waContact.update({ where: { id }, data: { pinOrder: proximaPosicaoNoTopo(all.map((x) => x.pinOrder)) } });
+    }
+  } else {
+    await prisma.waContact.update({ where: { id }, data: { pinOrder: null } });
+  }
+  return getConversation(id);
+}
+
+/** Grava a ordem das fixadas depois de arrastar: `ids` na ordem em que ficaram, de cima para baixo. */
+export async function reorderPinned(raw: unknown) {
+  const ids = idsDeOrdem(raw);
+  if (!ids) throw new RuleError("ordem_invalida", "Ordem inválida.", 400);
+  const found = await prisma.waContact.findMany({ where: { id: { in: ids }, isOwner: false, pinOrder: { not: null } }, select: { id: true } });
+  if (found.length !== ids.length) throw new RuleError("ordem_invalida", "Só dá para reordenar conversas fixadas.", 400);
+  await prisma.$transaction(ids.map((id, i) => prisma.waContact.update({ where: { id }, data: { pinOrder: i } })));
+  return { ids };
 }
 
 const BLOCK_WINDOW_TEXT = "O WhatsApp só deixa bloquear quem escreveu nas últimas 24 horas.";

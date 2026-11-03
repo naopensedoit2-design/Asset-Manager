@@ -19,6 +19,11 @@ export interface ConversationSummary {
   ignoredReason: string;
   /** Bloqueada no WhatsApp: a pessoa não consegue mais escrever. */
   blocked: boolean;
+  /** Fixada à mão no topo da lista (a conversa do dono não precisa: é sempre a primeira). */
+  pinned: boolean;
+  pinOrder: number | null;
+  /** A última mensagem é um aviso do WhatsApp sem conteúdo (enquete, "ver uma vez", chamada…). */
+  onlyNotice: boolean;
   order: { id: number; status: string; statusLabel: string; eventDate: string | null } | null;
   last: { direction: string; author: string; type: string; text: string; status: string; at: string } | null;
 }

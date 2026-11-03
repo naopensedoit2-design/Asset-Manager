@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { ok, readJson, route, type IdContext } from "@/lib/gestor/http";
 import { RuleError } from "@/lib/gestor/rules";
-import { blockContact, getConversation, markConversationRead, sendAsLeonardo, setIgnored, setPaused, unblockContact } from "@/lib/wa/admin";
+import { blockContact, getConversation, markConversationRead, sendAsLeonardo, setIgnored, setPaused, setPinned, unblockContact } from "@/lib/wa/admin";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +26,7 @@ export const POST = route(async (req: NextRequest, ctx: IdContext) => {
 });
 
 // PATCH { pausar: true|false } → pausa ou retoma a Margot nesta conversa.
-// PATCH { acao: "ignorar" | "reativar" | "bloquear" | "desbloquear" } → ver src/lib/wa/admin.ts.
+// PATCH { acao: "ignorar" | "reativar" | "bloquear" | "desbloquear" | "fixar" | "soltar" } → ver src/lib/wa/admin.ts.
 export const PATCH = route(async (req: NextRequest, ctx: IdContext) => {
   const body = await readJson(req);
   const id = await idOf(ctx);
@@ -37,6 +37,10 @@ export const PATCH = route(async (req: NextRequest, ctx: IdContext) => {
       return ok(await setIgnored(id, true));
     case "reativar":
       return ok(await setIgnored(id, false));
+    case "fixar":
+      return ok(await setPinned(id, true));
+    case "soltar":
+      return ok(await setPinned(id, false));
     case "bloquear":
       return ok(await blockContact(id));
     case "desbloquear":
