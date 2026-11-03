@@ -112,14 +112,52 @@ function MargotConversation({ orderId }: { orderId: number }) {
   );
 }
 
-/** Se o pedido nasceu de um casamento que já estava na Google Agenda, diz isso (e o que o painel faz e não faz com o evento). */
+/**
+ * Se o pedido nasceu de um casamento que já estava na Google Agenda, diz isso (e o que o painel faz e não faz com o evento).
+ * Sem vínculo, oferece ligar ao casamento da agenda do mesmo dia: sem isso o próprio evento deixa o dia "ocupado".
+ */
 function GoogleOrigin({ orderId }: { orderId: number }) {
-  const { data } = useQuery<{ vinculo: { data: string; titulo: string | null; link: string } | null }>({
+  const qc = useQueryClient();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const { data } = useQuery<{
+    vinculo: { data: string; titulo: string | null; link: string } | null;
+    sugestao?: { id: string; titulo: string } | null;
+  }>({
     queryKey: ["gestor-pedido-google", orderId],
     queryFn: () => api(`/api/admin/gestor/pedidos/${orderId}/google`),
     retry: false,
   });
+
+  async function link(eventId: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      qc.setQueryData(["gestor-pedido-google", orderId], await api(`/api/admin/gestor/pedidos/${orderId}/google`, { body: { eventId } }));
+      qc.invalidateQueries({ queryKey: ["gestor-pedido", String(orderId)] });
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const v = data?.vinculo;
+  const s = data?.sugestao;
+  if (!v && s) {
+    return (
+      <div className="space-y-2 rounded-lg border border-gold/40 p-3">
+        <p className="text-sm text-text-secondary">
+          Na Google Agenda, neste dia: <span className="text-text-primary">{s.titulo}</span>. Se é este casamento, ligue o pedido a ele para
+          poder reservar a data.
+        </p>
+        <Button variant="ghost" onClick={() => link(s.id)} disabled={busy}>
+          {busy ? "Ligando…" : "Ligar a este casamento"}
+        </Button>
+        <ErrorNote message={error} />
+      </div>
+    );
+  }
   if (!v) return null;
   return (
     <p className="text-sm text-text-secondary">
