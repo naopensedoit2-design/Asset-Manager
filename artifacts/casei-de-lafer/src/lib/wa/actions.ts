@@ -6,7 +6,9 @@ import { prisma } from "@/lib/prisma";
 import * as gestor from "@/lib/gestor/service";
 import { payExpensePart, saveExpense } from "@/lib/gestor/finance-service";
 import { categoryLabel } from "@/lib/gestor/finance";
-import { formatBRL, formatDateBR, RuleError } from "@/lib/gestor/rules";
+import { formatBRL, formatCpf, formatDateBR, RuleError, TIMEZONE } from "@/lib/gestor/rules";
+import { ensurePublicToken } from "@/lib/documents/data";
+import { appendOrderNote } from "@/lib/margot/orders";
 import { itensDoOrcamento, lerPedido, type PedidoNovo } from "./pedido";
 import { phoneVariants } from "./phone";
 import { buttonsMessage, type Header } from "./client";
@@ -15,7 +17,8 @@ import { sendText } from "./send";
 import { contactForClientPhone, contactLabel, windowOpen, type WaContact } from "./store";
 
 export type Action =
-  | { tipo: "pagamento"; pedido: number; pagamento: "sinal" | "saldo" }
+  // `comprovante`: mensagem do WhatsApp em que o Leonardo mandou o comprovante (fica anotada no pedido).
+  | { tipo: "pagamento"; pedido: number; pagamento: "sinal" | "saldo"; comprovante?: number | null }
   | {
       tipo: "despesa";
       despesa: {
@@ -31,6 +34,9 @@ export type Action =
     }
   | { tipo: "mensagem"; contato: number; texto: string }
   | { tipo: "pedido"; pedido: PedidoNovo }
+  // Novo orçamento com desconto. `totalCents` é o total que o Leonardo viu na confirmação.
+  | { tipo: "valor"; pedido: number; descontoCents: number; totalCents: number }
+  | { tipo: "contrato"; pedido: number; nomeCompleto: string; documento: string; endereco: string; email: string }
   // Abater parte de (ou quitar) uma conta a pagar. `saldoCents` é o saldo que o Leonardo viu na confirmação.
   | { tipo: "abatimento"; conta: number; valorCents: number; saldoCents: number; data: string };
 
@@ -40,6 +46,16 @@ export function parseAction(raw: string): Action | null {
     if (a?.tipo === "pagamento" && Number.isInteger(a.pedido) && (a.pagamento === "sinal" || a.pagamento === "saldo")) return a;
     if (a?.tipo === "despesa" && a.despesa && Number.isInteger(a.despesa.valorCents)) return a;
     if (a?.tipo === "mensagem" && Number.isInteger(a.contato) && typeof a.texto === "string") return a;
+    if (a?.tipo === "valor" && Number.isInteger(a.pedido) && Number.isInteger(a.descontoCents) && Number.isInteger(a.totalCents)) return a;
+    if (
+      a?.tipo === "contrato" &&
+      Number.isInteger(a.pedido) &&
+      typeof a.nomeCompleto === "string" &&
+      typeof a.documento === "string" &&
+      typeof a.endereco === "string"
+    ) {
+      return { ...a, email: typeof a.email === "string" ? a.email : "" };
+    }
     if (a?.tipo === "pedido") {
       const pedido = lerPedido(a.pedido);
       return pedido ? { tipo: "pedido", pedido } : null;
@@ -95,7 +111,9 @@ export async function resolveAction(owner: WaContact, rowId: number, confirm: bo
   if (!confirm) return "Ok, cancelei. Nada foi alterado.";
 
   try {
-    if (action.tipo === "pagamento") return await confirmPayment(action.pedido, action.pagamento);
+    if (action.tipo === "pagamento") return await confirmPayment(action.pedido, action.pagamento, action.comprovante ?? null);
+    if (action.tipo === "valor") return await adjustOrderValue(action);
+    if (action.tipo === "contrato") return await saveContractData(action);
     if (action.tipo === "despesa") return await createExpense(action.despesa);
     if (action.tipo === "abatimento") return await payExpense(action);
     if (action.tipo === "pedido") return await createOrderFromChat(action.pedido);
@@ -111,7 +129,7 @@ export async function resolveAction(owner: WaContact, rowId: number, confirm: bo
 
 // ─── Execução ────────────────────────────────────────────────
 
-async function confirmPayment(orderId: number, kind: "sinal" | "saldo"): Promise<string> {
+async function confirmPayment(orderId: number, kind: "sinal" | "saldo", receiptMessageId: number | null = null): Promise<string> {
   let order = await gestor.getOrder(orderId);
   const open = (o: typeof order) => o.payments.find((p) => p.kind === kind && (p.status === "a_receber" || p.status === "atrasado"));
   let payment = open(order);
@@ -131,6 +149,14 @@ async function confirmPayment(orderId: number, kind: "sinal" | "saldo"): Promise
   const name = result.client.name;
   const date = result.eventDate ? formatDateBR(result.eventDate) : "a data";
   const lines = [`✅ ${kind === "sinal" ? "Sinal" : "Saldo"} de ${formatBRL(payment.amountCents)} recebido (${name}, pedido #${orderId}).`];
+  if (receiptMessageId) {
+    const receipt = await prisma.waMessage.findUnique({ where: { id: receiptMessageId }, select: { createdAt: true, type: true } });
+    if (receipt) {
+      const when = receipt.createdAt.toLocaleString("pt-BR", { timeZone: TIMEZONE, day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+      await appendOrderNote(orderId, `[Comprovante do ${kind}] Enviado pelo Leonardo no WhatsApp da Margot em ${when} (${receipt.type === "image" ? "imagem" : "arquivo"}; está em Conversas, mensagem #${receiptMessageId}).`);
+      lines.push("Comprovante anotado no pedido.");
+    }
+  }
   if (result.aviso) lines.push(`⚠️ ${result.aviso}`);
   else if (kind === "sinal" && result.status === "confirmado") lines.push(`Data ${date} confirmada e bloqueada no site.`);
 
@@ -180,7 +206,7 @@ async function createOrderFromChat(p: PedidoNovo): Promise<string> {
   const known = await prisma.client.findFirst({ where: { phone: { in: phoneVariants(p.telefone) } }, select: { phone: true } });
   const { order } = await gestor.createOrder(
     {
-      client: { name: p.nome, phone: known?.phone ?? p.telefone, source: "outro" },
+      client: { name: p.nome, phone: known?.phone ?? p.telefone, source: p.origem ?? "outro" },
       eventDate: p.data,
       eventTime: p.horario,
       venue: p.local,
@@ -206,6 +232,35 @@ async function createOrderFromChat(p: PedidoNovo): Promise<string> {
     lines.push(`O pedido foi criado, mas o orçamento não: ${e instanceof RuleError ? e.message : "deu um erro"}. Registre no painel.`);
   }
   return lines.join("\n");
+}
+
+async function adjustOrderValue(a: Extract<Action, { tipo: "valor" }>): Promise<string> {
+  const order = await gestor.getOrder(a.pedido);
+  if (order.payments.some((p) => p.status !== "cancelado")) {
+    throw new RuleError("ja_tem_pagamento", `O pedido #${a.pedido} já tem sinal ou saldo lançado. Ajuste o valor no painel (Gestão).`);
+  }
+  const quote = order.quotes[0];
+  if (!quote) throw new RuleError("sem_orcamento", `O pedido #${a.pedido} ainda não tem orçamento. Registre no painel.`);
+  const { totais } = await gestor.createQuote(
+    a.pedido,
+    { items: quote.items, discountCents: a.descontoCents, markSent: Boolean(quote.sentAt) },
+    "admin",
+  );
+  if (totais.totalCents !== a.totalCents) {
+    console.error("[whatsapp] ajuste de valor: total diferente do confirmado", a.pedido);
+  }
+  await appendOrderNote(a.pedido, `[Valor ajustado pelo WhatsApp] Total ${formatBRL(totais.totalCents)}${a.descontoCents ? `, desconto de ${formatBRL(a.descontoCents)}` : ""}, autorizado pelo Leonardo.`);
+  return `✅ Pedido #${a.pedido}: total ${formatBRL(totais.totalCents)} · sinal ${formatBRL(totais.depositCents)} · saldo ${formatBRL(totais.balanceCents)}.`;
+}
+
+async function saveContractData(a: Extract<Action, { tipo: "contrato" }>): Promise<string> {
+  await gestor.updateOrder(
+    a.pedido,
+    { client: { legalName: a.nomeCompleto, document: formatCpf(a.documento), address: a.endereco, ...(a.email && { email: a.email }) } },
+    "admin",
+  );
+  const token = await ensurePublicToken(a.pedido);
+  return `✅ Dados do contrato salvos no pedido #${a.pedido}. Termo: ${gestor.siteUrl()}/t/${token}`;
 }
 
 async function payExpense(a: Extract<Action, { tipo: "abatimento" }>): Promise<string> {
