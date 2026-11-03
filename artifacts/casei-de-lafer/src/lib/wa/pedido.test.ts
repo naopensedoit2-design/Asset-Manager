@@ -63,3 +63,32 @@ test("lerPedido recusa dados quebrados e limpa o que sobra", () => {
   assert.equal(lerPedido(null), null);
   assert.equal(lerPedido({ ...base, valorCents: null, evento: null })?.valorCents, null);
 });
+
+import { descontoPara, descreverAjuste, descreverContrato, documentoMascarado } from "./pedido.ts";
+
+test("desconto: pelo total final ou pelo valor do desconto; nunca negativo nem maior que os serviços", () => {
+  assert.equal(descontoPara(260000, { totalCents: 254500 }), 5500);
+  assert.equal(descontoPara(260000, { descontoCents: 5500 }), 5500);
+  assert.equal(descontoPara(260000, { totalCents: 254500, descontoCents: 100 }), 5500);
+  assert.equal(descontoPara(260000, { totalCents: 260000 }), 0);
+  assert.throws(() => descontoPara(260000, { totalCents: 270000 }), /maior que os serviços/);
+  assert.throws(() => descontoPara(260000, { descontoCents: 300000 }), /maior que o valor/);
+  assert.throws(() => descontoPara(260000, {}), /total final ou o valor do desconto/);
+});
+
+test("confirmação do ajuste mostra antes, depois, sinal e saldo", () => {
+  const t = descreverAjuste({ pedido: 3, nome: "Ana & Beto", antesCents: 260000, subtotalCents: 260000, descontoCents: 5500, sinalPercent: 40 });
+  assert.match(t, /#3/);
+  assert.match(t, /Antes: R\$\s2\.600,00/);
+  assert.match(t, /Agora: R\$\s2\.545,00 \(desconto de R\$\s55,00/);
+  assert.match(t, /Sinal R\$\s1\.018,00 · saldo R\$\s1\.527,00/);
+});
+
+test("documento aparece mascarado na confirmação", () => {
+  assert.equal(documentoMascarado("529.982.247-25"), "529.***.***-25");
+  assert.equal(documentoMascarado("AB123456"), "AB****56");
+  const t = descreverContrato({ pedido: 3, nome: "Ana & Beto", nomeCompleto: "Ana Exemplo Silva", documento: "529.982.247-25", endereco: "Rua Teste, 1, Cidade", email: "" });
+  assert.doesNotMatch(t, /982/);
+  assert.match(t, /Termo Simplificado/);
+  assert.doesNotMatch(t, /E-mail/);
+});
