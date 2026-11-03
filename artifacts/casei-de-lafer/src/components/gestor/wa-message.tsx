@@ -63,6 +63,8 @@ export function WaText({ text }: { text: string }) {
 // ─── Mídia ───────────────────────────────────────────────────
 
 const mediaUrl = (id: string) => `/api/admin/whatsapp/midia/${encodeURIComponent(id)}`;
+/** Mesmo arquivo, mas para salvar em vez de abrir (o servidor responde com "attachment"). */
+const downloadUrl = (src: string) => `${src}?baixar=1`;
 
 /** Quando o arquivo não abre (a Meta guarda por cerca de 30 dias, ou o celular não toca aquele formato). */
 function Unavailable({ children, src }: { children: React.ReactNode; src?: string }) {
@@ -71,7 +73,7 @@ function Unavailable({ children, src }: { children: React.ReactNode; src?: strin
       <AlertTriangle className="w-4 h-4 shrink-0" aria-hidden="true" />
       <span className="flex-1">{children}</span>
       {src && (
-        <a href={src} target="_blank" rel="noreferrer" className="underline underline-offset-2 text-wa-link shrink-0">
+        <a href={downloadUrl(src)} download className="underline underline-offset-2 text-wa-link shrink-0">
           Baixar
         </a>
       )}
@@ -135,9 +137,12 @@ function Audio({ src }: { src: string }) {
 }
 
 function DocumentCard({ src, name, mime }: { src: string; name: string; mime: string }) {
-  const ext = mime.includes("pdf") ? "PDF" : (name.split(".").pop() ?? "").slice(0, 5).toUpperCase();
+  const pdf = mime.includes("pdf");
+  const ext = pdf ? "PDF" : (name.split(".").pop() ?? "").slice(0, 5).toUpperCase();
+  // PDF abre no leitor do navegador; qualquer outro tipo é salvo (o servidor nunca abre arquivo de desconhecido como página).
+  const link = pdf ? { href: src, target: "_blank", rel: "noreferrer" } : { href: downloadUrl(src), download: true };
   return (
-    <a href={src} target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-md bg-wa-sub px-3 py-2.5 min-w-52 max-w-full">
+    <a {...link} className="flex items-center gap-3 rounded-md bg-wa-sub px-3 py-2.5 min-w-52 max-w-full">
       <FileText className="w-7 h-7 shrink-0" aria-hidden="true" />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[15px]">{name || "Documento"}</span>
