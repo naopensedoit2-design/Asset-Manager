@@ -134,6 +134,124 @@ html[data-admin-theme="sol"] {
   --info: #05558f;
 }
 
+/* ── Conversas no estilo do WhatsApp (/admin/conversas) ────────────────────
+   Cada tema tem a sua paleta de WhatsApp: balões, barra de cima, campo de resposta e papel de parede.
+   O verde do WhatsApp não muda com a cor de destaque (é ele que faz a tela parecer WhatsApp).
+   Os estilos que usam estas cores estão em app/admin/whatsapp.css; look.test.ts confere o contraste de
+   toda letra sobre o balão, a barra e o campo.
+   wall/doodle = papel de parede e seus desenhos · bar = barra de cima · in/out = balão que chega/que sai
+   time = hora · lbl = nome de quem escreveu · pill = dia · notice = aviso · sub = quadro dentro do balão. */
+html[data-admin-theme="classico"],
+html[data-admin-theme="grafite"] {
+  --wa-wall: #0b141a;
+  --wa-doodle: rgba(255, 255, 255, 0.05);
+  --wa-bar: #202c33;
+  --wa-bar-text: #e9edef;
+  --wa-bar-muted: #9fb0ba;
+  --wa-in: #202c33;
+  --wa-out: #005c4b;
+  --wa-text: #f3f6f7;
+  --wa-time: #9fb0ba;
+  --wa-time-out: #b4d3cb;
+  --wa-tick-read: #53bdeb;
+  --wa-lbl-margot: #7fe3c8;
+  --wa-lbl-voce: #ffc27a;
+  --wa-lbl-auto: #c4d0d6;
+  --wa-link: #9fd4ff;
+  --wa-err: #ffb4ab;
+  --wa-shadow: rgba(0, 0, 0, 0.35);
+  --wa-pill: #182229;
+  --wa-pill-text: #a3b2bb;
+  --wa-notice: #182229;
+  --wa-notice-text: #ffd279;
+  --wa-input: #2a3942;
+  --wa-input-text: #e9edef;
+  --wa-placeholder: #9fb0ba;
+  --wa-composer: #202c33;
+  --wa-send: #00a884;
+  --wa-send-text: #06140f;
+  --wa-accent: #21c063;
+  --wa-badge: #25d366;
+  --wa-badge-text: #07140d;
+  --wa-overlay: rgba(0, 0, 0, 0.55);
+  --wa-overlay-text: #ffffff;
+  --wa-sub: rgba(0, 0, 0, 0.18);
+}
+
+html[data-admin-theme="perola"] {
+  --wa-wall: #efeae2;
+  --wa-doodle: rgba(11, 20, 26, 0.07);
+  --wa-bar: #008069;
+  --wa-bar-text: #ffffff;
+  --wa-bar-muted: #f4fcf9;
+  --wa-in: #ffffff;
+  --wa-out: #d9fdd3;
+  --wa-text: #111b21;
+  --wa-time: #5b6b75;
+  --wa-time-out: #5b6b75;
+  --wa-tick-read: #1d8dc7;
+  --wa-lbl-margot: #0a6b58;
+  --wa-lbl-voce: #8a3b00;
+  --wa-lbl-auto: #566872;
+  --wa-link: #0a58a8;
+  --wa-err: #b42318;
+  --wa-shadow: rgba(11, 20, 26, 0.13);
+  --wa-pill: #ffffff;
+  --wa-pill-text: #4a5b65;
+  --wa-notice: #fff0c9;
+  --wa-notice-text: #4a4033;
+  --wa-input: #ffffff;
+  --wa-input-text: #111b21;
+  --wa-placeholder: #5b6b75;
+  --wa-composer: #f0f2f5;
+  --wa-send: #008069;
+  --wa-send-text: #ffffff;
+  --wa-accent: #00755f;
+  --wa-badge: #25d366;
+  --wa-badge-text: #07140d;
+  --wa-overlay: rgba(11, 20, 26, 0.6);
+  --wa-overlay-text: #ffffff;
+  --wa-sub: rgba(11, 20, 26, 0.06);
+}
+
+/* Sol: o mesmo desenho com contraste máximo (letras pretas, barra bem escura, papel de parede mais escuro
+   para o balão branco se destacar). */
+html[data-admin-theme="sol"] {
+  --wa-wall: #e2dccf;
+  --wa-doodle: rgba(0, 0, 0, 0.06);
+  --wa-bar: #00473a;
+  --wa-bar-text: #ffffff;
+  --wa-bar-muted: #d6efe9;
+  --wa-in: #ffffff;
+  --wa-out: #c9f2c1;
+  --wa-text: #000000;
+  --wa-time: #33414a;
+  --wa-time-out: #33414a;
+  --wa-tick-read: #0b6aa0;
+  --wa-lbl-margot: #00473a;
+  --wa-lbl-voce: #6b2d00;
+  --wa-lbl-auto: #2f3d46;
+  --wa-link: #003f8a;
+  --wa-err: #a11a10;
+  --wa-shadow: rgba(0, 0, 0, 0.35);
+  --wa-pill: #ffffff;
+  --wa-pill-text: #26323a;
+  --wa-notice: #ffe9b0;
+  --wa-notice-text: #2b2418;
+  --wa-input: #ffffff;
+  --wa-input-text: #000000;
+  --wa-placeholder: #3d4a52;
+  --wa-composer: #e6e8eb;
+  --wa-send: #00473a;
+  --wa-send-text: #ffffff;
+  --wa-accent: #00473a;
+  --wa-badge: #1fbd5b;
+  --wa-badge-text: #000000;
+  --wa-overlay: rgba(0, 0, 0, 0.7);
+  --wa-overlay-text: #ffffff;
+  --wa-sub: rgba(0, 0, 0, 0.08);
+}
+
 /* ── Tamanho do texto ──────────────────────────────────────────
    "zoom" aumenta tudo junto (letras, espaços e botões), inclusive os textos pequenos. */
 .admin-app {
