@@ -35,7 +35,7 @@ import { flushOwnerQueue } from "./notify";
 import { formatPhone, phoneVariants } from "./phone";
 import { sendText, sendVoice } from "./send";
 import { contactLabel, isPaused, PAUSED_FOREVER, saveOutbound, updateOutbound, windowOpen, type WaContact, type WaMessage } from "./store";
-import { voiceReady } from "./voice";
+import { speechReady, voiceReady } from "./voice";
 
 const PERIOD = { type: "string", description: "AAAA-MM-DD" };
 
@@ -479,7 +479,7 @@ async function runTool(name: string, input: any, s: State): Promise<unknown> {
       const modo = input?.modo;
       const value = modo === "sempre" ? true : modo === "nunca" ? false : null;
       s.owner = await prisma.waContact.update({ where: { id: s.owner.id }, data: { prefersAudio: value } });
-      return { ok: true, modo, voz_configurada: voiceReady() };
+      return { ok: true, modo, voz_configurada: speechReady() };
     }
 
     return { erro: `Ferramenta desconhecida: ${name}` };
@@ -494,7 +494,7 @@ async function runTool(name: string, input: any, s: State): Promise<unknown> {
 /** Responde ao Leonardo em texto e, conforme a preferência, oferece (ou manda) a versão em áudio. */
 async function replyToOwner(owner: WaContact, text: string, offerAudio = true) {
   if (!text) return;
-  if (offerAudio && voiceReady() && owner.prefersAudio === null && text.length >= 60 && text.length <= 1000) {
+  if (offerAudio && speechReady() && owner.prefersAudio === null && text.length >= 60 && text.length <= 1000) {
     const row = await saveOutbound({ contactId: owner.id, author: "margot", type: "interactive", text, status: "pendente" });
     try {
       const wamid = await send(owner.waId, buttonsMessage(text, [{ id: `tts:${row.id}`, title: "🔊 Ouvir em áudio" }]));
@@ -506,7 +506,7 @@ async function replyToOwner(owner: WaContact, text: string, offerAudio = true) {
     }
   }
   await sendText(owner, text, { author: "margot" });
-  if (voiceReady() && owner.prefersAudio === true) {
+  if (speechReady() && owner.prefersAudio === true) {
     await sendVoice(owner, text).catch((e) => console.error("[whatsapp] áudio da resposta", e));
   }
 }
@@ -531,7 +531,7 @@ async function handleDirect(owner: WaContact, pending: WaMessage[]): Promise<WaM
     if (verb === "tts" && Number.isInteger(rowId)) {
       const row = await prisma.waMessage.findUnique({ where: { id: rowId } });
       if (!row || row.contactId !== owner.id) continue;
-      if (!voiceReady()) {
+      if (!speechReady()) {
         await sendText(owner, "Para eu falar em áudio, falta a VOICE_API_KEY na Vercel (veja o guia do WhatsApp).", { author: "margot" });
       } else {
         await sendVoice(owner, row.text).catch(async (e) => {
@@ -633,7 +633,7 @@ export async function respondToOwner(owner: WaContact, pending: WaMessage[]): Pr
 
   const now = new Date();
   const weekday = new Intl.DateTimeFormat("pt-BR", { weekday: "long", timeZone: TIMEZONE }).format(now);
-  const variable = `# Hoje\n${weekday}, ${formatDateBR(todayISO(now))}, ${new Intl.DateTimeFormat("pt-BR", { timeZone: TIMEZONE, hour: "2-digit", minute: "2-digit" }).format(now)}.\n\n# Painel\n${gestor.siteUrl()}/admin\n\n# Áudio\nPreferência atual: ${owner.prefersAudio === true ? "sempre mandar áudio também" : owner.prefersAudio === false ? "só texto" : "perguntar (botão Ouvir em áudio)"}. Voz ${voiceReady() ? "configurada" : "ainda não configurada (falta VOICE_API_KEY)"}.`;
+  const variable = `# Hoje\n${weekday}, ${formatDateBR(todayISO(now))}, ${new Intl.DateTimeFormat("pt-BR", { timeZone: TIMEZONE, hour: "2-digit", minute: "2-digit" }).format(now)}.\n\n# Painel\n${gestor.siteUrl()}/admin\n\n# Áudio\nPreferência atual: ${owner.prefersAudio === true ? "sempre mandar áudio também" : owner.prefersAudio === false ? "só texto" : "perguntar (botão Ouvir em áudio)"}. Voz falada ${speechReady() ? "configurada" : "ainda não configurada (falta VOICE_API_KEY)"}.`;
 
   const s: State = { owner, usage: [], after: [] };
   const messages: { role: string; content: unknown }[] = turns.map((t) => ({ role: t.role, content: t.content }));
