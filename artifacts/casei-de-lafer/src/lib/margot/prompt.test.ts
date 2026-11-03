@@ -97,7 +97,7 @@ test("os serviços estão definidos como o dono descreveu: entrega da noiva, sa�
       "até cerca de 10 km",
       'Nunca diga que é "só a entrada"',
       "Saída dos noivos: opcional",
-      "chofer trajado a rigor está disponível mediante solicitação, sem custo adicional",
+      "traje de motorista (chofer) está disponível mediante solicitação, sem custo adicional",
       "Tem só 2 lugares",
       "até 3 horas num único local de ensaio",
       "Um segundo local é orçado à parte",
@@ -112,6 +112,36 @@ test("decoração do carro é opcional e combinada com a equipe: o prompt não p
     const { fixed } = buildSystemPrompt(ctx(channel));
     assert.ok(fixed.includes("Decoração do carro: é opcional e combinada caso a caso"), channel);
     assert.ok(!/decoração floral/i.test(fixed), `${channel}: voltou a promessa de decoração floral inclusa`);
+  }
+});
+
+test("sobre o carro, só afirma o que o orçamento, o Termo e o dono confirmaram: sem ano do modelo, couro, madeira, traje a rigor, tolerância nem lista de cidades", () => {
+  for (const channel of CHANNELS) {
+    const { fixed } = buildSystemPrompt(ctx(channel));
+    for (const [regra, rotulo] of [
+      [/1950/, "ano do MG TD"],
+      [/couro/i, "couro"],
+      [/madeira/i, "madeira"],
+      [/impecavelmente/i, "impecavelmente conservado"],
+      [/a rigor/i, "traje a rigor"],
+      [/30 minutos/, "tolerância de 30 minutos"],
+      [/Nova Prata|Bento Gonçalves/, "lista de cidades escrita à mão"],
+      [/chegada fica protegida e elegante/i, "promessa de chegada protegida"],
+    ] as const) {
+      assert.ok(!regra.test(fixed), `${channel}: voltou "${rotulo}"`);
+    }
+    for (const trecho of [
+      "MP Lafer 1980, conversível clássico",
+      "não afirme nada além disto",
+      "Instagram @eucaseidelafer",
+      "traje de motorista (chofer)",
+      "ajustes de horário podem ser alinhados conforme o roteiro do evento",
+      "Não prometa tolerância de atraso",
+      'vale o que estiver em "Cancelamento"',
+      "a capota é colocada com antecedência",
+    ]) {
+      assert.ok(fixed.includes(trecho), `${channel}: falta "${trecho}"`);
+    }
   }
 });
 

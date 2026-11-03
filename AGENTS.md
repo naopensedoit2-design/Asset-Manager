@@ -19,7 +19,7 @@ Uma data só comporta um evento (existe um único carro).
 - Saldo de 60% até 1 dia antes do evento.
 - Reserva provisória sem sinal expira em 48h (padrão).
 - Cancelamento: sinal não reembolsável (reserva de data). Ensaios: chuva forte permite remarcar sem custo em até 60 dias.
-- Ensaio Pré-Wedding: R$ 1.900, até 3h com o carro em um único local de ensaio (segundo local é orçado à parte); chofer trajado a rigor só mediante solicitação, sem custo (já está no valor).
+- Ensaio Pré-Wedding: R$ 1.900, até 3h com o carro em um único local de ensaio (segundo local é orçado à parte); traje de motorista (chofer) só mediante solicitação, sem custo (já está no valor).
 - Raio de atendimento: Serra Gaúcha; fora dela, valor avaliado caso a caso.
 - **Os preços são "a partir de" (valor-base).** A Margot sempre diz "a partir de". A região de valor-base é o texto de Regras → Área de atendimento (banco, nunca o código). Cidade fora dela, ou trajeto da noiva até a cerimônia acima de ~10 km: a equipe confirma o valor final, e a Margot não apresenta total, sinal e saldo como definitivos nem manda o link da proposta (anota "valor por distância a confirmar" no resumo e usa `encaminhar_para_equipe`). Adicionais, pacotes e decoração também vão para a equipe. **A Margot nunca revela de onde o carro sai, a cidade-base, quilometragens nem o raio**: são parâmetros internos do dono e o repositório é público, então não os escreva aqui, em testes ou em exemplos.
 
