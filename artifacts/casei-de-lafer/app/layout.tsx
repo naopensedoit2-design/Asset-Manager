@@ -1,24 +1,20 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import Providers from "./providers";
+import { META, OG } from "@/lib/landing/conteudo";
 
+// Endereço oficial do site (o domínio que está de fato no projeto). Os textos vêm de lib/landing/conteudo.ts.
 export const metadata: Metadata = {
-  metadataBase: new URL("https://caseidalafer.com.br"),
-  title: "Casei de Lafer — Carro Clássico para Casamentos na Serra Gaúcha",
-  description:
-    "Alugue o clássico MP Lafer conversível para o seu casamento na Serra Gaúcha. Chegada da noiva, ensaios fotográficos e fuga dos noivos.",
+  metadataBase: new URL("https://www.eucaseidelafer.com"),
+  title: META.titulo,
+  description: META.descricao,
   robots: "index, follow",
-  openGraph: {
-    title: "Casei de Lafer — Carro Clássico para Casamentos",
-    description:
-      "MP Lafer conversível para casamentos na Serra Gaúcha. Uma experiência única e inesquecível.",
-    type: "website",
-    images: [{ url: "/hero-desktop.jpg" }],
-  },
+  openGraph: OG,
   twitter: {
     card: "summary_large_image",
-    title: "Casei de Lafer — Carro Clássico para Casamentos",
-    description: "MP Lafer conversível para casamentos na Serra Gaúcha.",
+    title: OG.title,
+    description: OG.description,
+    images: OG.images.map((imagem) => imagem.url),
   },
 };
 
