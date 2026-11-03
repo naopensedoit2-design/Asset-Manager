@@ -31,6 +31,11 @@ export function explainError(e: unknown): string {
     132000: "O modelo de mensagem tem outra quantidade de campos. Confira o modelo na Meta.",
     132001: "O modelo de mensagem não existe ou ainda não foi aprovado pela Meta.",
     133010: "O número da Margot ainda não foi registrado na API. Use o botão Registrar número em Regras.",
+    139100: "O WhatsApp não conseguiu bloquear (ou desbloquear) esse número.",
+    139101: "A lista de bloqueados do número da Margot chegou ao limite de 64.000 números.",
+    139102: "A lista de bloqueados mudou enquanto era lida. Tente de novo.",
+    139103: "Erro interno do WhatsApp. Tente de novo em instantes.",
+    131021: "Esse é o próprio número da Margot: não dá para bloquear.",
     190: "O token do WhatsApp expirou ou é inválido. Gere um token permanente (usuário do sistema) e atualize na Vercel.",
     ...EXTRA_ERROR_TEXT,
   };
@@ -165,6 +170,34 @@ export async function downloadMedia(mediaId: string): Promise<{ data: Buffer; mi
   const data = Buffer.from(await res.arrayBuffer());
   return { data, mime: info.mime_type || res.headers.get("content-type") || "application/octet-stream", size: data.length };
 }
+
+interface BlockResult {
+  block_users?: {
+    added_users?: { input?: string; wa_id?: string }[];
+    removed_users?: { input?: string; wa_id?: string }[];
+    failed_users?: { input?: string; wa_id?: string; errors?: { code?: number; message?: string; error_data?: { details?: string } }[] }[];
+  };
+}
+
+async function changeBlock(method: "POST" | "DELETE", waIds: string[]): Promise<void> {
+  const c = waConfig();
+  const r = await graph<BlockResult>(`${c.phoneNumberId}/block_users`, {
+    method,
+    json: { messaging_product: "whatsapp", block_users: waIds.map((user) => ({ user })) },
+  });
+  // A resposta pode vir "ok" e listar quem falhou.
+  const failed = r.block_users?.failed_users?.[0];
+  if (failed) {
+    const e = failed.errors?.[0];
+    throw new WaApiError(e?.error_data?.details || e?.message || "O WhatsApp não aceitou o pedido.", Number(e?.code) || 139100, 400);
+  }
+}
+
+/** Bloqueia números no WhatsApp: a pessoa não consegue mais escrever para a Margot. A Meta só deixa bloquear quem escreveu nas últimas 24 horas. */
+export const blockUsers = (waIds: string[]) => changeBlock("POST", waIds);
+
+/** Desfaz o bloqueio. */
+export const unblockUsers = (waIds: string[]) => changeBlock("DELETE", waIds);
 
 export interface PhoneInfo {
   display_phone_number?: string;

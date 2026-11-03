@@ -52,7 +52,7 @@ export async function getHoje(now = new Date()): Promise<HojeData> {
     prisma.waMessage.count({
       where: { direction: "out", author: "margot", status: { not: "falhou" }, createdAt: { gte: since }, contact: { isOwner: false } },
     }),
-    prisma.waContact.count({ where: { isOwner: false, lastMessageAt: { gte: since } } }),
+    prisma.waContact.count({ where: { isOwner: false, ignoredAt: null, lastMessageAt: { gte: since } } }),
     prisma.setting.findUnique({ where: { key: ROUTINE_KEY } }),
     googleAgenda(), // não falha: sem Google ou com o Google fora do ar, vem vazio
     gestor.googleLinkedOrders(),

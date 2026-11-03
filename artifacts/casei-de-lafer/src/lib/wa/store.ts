@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { getSettings } from "@/lib/gestor/service";
 import { canonicalPhone, formatPhone, phoneVariants, samePhone } from "./phone";
 import type { InboundMessage, StatusUpdate } from "./parse";
+import { triageInbound } from "./triage";
 
 export type { WaContact, WaMessage };
 
@@ -53,18 +54,33 @@ export async function saveInbound(m: InboundMessage, owner: string): Promise<{ c
   if (contact && contact.waId !== m.from) {
     contact = await prisma.waContact.update({ where: { id: contact.id }, data: { waId: m.from } });
   }
+  let isNew = false;
   if (!contact) {
     const link = isOwner ? { clientId: null, orderId: null } : await linkClient(m.from);
-    contact = await prisma.waContact
-      .create({ data: { waId: m.from, name: m.profileName, isOwner, ...link } })
-      .catch(async (e) => {
-        // Duas mensagens do mesmo número chegando juntas: a outra criou o contato.
-        if (e?.code === "P2002") return prisma.waContact.findUniqueOrThrow({ where: { waId: m.from } });
-        throw e;
-      });
+    try {
+      contact = await prisma.waContact.create({ data: { waId: m.from, name: m.profileName, isOwner, ...link } });
+      isNew = true;
+    } catch (e: any) {
+      // Duas mensagens do mesmo número chegando juntas: a outra criou o contato.
+      if (e?.code !== "P2002") throw e;
+      contact = await prisma.waContact.findUniqueOrThrow({ where: { waId: m.from } });
+    }
   }
 
-  const counted = m.type !== "reaction";
+  // Triagem (triage.ts): primeiro contato com cara de mensagem em massa, ou conversa que já está ignorada.
+  // Ignorada: a mensagem fica guardada, mas ninguém responde, o dono não é avisado e nada conta como não lida.
+  const triage = triageInbound(
+    { isNew, isOwner, isClient: Boolean(contact.clientId), ignored: Boolean(contact.ignoredAt), reason: contact.ignoredReason },
+    { type: m.type, text: m.text, forwarded: m.forwarded },
+  );
+  const ignoredPatch =
+    triage.change === "ignorar"
+      ? { ignoredAt: new Date(), ignoredReason: triage.reason }
+      : triage.change === "reativar"
+        ? { ignoredAt: null, ignoredReason: "" }
+        : {};
+
+  const counted = m.type !== "reaction" && !triage.ignored;
   contact = await prisma.waContact.update({
     where: { id: contact.id },
     data: {
@@ -72,6 +88,7 @@ export async function saveInbound(m: InboundMessage, owner: string): Promise<{ c
       isOwner,
       lastInboundAt: at > (contact.lastInboundAt ?? new Date(0)) ? at : contact.lastInboundAt,
       lastMessageAt: new Date(),
+      ...ignoredPatch,
       ...(counted && !isOwner ? { unread: { increment: 1 } } : {}),
     },
   });
@@ -84,13 +101,14 @@ export async function saveInbound(m: InboundMessage, owner: string): Promise<{ c
         direction: "in",
         author: isOwner ? "leonardo" : "cliente",
         type: m.type,
+        kind: m.forwarded ? "encaminhada" : "",
         text: m.text.slice(0, 4000),
         mediaId: m.mediaId,
         mediaMime: m.mediaMime,
         fileName: m.fileName.slice(0, 200),
         status: "recebida",
-        // Reações e mensagens de sistema não pedem resposta.
-        handledAt: ["reaction", "system", "unsupported", "request_welcome", "ephemeral"].includes(m.type) ? new Date() : null,
+        // Reações, mensagens de sistema e conversas ignoradas não pedem resposta.
+        handledAt: triage.ignored || ["reaction", "system", "unsupported", "request_welcome", "ephemeral"].includes(m.type) ? new Date() : null,
         action: m.buttonId ? JSON.stringify({ button: m.buttonId.slice(0, 256) }) : "",
         createdAt: at,
       },

@@ -5,7 +5,7 @@
 // e as cores dos tokens --wa-* de app/admin/theme.css (nada de cor fixa aqui: o painel tem 4 temas).
 
 import { useState } from "react";
-import { AlertTriangle, Check, CheckCheck, Clock, Download, FileText, MapPin, Play, User } from "lucide-react";
+import { AlertTriangle, Check, CheckCheck, Clock, Download, FileText, Forward, MapPin, Play, User } from "lucide-react";
 import { mapsUrl, noticeText, parseContacts, parseLocation, telUrl, TZ, viewKind } from "@/lib/wa/view";
 
 export interface ChatMessage {
@@ -247,6 +247,20 @@ export function Bubble({
       >
         {label && (
           <p className={`text-[12.5px] leading-4 font-semibold mb-0.5 ${photoLike ? "px-1.5 pt-0.5" : ""} ${labelColor}`}>{label}</p>
+        )}
+        {!mine && m.kind === "encaminhada" && (
+          // A figurinha não tem fundo de balão: o aviso vai numa etiqueta, como o separador de dia.
+          <p className={`mb-0.5 ${photoLike && kind !== "sticker" ? "px-1.5 pt-0.5" : ""}`}>
+            <span
+              className={
+                kind === "sticker"
+                  ? "inline-flex items-center gap-1 rounded-md bg-wa-pill px-1.5 py-0.5 text-[12px] italic text-wa-pill-text"
+                  : "inline-flex items-center gap-1 text-[12.5px] leading-4 italic text-wa-time"
+              }
+            >
+              <Forward className="w-3.5 h-3.5" aria-hidden="true" /> Encaminhada
+            </span>
+          </p>
         )}
         {kind === "image" && <Photo src={src} alt={m.text || "Foto"} sticker={false} onLoad={onMediaLoad} />}
         {kind === "sticker" && <Photo src={src} alt="Figurinha" sticker onLoad={onMediaLoad} />}

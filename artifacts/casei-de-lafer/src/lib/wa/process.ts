@@ -69,6 +69,11 @@ export async function processContact(job: Job): Promise<void> {
         take: 20,
       });
       if (!contact || !pending.length) break;
+      // Ignorada depois de a mensagem chegar (o dono tocou em Ignorar durante a espera): ninguém responde.
+      if (contact.ignoredAt && !contact.isOwner) {
+        await prisma.waMessage.updateMany({ where: { id: { in: pending.map((p) => p.id) } }, data: { handledAt: new Date() } });
+        break;
+      }
       // Marca antes de responder: se algo falhar, a mesma mensagem não gera respostas repetidas.
       await prisma.waMessage.updateMany({ where: { id: { in: pending.map((p) => p.id) } }, data: { handledAt: new Date() } });
       try {

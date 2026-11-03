@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { use, useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, ChevronRight, Pause, Play, Send, User } from "lucide-react";
+import { ArrowLeft, Ban, Bell, BellOff, ChevronRight, EllipsisVertical, Pause, Play, Send, ShieldCheck, User } from "lucide-react";
 import { api, ErrorNote, Loading, whatsappLink } from "@/components/gestor/ui";
 import { formatDateBR } from "@/lib/gestor/rules";
 import { type ConversationSummary } from "@/components/gestor/wa";
 import { Bubble, NoticePill, type ChatMessage } from "@/components/gestor/wa-message";
+import { ignoreExplanation } from "@/lib/wa/triage";
 import { chatFlow, dayKeyBR, initials, TZ } from "@/lib/wa/view";
 
 interface Conversation {
@@ -55,6 +56,24 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
   }, [lastId, queryClient]);
 
   const [toggleError, setToggleError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  /** Pausar/retomar a Margot, ignorar, reativar, bloquear e desbloquear: tudo é um PATCH que devolve a conversa atualizada. */
+  async function act(body: Record<string, unknown>): Promise<boolean> {
+    setBusy(true);
+    setToggleError(null);
+    try {
+      queryClient.setQueryData(["wa-conversa", id], await api<Conversation>(`/api/admin/whatsapp/conversas/${id}`, { method: "PATCH", body }));
+      // As listas e o contador do menu mudam quando uma conversa entra ou sai de "ignoradas".
+      for (const key of ["wa-conversas", "wa-conversas-ignoradas", "wa-nao-lidas"]) queryClient.invalidateQueries({ queryKey: [key] });
+      return true;
+    } catch (e) {
+      setToggleError((e as Error).message);
+      return false;
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div className="flex flex-col min-h-[calc(100dvh/var(--admin-zoom))]">
@@ -69,11 +88,12 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
         </main>
       ) : (
         <>
-          <TopBar c={data.contact} onChange={(next) => queryClient.setQueryData(["wa-conversa", id], next)} onError={setToggleError} />
+          <TopBar c={data.contact} busy={busy} act={act} />
           <main className="wa-wall flex-1">
             <div className="max-w-3xl mx-auto w-full px-3 sm:px-6 pt-3 pb-4">
               {toggleError && <ErrorNote message={toggleError} />}
-              {data.contact.paused && !data.contact.isOwner && (
+              <IgnoredNotice c={data.contact} busy={busy} act={act} />
+              {data.contact.paused && !data.contact.isOwner && !data.contact.ignored && (
                 <NoticePill>
                   Margot pausada
                   {data.contact.pausedUntil
@@ -103,7 +123,7 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
               ))}
             </div>
           </main>
-          <Composer c={data.contact} id={id} onSent={(next) => queryClient.setQueryData(["wa-conversa", id], next)} />
+          <Composer c={data.contact} id={id} acting={busy} act={act} onSent={(next) => queryClient.setQueryData(["wa-conversa", id], next)} />
         </>
       )}
     </div>
@@ -122,27 +142,116 @@ function Avatar({ name, owner }: { name: string; owner: boolean }) {
   );
 }
 
-function TopBar({
-  c,
-  onChange,
-  onError,
+type Act = (body: Record<string, unknown>) => Promise<boolean>;
+
+/** Faixa dentro da conversa ignorada ou bloqueada, com o botão que desfaz. */
+function IgnoredNotice({ c, busy, act }: { c: ConversationSummary; busy: boolean; act: Act }) {
+  if (c.isOwner || (!c.ignored && !c.blocked)) return null;
+  return (
+    <div className="flex flex-col items-center gap-1.5">
+      <NoticePill>
+        {c.blocked
+          ? "Bloqueada no WhatsApp: esta pessoa não consegue mais escrever para o número da Margot."
+          : ignoreExplanation(c.ignoredReason)}
+      </NoticePill>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={() => act({ acao: c.blocked ? "desbloquear" : "reativar" })}
+        className="h-9 px-4 rounded-full inline-flex items-center gap-1.5 bg-wa-send text-wa-send-text text-sm font-medium cursor-pointer disabled:opacity-60"
+      >
+        {c.blocked ? <ShieldCheck className="w-4 h-4" aria-hidden="true" /> : <Bell className="w-4 h-4" aria-hidden="true" />}
+        {c.blocked ? "Desbloquear" : "Reativar conversa"}
+      </button>
+    </div>
+  );
+}
+
+/** Uma ação do menu "Mais opções": ícone, nome e uma linha dizendo o que acontece. */
+function MenuItem({
+  icon: Icon,
+  title,
+  hint,
+  onClick,
+  disabled,
 }: {
-  c: ConversationSummary;
-  onChange: (next: Conversation) => void;
-  onError: (message: string | null) => void;
+  icon: typeof Ban;
+  title: string;
+  hint: string;
+  onClick?: () => void;
+  disabled?: boolean;
 }) {
-  const [busy, setBusy] = useState(false);
+  const body = (
+    <>
+      <Icon className="w-5 h-5 mt-0.5 shrink-0" aria-hidden="true" />
+      <span className="min-w-0">
+        <span className="block text-[15px] font-medium">{title}</span>
+        <span className="block text-xs text-wa-bar-muted">{hint}</span>
+      </span>
+    </>
+  );
+  const shared = "w-full flex items-start gap-3 rounded-lg px-3 py-2.5 text-left";
+  // Sem ação possível, vira texto: um botão apagado com opacidade deixaria a explicação sem contraste.
+  if (disabled) return <div className={`${shared} text-wa-bar-muted`}>{body}</div>;
+  return (
+    <button type="button" onClick={onClick} className={`${shared} hover:bg-wa-bar-text/10 cursor-pointer`}>
+      {body}
+    </button>
+  );
+}
+
+/**
+ * Confirmação do bloqueio, dentro da própria página (o navegador do app não mostra o confirm() nativo).
+ * Só um contorno, sem fundo: um fundo mais claro sobre a barra tira o contraste do texto no tema Pérola.
+ * O foco começa em "Cancelar", o lado seguro de uma ação que a pessoa do outro lado vai sentir.
+ */
+function ConfirmBlock({ title, busy, onConfirm, onCancel }: { title: string; busy: boolean; onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <div role="group" aria-label="Confirmar bloqueio" className="rounded-lg border border-wa-bar-text/40 px-3 py-3 space-y-2.5 my-1">
+      <p className="text-[15px] font-medium">Bloquear {title} no WhatsApp?</p>
+      <p className="text-xs text-wa-bar-muted">A pessoa não vai mais conseguir escrever para o número da Margot. Dá para desbloquear depois.</p>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={onConfirm}
+          className="h-9 px-4 rounded-full bg-wa-bar-text text-wa-bar text-sm font-medium cursor-pointer disabled:opacity-60"
+        >
+          Bloquear
+        </button>
+        <button
+          type="button"
+          autoFocus
+          disabled={busy}
+          onClick={onCancel}
+          className="h-9 px-4 rounded-full border border-wa-bar-text/50 text-sm font-medium cursor-pointer hover:bg-wa-bar-text/10 disabled:opacity-60"
+        >
+          Cancelar
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function TopBar({ c, busy, act }: { c: ConversationSummary; busy: boolean; act: Act }) {
+  const [menu, setMenu] = useState(false);
+  const [confirmBlock, setConfirmBlock] = useState(false);
   const title = c.isOwner ? "Você (modo secretária)" : c.clientName || c.name || c.phone;
 
-  async function toggle() {
-    setBusy(true);
-    onError(null);
-    try {
-      onChange(await api<Conversation>(`/api/admin/whatsapp/conversas/${c.id}`, { method: "PATCH", body: { pausar: !c.paused } }));
-    } catch (e) {
-      onError((e as Error).message);
-    } finally {
-      setBusy(false);
+  useEffect(() => {
+    if (!menu) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenu(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [menu]);
+
+  const toggle = () => act({ pausar: !c.paused });
+  async function run(acao: string) {
+    if (await act({ acao })) {
+      setMenu(false);
+      setConfirmBlock(false);
     }
   }
 
@@ -161,7 +270,7 @@ function TopBar({
           <p className="truncate text-[17px] font-medium">{title}</p>
           <p className="truncate text-xs text-wa-bar-muted">{c.phone}</p>
         </div>
-        {!c.isOwner && (
+        {!c.isOwner && !c.ignored && (
           <button
             type="button"
             onClick={toggle}
@@ -177,7 +286,66 @@ function TopBar({
             <span className="hidden @min-xs:inline @min-md:hidden">{c.paused ? "Retomar" : "Pausar"}</span>
           </button>
         )}
+        {!c.isOwner && (
+          <button
+            type="button"
+            onClick={() => {
+              setMenu((open) => !open);
+              setConfirmBlock(false);
+            }}
+            aria-label="Mais opções da conversa"
+            aria-expanded={menu}
+            aria-controls="menu-conversa"
+            className="w-10 h-10 shrink-0 grid place-items-center rounded-full hover:bg-wa-bar-text/10 cursor-pointer"
+          >
+            <EllipsisVertical className="w-6 h-6" aria-hidden="true" />
+          </button>
+        )}
       </div>
+      {menu && !c.isOwner && (
+        <div id="menu-conversa" className="border-t border-wa-bar-text/15">
+          <div className="max-w-3xl mx-auto px-2 sm:px-4 py-1.5">
+            {c.ignored ? (
+              <MenuItem
+                icon={Bell}
+                title="Reativar conversa"
+                hint="A Margot volta a atender esta pessoa."
+                onClick={c.blocked ? undefined : () => run("reativar")}
+                disabled={c.blocked}
+              />
+            ) : (
+              <MenuItem
+                icon={BellOff}
+                title="Ignorar conversa"
+                hint="A Margot não responde, não avisa você e não conta como não lida. Fica na aba Ignoradas."
+                onClick={() => run("ignorar")}
+              />
+            )}
+            {c.blocked ? (
+              <MenuItem
+                icon={ShieldCheck}
+                title="Desbloquear no WhatsApp"
+                hint="A pessoa volta a poder escrever. A conversa continua ignorada até você reativar."
+                onClick={() => run("desbloquear")}
+              />
+            ) : confirmBlock ? (
+              <ConfirmBlock title={title} busy={busy} onConfirm={() => run("bloquear")} onCancel={() => setConfirmBlock(false)} />
+            ) : (
+              <MenuItem
+                icon={Ban}
+                title="Bloquear no WhatsApp"
+                hint={
+                  c.windowOpen
+                    ? "A pessoa não consegue mais escrever para o número da Margot."
+                    : "Só dá para bloquear quem escreveu nas últimas 24 horas."
+                }
+                onClick={() => setConfirmBlock(true)}
+                disabled={!c.windowOpen}
+              />
+            )}
+          </div>
+        </div>
+      )}
       {c.order && (
         <Link
           href={`/admin/pedidos/${c.order.id}`}
@@ -194,7 +362,20 @@ function TopBar({
   );
 }
 
-function Composer({ c, id, onSent }: { c: ConversationSummary; id: string; onSent: (next: Conversation) => void }) {
+function Composer({
+  c,
+  id,
+  acting,
+  act,
+  onSent,
+}: {
+  c: ConversationSummary;
+  id: string;
+  /** Há um pedido da barra de cima em andamento (pausar, ignorar, bloquear…). */
+  acting: boolean;
+  act: Act;
+  onSent: (next: Conversation) => void;
+}) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -205,6 +386,28 @@ function Composer({ c, id, onSent }: { c: ConversationSummary; id: string; onSen
         <p className="max-w-3xl mx-auto px-4 py-3 text-xs text-wa-placeholder">
           Esta é a sua conversa com a Margot. Fale com ela pelo seu WhatsApp, mandando mensagem para o número dela.
         </p>
+      </div>
+    );
+  }
+
+  // Bloqueada: o WhatsApp não entrega nada a ela. Em vez de uma caixa de texto que falharia, o caminho de volta.
+  if (c.blocked) {
+    return (
+      <div className="sticky bottom-0 z-30 bg-wa-composer pb-[env(safe-area-inset-bottom)] shadow-[0_-1px_0_var(--wa-shadow)]">
+        <div className="max-w-3xl mx-auto px-2 sm:px-4 py-2 flex flex-wrap items-center gap-3">
+          <p className="flex-1 min-w-48 rounded-lg bg-wa-notice px-3 py-2 text-xs text-wa-notice-text">
+            Bloqueada no WhatsApp. Desbloqueie para voltar a conversar.
+          </p>
+          <button
+            type="button"
+            disabled={acting}
+            onClick={() => act({ acao: "desbloquear" })}
+            className="h-10 px-4 rounded-full inline-flex items-center gap-1.5 bg-wa-send text-wa-send-text text-sm font-medium cursor-pointer disabled:opacity-60"
+          >
+            <ShieldCheck className="w-4 h-4" aria-hidden="true" />
+            Desbloquear
+          </button>
+        </div>
       </div>
     );
   }
@@ -249,7 +452,10 @@ function Composer({ c, id, onSent }: { c: ConversationSummary; id: string; onSen
               </button>
             </div>
             <p className="px-2 text-center text-[11px] text-wa-placeholder">
-              Sai pelo número da Margot, assinado como você. A Margot pausa nesta conversa por 24h.
+              Sai pelo número da Margot, assinado como você.{" "}
+              {c.ignored
+                ? "Ao responder, a conversa deixa de ser ignorada e a Margot pausa nela por 24h."
+                : "A Margot pausa nesta conversa por 24h."}
             </p>
           </>
         ) : (
