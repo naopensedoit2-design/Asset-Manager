@@ -29,6 +29,14 @@ export async function dailySummary(now = new Date()) {
     where: { direction: "out", status: { in: ["enviada", "entregue", "lida"] }, createdAt: { gte: monthStart(today) } },
     _count: { _all: true },
   });
+  // Captação: leads novos, pedidos novos e datas fechadas nas últimas 24 h, e lembretes enviados.
+  const since = new Date(now.getTime() - 86_400_000);
+  const [newLeads, newOrders, closed, reminders] = await Promise.all([
+    prisma.waContact.count({ where: { isOwner: false, ignoredAt: null, createdAt: { gte: since } } }),
+    prisma.order.count({ where: { createdAt: { gte: since } } }),
+    prisma.orderHistory.count({ where: { toStatus: "confirmado", createdAt: { gte: since } } }),
+    prisma.waMessage.count({ where: { kind: "lembrete", direction: "out", createdAt: { gte: since } } }),
+  ]);
   const quota = quotaReport(countByKind(sent.map((r) => ({ type: r.type, n: r._count._all }))));
 
   const describe = (o: (typeof d.upcoming)[number]) =>
@@ -43,6 +51,18 @@ export async function dailySummary(now = new Date()) {
   if (tomorrows.length) lines.push(`*Amanhã:* ${tomorrows.map(describe).join("; ")}`);
   if (alerts.length) lines.push(`\n*Atenção*\n${alerts.map((a) => `• ${a.title}`).join("\n")}`);
   if (unanswered.length) lines.push(`\n*Esperando resposta no WhatsApp:* ${unanswered.slice(0, 5).join(", ")}`);
+  if (newLeads || newOrders || closed || reminders) {
+    lines.push(
+      `\n*Captação (24 h):* ${[
+        `${newLeads} lead${newLeads === 1 ? "" : "s"} novo${newLeads === 1 ? "" : "s"}`,
+        `${newOrders} pedido${newOrders === 1 ? "" : "s"}`,
+        `${closed} data${closed === 1 ? "" : "s"} fechada${closed === 1 ? "" : "s"}`,
+        reminders ? `${reminders} lembrete${reminders === 1 ? "" : "s"} enviado${reminders === 1 ? "" : "s"}` : "",
+      ]
+        .filter(Boolean)
+        .join(" · ")}`,
+    );
+  }
   if (botOff) lines.push("\n⏸️ *Margot desligada no WhatsApp* (Regras): as mensagens dos clientes só chegam para você.");
   if (quota.lines.length) lines.push(`\n${quota.lines.join("\n")}`);
   lines.push(`\nNo mês: recebido ${formatBRL(d.kpis.recebidoMesCents)} · a receber ${formatBRL(d.kpis.aReceberCents)}.`);
@@ -52,6 +72,8 @@ export async function dailySummary(now = new Date()) {
     tomorrows.length ? `amanhã ${tomorrows.map((o) => o.client.name).join(" e ")}` : "",
     alerts.length ? `${alerts.length} alerta${alerts.length > 1 ? "s" : ""}` : "",
     unanswered.length ? `${unanswered.length} conversa${unanswered.length > 1 ? "s" : ""} esperando` : "",
+    newLeads ? `${newLeads} lead${newLeads > 1 ? "s" : ""} novo${newLeads > 1 ? "s" : ""}` : "",
+    closed ? `${closed} data${closed > 1 ? "s" : ""} fechada${closed > 1 ? "s" : ""}` : "",
     botOff ? "Margot desligada" : "",
     quota.part,
   ].filter(Boolean);
