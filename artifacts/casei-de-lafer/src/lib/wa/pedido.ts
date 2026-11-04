@@ -170,3 +170,88 @@ export function descreverContrato(o: { pedido: number; nome: string; nomeComplet
   lines.push("Esses dados vão para o Termo Simplificado.");
   return lines.join("\n");
 }
+
+// ─── Pagamentos recebidos (valor e data livres) ──────────────
+
+export type TipoPagamento = "sinal" | "saldo" | "outro";
+export interface Recebimento {
+  kind: TipoPagamento;
+  amountCents: number;
+  /** AAAA-MM-DD em que o dinheiro entrou. */
+  paidAt: string;
+}
+
+/** Valida um pagamento recebido: tipo, valor positivo e data que não é futura. */
+export function lerRecebimento(raw: { tipo?: unknown; valorCents?: unknown; data?: unknown }, hoje: string): Recebimento | string {
+  const kind = raw.tipo === "sinal" || raw.tipo === "saldo" ? raw.tipo : raw.tipo === undefined || raw.tipo === "outro" ? "outro" : null;
+  if (!kind) return "Tipo de pagamento inválido (sinal, saldo ou outro).";
+  if (!Number.isInteger(raw.valorCents) || (raw.valorCents as number) <= 0) return "Valor do pagamento inválido.";
+  const paidAt = raw.data === undefined || raw.data === null || raw.data === "" ? hoje : String(raw.data);
+  if (!isDateString(paidAt)) return "Data do pagamento inválida (AAAA-MM-DD).";
+  if (paidAt > hoje) return "A data do pagamento não pode ser futura.";
+  return { kind, amountCents: raw.valorCents as number, paidAt };
+}
+
+const TIPO_LABEL: Record<TipoPagamento, string> = { sinal: "Sinal", saldo: "Saldo", outro: "Pagamento" };
+
+export function descreverRecebimento(pedido: number, nome: string, r: Recebimento): string {
+  return `Registrar recebimento no pedido #${pedido} (*${nome}*)\n${TIPO_LABEL[r.kind]} de ${formatBRL(r.amountCents)}, recebido em ${formatDateBR(r.paidAt)}.`;
+}
+
+/** Evento antigo, registrado depois (histórico do financeiro). */
+export function descreverEventoPassado(p: PedidoNovo, nomesServicos: string[], totalCents: number, pagamentos: Recebimento[]): string {
+  const recebido = pagamentos.reduce((s, x) => s + x.amountCents, 0);
+  const lines = [
+    `Registrar evento *já realizado*: *${p.nome}*`,
+    `Data: ${formatDateBR(p.data)}${p.local || p.cidade ? ` · ${[p.local, p.cidade].filter(Boolean).join(", ")}` : ""}`,
+    `Serviço: ${nomesServicos.join(" + ")} · total ${formatBRL(totalCents)}`,
+    ...pagamentos.map((x) => `• ${TIPO_LABEL[x.kind]} ${formatBRL(x.amountCents)} em ${formatDateBR(x.paidAt)}`),
+  ];
+  if (recebido !== totalCents) lines.push(`⚠️ Recebido ${formatBRL(recebido)}, diferente do total.`);
+  lines.push("Fica como *realizado*, sem reservar data nem mexer na Google Agenda. Entra no Financeiro nas datas dos pagamentos.");
+  return lines.join("\n");
+}
+
+// ─── Editar pedido ───────────────────────────────────────────
+
+export interface Edicao {
+  nome?: string;
+  telefone?: string;
+  data?: string;
+  horario?: string;
+  local?: string;
+  cidade?: string;
+  observacao?: string;
+}
+
+const CAMPO: Record<keyof Edicao, string> = {
+  nome: "Nome",
+  telefone: "WhatsApp",
+  data: "Data",
+  horario: "Horário",
+  local: "Local",
+  cidade: "Cidade",
+  observacao: "Anotação",
+};
+
+/** "Antes → depois" de cada campo que muda; campos iguais ao atual somem. */
+export function mudancas(atual: Record<keyof Edicao, string>, pedido: Edicao): { campos: Edicao; linhas: string[] } {
+  const campos: Edicao = {};
+  const linhas: string[] = [];
+  for (const k of Object.keys(CAMPO) as (keyof Edicao)[]) {
+    const v = pedido[k];
+    if (v === undefined) continue;
+    if (k === "observacao") {
+      if (v.trim()) {
+        campos.observacao = v.trim();
+        linhas.push(`${CAMPO[k]}: ${v.trim()}`);
+      }
+      continue;
+    }
+    if (v === (atual[k] ?? "")) continue;
+    campos[k] = v;
+    const show = (x: string) => (k === "data" && x ? formatDateBR(x) : k === "telefone" && x ? formatPhone(x) : x || "(vazio)");
+    linhas.push(`${CAMPO[k]}: ${show(atual[k] ?? "")} → ${show(v)}`);
+  }
+  return { campos, linhas };
+}

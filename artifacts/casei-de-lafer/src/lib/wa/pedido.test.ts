@@ -92,3 +92,31 @@ test("documento aparece mascarado na confirmação", () => {
   assert.match(t, /Termo Simplificado/);
   assert.doesNotMatch(t, /E-mail/);
 });
+
+import { descreverEventoPassado, lerRecebimento, mudancas } from "./pedido.ts";
+
+test("recebimento: tipo, valor e data (padrão hoje, nunca futura)", () => {
+  assert.deepEqual(lerRecebimento({ tipo: "sinal", valorCents: 40000, data: "2026-01-22" }, "2026-11-04"), { kind: "sinal", amountCents: 40000, paidAt: "2026-01-22" });
+  assert.deepEqual(lerRecebimento({ valorCents: 100 }, "2026-11-04"), { kind: "outro", amountCents: 100, paidAt: "2026-11-04" });
+  assert.match(String(lerRecebimento({ tipo: "sinal", valorCents: 100, data: "2026-12-01" }, "2026-11-04")), /futura/);
+  assert.match(String(lerRecebimento({ tipo: "pix", valorCents: 100 }, "2026-11-04")), /Tipo/);
+  assert.match(String(lerRecebimento({ tipo: "saldo", valorCents: 0 }, "2026-11-04")), /Valor/);
+});
+
+test("evento passado avisa quando o recebido não fecha com o total", () => {
+  const p = { ...base, data: "2026-01-22", evento: null };
+  const ok = descreverEventoPassado(p, ["Carro da Noiva"], 40000, [{ kind: "outro", amountCents: 40000, paidAt: "2026-01-22" }]);
+  assert.match(ok, /já realizado/);
+  assert.match(ok, /22\/01/);
+  assert.doesNotMatch(ok, /diferente do total/);
+  assert.match(descreverEventoPassado(p, ["Carro da Noiva"], 40000, [{ kind: "sinal", amountCents: 38000, paidAt: "2026-01-22" }]), /diferente do total/);
+});
+
+test("edição mostra só o que muda, com antes e depois", () => {
+  const atual = { nome: "Ana", telefone: "5551999990000", data: "2026-12-05", horario: "", local: "Capela", cidade: "Gramado", observacao: "" };
+  const r = mudancas(atual, { horario: "16:00", cidade: "Gramado", data: "2026-12-06", observacao: " chegar 15h " });
+  assert.deepEqual(Object.keys(r.campos).sort(), ["data", "horario", "observacao"]);
+  assert.ok(r.linhas.some((l) => /Horário: \(vazio\) → 16:00/.test(l)));
+  assert.ok(r.linhas.some((l) => /05\/12\/2026 → 06\/12\/2026/.test(l)));
+  assert.equal(mudancas(atual, { cidade: "Gramado" }).linhas.length, 0);
+});

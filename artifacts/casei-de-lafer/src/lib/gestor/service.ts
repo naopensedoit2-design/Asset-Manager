@@ -831,6 +831,30 @@ export async function createQuote(id: unknown, input: Record<string, any>, actor
   return { order: await getOrder(orderId), totais: totals };
 }
 
+/**
+ * Evento que já aconteceu e não estava no sistema (histórico do financeiro). Cria o pedido já como "realizado",
+ * sem reservar data nem mexer na Google Agenda, com o orçamento e os pagamentos recebidos nas datas informadas.
+ */
+export async function createPastOrder(
+  input: Record<string, any> & { items: QuoteItem[]; payments: { kind: string; amountCents: number; paidAt: string }[] },
+  actor: Actor,
+) {
+  const date = requireDate(input.eventDate, "a data do evento");
+  if (date >= todayISO()) throw new RuleError("data_futura", "Evento já realizado precisa de data passada.", 400);
+  const { order } = await createOrder({ ...input, googleEventId: "" }, actor);
+  await createQuote(order.id, { items: input.items, markSent: false }, actor);
+  await prisma.$transaction(async (tx) => {
+    await tx.order.update({ where: { id: order.id }, data: { status: "realizado" } });
+    await tx.orderHistory.create({
+      data: { orderId: order.id, fromStatus: "novo", toStatus: "realizado", actor, note: "Evento já realizado, registrado depois" },
+    });
+  });
+  for (const p of input.payments) {
+    await addPayment(order.id, { kind: p.kind, amountCents: p.amountCents, status: "recebido", paidAt: p.paidAt }, actor);
+  }
+  return getOrder(order.id);
+}
+
 // ─── Pagamentos ──────────────────────────────────────────────
 
 export async function addPayment(id: unknown, input: Record<string, any>, actor: Actor) {
@@ -848,7 +872,7 @@ export async function addPayment(id: unknown, input: Record<string, any>, actor:
       method: str(input.method, 40) || "pix",
     },
   });
-  if (input.status === "recebido") return updatePayment(payment.id, { status: "recebido" }, actor);
+  if (input.status === "recebido") return updatePayment(payment.id, { status: "recebido", paidAt: input.paidAt }, actor);
   return { ...(await getOrder(orderId)), aviso: null as string | null };
 }
 
@@ -862,6 +886,13 @@ export async function updatePayment(id: unknown, input: Record<string, any>, act
     if (!PAYMENT_STATUSES.includes(input.status)) throw new RuleError("status_invalido", "Status de pagamento inválido.", 400);
     data.status = input.status;
     data.paidAt = input.status === "recebido" ? (payment.paidAt ?? new Date()) : null;
+    // Data em que o dinheiro entrou, quando não foi hoje (ex.: evento antigo registrado depois). Meio-dia no Brasil,
+    // para o dia não mudar com o fuso.
+    if (input.status === "recebido" && input.paidAt) {
+      const d = requireDate(input.paidAt, "a data do pagamento");
+      if (d > todayISO()) throw new RuleError("data_futura", "A data do pagamento não pode ser futura.", 400);
+      data.paidAt = new Date(`${d}T15:00:00Z`);
+    }
   }
   if (input.amountCents !== undefined) data.amountCents = requireInt(input.amountCents, "Valor");
   if (input.dueDate !== undefined) data.dueDate = input.dueDate ? toDbDate(requireDate(input.dueDate, "o vencimento")) : null;
