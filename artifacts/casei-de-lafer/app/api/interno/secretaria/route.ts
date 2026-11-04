@@ -6,13 +6,13 @@ export const dynamic = "force-dynamic";
 
 /**
  * Conversa do dono com a Margot (modo secretária), para o Claude analisar e melhorar a Margot.
- * Só pelo endereço *.vercel.app (atrás da Vercel Authentication) e com LEITURA_SECRETARIA=1. Somente leitura.
+ * Só pelo endereço único do deploy (VERCEL_URL, atrás da Vercel Authentication) e com LEITURA_SECRETARIA=1. Somente leitura.
  * ?dias=1..31 (padrão 2).
  */
 export async function GET(req: NextRequest) {
-  // Os dois cabeçalhos de endereço, quando existem, têm de ser *.vercel.app.
+  // Os dois cabeçalhos de endereço, quando existem, têm de ser o endereço único deste deploy.
   const hosts = [req.headers.get("host"), req.headers.get("x-forwarded-host")].filter((h): h is string => !!h);
-  if (!hosts.length || !hosts.every((h) => leituraPermitida(h, process.env.LEITURA_SECRETARIA))) {
+  if (!hosts.length || !hosts.every((h) => leituraPermitida(h, process.env.LEITURA_SECRETARIA, process.env.VERCEL_URL))) {
     return NextResponse.json({ ok: false, error: "não encontrado" }, { status: 404 });
   }
   const dias = Math.min(Math.max(Number(req.nextUrl.searchParams.get("dias")) || 2, 1), 31);

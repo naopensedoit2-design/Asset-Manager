@@ -2,14 +2,17 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { leituraPermitida, linha, semDocumentos } from "./leitura.ts";
 
-test("leitura só pelo endereço *.vercel.app e só com a chave ligada", () => {
-  assert.equal(leituraPermitida("projeto-exemplo.vercel.app", "1"), true);
-  assert.equal(leituraPermitida("projeto-exemplo-abc123-time.vercel.app:443", "1"), true);
-  assert.equal(leituraPermitida("www.exemplo.com.br", "1"), false);
-  assert.equal(leituraPermitida("exemplo.vercel.app.atacante.com", "1"), false);
-  assert.equal(leituraPermitida("projeto-exemplo.vercel.app", undefined), false);
-  assert.equal(leituraPermitida("projeto-exemplo.vercel.app", "0"), false);
-  assert.equal(leituraPermitida(null, "1"), false);
+test("leitura só pelo endereço único do deploy e só com a chave ligada", () => {
+  const dep = "projeto-abc123def-time.vercel.app";
+  assert.equal(leituraPermitida(dep, "1", dep), true);
+  assert.equal(leituraPermitida(`${dep}:443`, "1", dep), true);
+  assert.equal(leituraPermitida("projeto.vercel.app", "1", dep), false);
+  assert.equal(leituraPermitida("www.exemplo.com.br", "1", dep), false);
+  assert.equal(leituraPermitida(`${dep}.atacante.com`, "1", dep), false);
+  assert.equal(leituraPermitida(dep, undefined, dep), false);
+  assert.equal(leituraPermitida(dep, "1", undefined), false);
+  assert.equal(leituraPermitida("www.exemplo.com.br", "1", "www.exemplo.com.br"), false);
+  assert.equal(leituraPermitida(null, "1", dep), false);
 });
 
 test("documentos pessoais saem escondidos; telefone e valores ficam", () => {

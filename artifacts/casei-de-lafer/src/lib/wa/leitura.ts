@@ -2,14 +2,15 @@
 // Puro, sem banco: decide quem pode ler e esconde documentos pessoais antes de sair do servidor.
 
 /**
- * Só responde pelos endereços *.vercel.app, que ficam atrás da Vercel Authentication do projeto
- * ("all_except_custom_domains"): quem entra é a conta Vercel do dono. Pelo domínio próprio, que é público, nunca.
- * E só se o dono ligou a leitura (LEITURA_SECRETARIA=1).
+ * Só responde pelo endereço único do deploy (VERCEL_URL, ex.: projeto-abc123def-time.vercel.app), que fica atrás da
+ * Vercel Authentication do projeto: quem entra é a conta Vercel do dono. Pelo domínio próprio e pelos apelidos de
+ * produção (projeto.vercel.app), que são públicos, nunca. E só se o dono ligou a leitura (LEITURA_SECRETARIA=1).
  */
-export function leituraPermitida(host: string | null | undefined, flag: string | undefined): boolean {
+export function leituraPermitida(host: string | null | undefined, flag: string | undefined, deployUrl: string | undefined): boolean {
   if (flag !== "1") return false;
   const h = (host ?? "").toLowerCase().split(":")[0].trim();
-  return /^[a-z0-9-]+\.vercel\.app$/.test(h);
+  const d = (deployUrl ?? "").toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "").trim();
+  return !!d && d.endsWith(".vercel.app") && h === d;
 }
 
 /** Esconde CPF, RG, passaporte, e-mail e números longos que não são telefone. */
