@@ -6,10 +6,10 @@ import { prisma } from "@/lib/prisma";
 import * as gestor from "@/lib/gestor/service";
 import { payExpensePart, saveExpense } from "@/lib/gestor/finance-service";
 import { categoryLabel } from "@/lib/gestor/finance";
-import { formatBRL, formatCpf, formatDateBR, RuleError, TIMEZONE } from "@/lib/gestor/rules";
+import { formatBRL, formatCpf, formatDateBR, RuleError, STATUS_LABELS, TIMEZONE } from "@/lib/gestor/rules";
 import { ensurePublicToken } from "@/lib/documents/data";
 import { appendOrderNote } from "@/lib/margot/orders";
-import { itensDoOrcamento, lerPedido, type PedidoNovo } from "./pedido";
+import { itensDoOrcamento, lerPedido, type Edicao, type PedidoNovo, type Recebimento } from "./pedido";
 import { phoneVariants } from "./phone";
 import { buttonsMessage, type Header } from "./client";
 import { notifyOwner } from "./notify";
@@ -37,6 +37,10 @@ export type Action =
   // Novo orçamento com desconto. `totalCents` é o total que o Leonardo viu na confirmação.
   | { tipo: "valor"; pedido: number; descontoCents: number; totalCents: number }
   | { tipo: "contrato"; pedido: number; nomeCompleto: string; documento: string; endereco: string; email: string }
+  | { tipo: "passado"; pedido: PedidoNovo; pagamentos: Recebimento[] }
+  | { tipo: "recebimento"; pedido: number; recebimento: Recebimento }
+  | { tipo: "edicao"; pedido: number; campos: Edicao }
+  | { tipo: "status"; pedido: number; status: string; nota: string }
   // Abater parte de (ou quitar) uma conta a pagar. `saldoCents` é o saldo que o Leonardo viu na confirmação.
   | { tipo: "abatimento"; conta: number; valorCents: number; saldoCents: number; data: string };
 
@@ -56,6 +60,13 @@ export function parseAction(raw: string): Action | null {
     ) {
       return { ...a, email: typeof a.email === "string" ? a.email : "" };
     }
+    if (a?.tipo === "passado" && Array.isArray(a.pagamentos)) {
+      const pedido = lerPedido(a.pedido);
+      return pedido ? { tipo: "passado", pedido, pagamentos: a.pagamentos } : null;
+    }
+    if (a?.tipo === "recebimento" && Number.isInteger(a.pedido) && a.recebimento && Number.isInteger(a.recebimento.amountCents)) return a;
+    if (a?.tipo === "edicao" && Number.isInteger(a.pedido) && a.campos && typeof a.campos === "object") return a;
+    if (a?.tipo === "status" && Number.isInteger(a.pedido) && typeof a.status === "string") return a;
     if (a?.tipo === "pedido") {
       const pedido = lerPedido(a.pedido);
       return pedido ? { tipo: "pedido", pedido } : null;
@@ -114,6 +125,10 @@ export async function resolveAction(owner: WaContact, rowId: number, confirm: bo
     if (action.tipo === "pagamento") return await confirmPayment(action.pedido, action.pagamento, action.comprovante ?? null);
     if (action.tipo === "valor") return await adjustOrderValue(action);
     if (action.tipo === "contrato") return await saveContractData(action);
+    if (action.tipo === "passado") return await createPastFromChat(action.pedido, action.pagamentos);
+    if (action.tipo === "recebimento") return await receivePayment(action.pedido, action.recebimento);
+    if (action.tipo === "edicao") return await editOrder(action.pedido, action.campos);
+    if (action.tipo === "status") return await setStatus(action.pedido, action.status, action.nota);
     if (action.tipo === "despesa") return await createExpense(action.despesa);
     if (action.tipo === "abatimento") return await payExpense(action);
     if (action.tipo === "pedido") return await createOrderFromChat(action.pedido);
@@ -236,8 +251,9 @@ async function createOrderFromChat(p: PedidoNovo): Promise<string> {
 
 async function adjustOrderValue(a: Extract<Action, { tipo: "valor" }>): Promise<string> {
   const order = await gestor.getOrder(a.pedido);
-  if (order.payments.some((p) => p.status !== "cancelado")) {
-    throw new RuleError("ja_tem_pagamento", `O pedido #${a.pedido} já tem sinal ou saldo lançado. Ajuste o valor no painel (Gestão).`);
+  const received = order.payments.filter((p) => p.status === "recebido").reduce((sum, p) => sum + p.amountCents, 0);
+  if (received > a.totalCents) {
+    throw new RuleError("total_menor_que_recebido", `Já entraram ${formatBRL(received)} no pedido #${a.pedido}, mais que o novo total.`);
   }
   const quote = order.quotes[0];
   if (!quote) throw new RuleError("sem_orcamento", `O pedido #${a.pedido} ainda não tem orçamento. Registre no painel.`);
@@ -249,8 +265,84 @@ async function adjustOrderValue(a: Extract<Action, { tipo: "valor" }>): Promise<
   if (totais.totalCents !== a.totalCents) {
     console.error("[whatsapp] ajuste de valor: total diferente do confirmado", a.pedido);
   }
+  // Com pagamento já lançado, o saldo em aberto passa a ser o que falta para o novo total.
+  const open = order.payments.filter((p) => p.status === "a_receber" || p.status === "atrasado");
+  const balance = open.find((p) => p.kind === "saldo");
+  let saldoLine = "";
+  if (order.payments.some((p) => p.status !== "cancelado")) {
+    const missing = totais.totalCents - received - open.filter((p) => p !== balance).reduce((sum, p) => sum + p.amountCents, 0);
+    if (balance && missing > 0) {
+      await gestor.updatePayment(balance.id, { amountCents: missing }, "admin");
+      saldoLine = ` Saldo em aberto agora: ${formatBRL(missing)}.`;
+    } else if (balance && missing <= 0) {
+      await gestor.updatePayment(balance.id, { status: "cancelado" }, "admin");
+      saldoLine = " Não falta saldo: o saldo em aberto foi cancelado.";
+    } else if (missing > 0) {
+      saldoLine = ` Falta receber ${formatBRL(missing)} (sem saldo lançado: registre quando entrar).`;
+    }
+  }
   await appendOrderNote(a.pedido, `[Valor ajustado pelo WhatsApp] Total ${formatBRL(totais.totalCents)}${a.descontoCents ? `, desconto de ${formatBRL(a.descontoCents)}` : ""}, autorizado pelo Leonardo.`);
-  return `✅ Pedido #${a.pedido}: total ${formatBRL(totais.totalCents)} · sinal ${formatBRL(totais.depositCents)} · saldo ${formatBRL(totais.balanceCents)}.`;
+  return received || saldoLine
+    ? `✅ Pedido #${a.pedido}: total ${formatBRL(totais.totalCents)}; já recebido ${formatBRL(received)}.${saldoLine}`
+    : `✅ Pedido #${a.pedido}: total ${formatBRL(totais.totalCents)} · sinal ${formatBRL(totais.depositCents)} · saldo ${formatBRL(totais.balanceCents)}.`;
+}
+
+async function createPastFromChat(p: PedidoNovo, pagamentos: Recebimento[]): Promise<string> {
+  const services = await gestor.listServices();
+  const items = itensDoOrcamento(p.servicos, services, p.valorCents);
+  const known = await prisma.client.findFirst({ where: { phone: { in: phoneVariants(p.telefone) } }, select: { phone: true } });
+  const order = await gestor.createPastOrder(
+    {
+      client: { name: p.nome, phone: known?.phone ?? p.telefone, source: p.origem ?? "outro" },
+      eventDate: p.data,
+      eventTime: p.horario,
+      venue: p.local,
+      city: p.cidade,
+      serviceIds: p.servicos,
+      notes: `Evento já realizado, registrado depois pelo WhatsApp (Margot).${p.notas ? `\n${p.notas}` : ""}`,
+      items,
+      payments: pagamentos,
+    },
+    "admin",
+  );
+  const received = order.payments.filter((x) => x.status === "recebido").reduce((sum, x) => sum + x.amountCents, 0);
+  return `✅ Evento registrado: pedido #${order.id}, ${order.client.name}, ${formatDateBR(p.data)}, *realizado*. Recebido ${formatBRL(received)}; já aparece no Financeiro.`;
+}
+
+async function receivePayment(orderId: number, r: Recebimento): Promise<string> {
+  const order = await gestor.getOrder(orderId);
+  // Usa o sinal ou saldo em aberto quando o valor bate; senão lança um pagamento novo com o valor informado.
+  const open = order.payments.find((p) => p.kind === r.kind && (p.status === "a_receber" || p.status === "atrasado"));
+  const result =
+    open && open.amountCents === r.amountCents
+      ? await gestor.updatePayment(open.id, { status: "recebido", paidAt: r.paidAt }, "admin")
+      : await gestor.addPayment(orderId, { kind: r.kind, amountCents: r.amountCents, status: "recebido", paidAt: r.paidAt }, "admin");
+  const lines = [`✅ ${r.kind === "sinal" ? "Sinal" : r.kind === "saldo" ? "Saldo" : "Pagamento"} de ${formatBRL(r.amountCents)} registrado no pedido #${orderId} (${formatDateBR(r.paidAt)}).`];
+  if (open && open.amountCents !== r.amountCents) {
+    lines.push(`O ${r.kind} em aberto era de ${formatBRL(open.amountCents)} e continua em aberto: se este pagamento o substitui, me peça para ajustar o valor do pedido.`);
+  }
+  if (result.aviso) lines.push(`⚠️ ${result.aviso}`);
+  else if (result.status !== order.status) lines.push(`Status: ${STATUS_LABELS[result.status as keyof typeof STATUS_LABELS] ?? result.status}.`);
+  return lines.join("\n");
+}
+
+async function editOrder(orderId: number, c: Edicao): Promise<string> {
+  const input: Record<string, any> = {};
+  if (c.data !== undefined) input.eventDate = c.data;
+  if (c.horario !== undefined) input.eventTime = c.horario;
+  if (c.local !== undefined) input.venue = c.local;
+  if (c.cidade !== undefined) input.city = c.cidade;
+  if (c.nome !== undefined || c.telefone !== undefined) {
+    input.client = { ...(c.nome !== undefined && { name: c.nome }), ...(c.telefone !== undefined && { phone: c.telefone }) };
+  }
+  if (Object.keys(input).length) await gestor.updateOrder(orderId, input, "admin");
+  if (c.observacao) await appendOrderNote(orderId, `[Leonardo, pelo WhatsApp] ${c.observacao}`);
+  return `✅ Pedido #${orderId} atualizado.`;
+}
+
+async function setStatus(orderId: number, status: string, note: string): Promise<string> {
+  const order = await gestor.changeStatus(orderId, status, "admin", note || "Pelo WhatsApp (Margot)");
+  return `✅ Pedido #${orderId}: ${STATUS_LABELS[order.status as keyof typeof STATUS_LABELS] ?? order.status}.`;
 }
 
 async function saveContractData(a: Extract<Action, { tipo: "contrato" }>): Promise<string> {
