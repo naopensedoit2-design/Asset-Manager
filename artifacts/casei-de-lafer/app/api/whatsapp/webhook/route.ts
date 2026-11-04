@@ -8,6 +8,7 @@ import { after, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { waConfig } from "@/lib/wa/config";
 import { ingest, processContact } from "@/lib/wa/process";
+import { sendFollowUps } from "@/lib/wa/lembrete-service";
 import { isValidSignature } from "@/lib/wa/signature";
 
 export const dynamic = "force-dynamic";
@@ -49,10 +50,12 @@ export async function POST(req: NextRequest) {
     })
     .catch(() => {});
 
-  if (jobs.length) {
-    after(async () => {
+  after(async () => {
+    if (jobs.length) {
       await Promise.all(jobs.map((job) => processContact(job).catch((e) => console.error("[whatsapp] processamento", e))));
-    });
-  }
+    }
+    // Lembrete para lead parado: aproveita o webhook (no máximo uma rodada a cada 10 min).
+    await sendFollowUps().catch((e) => console.error("[whatsapp] lembretes", e));
+  });
   return new Response("ok", { status: 200 });
 }
