@@ -46,8 +46,8 @@ import {
 import { buttonsMessage, send } from "./client";
 import { killFailedReply, parseKillCommand, planKillCommand } from "./commands";
 import { isAffirmative, isNegative, isTrivial, toWhatsApp, truncate } from "./format";
-import { buildHistory } from "./history";
-import { attachMedia, mediaBlocks } from "./media";
+import { buildHistory, recentInbound, replyOrder } from "./history";
+import { attachMedia, mediaBlocks, visibleMedia } from "./media";
 import { flushOwnerQueue } from "./notify";
 import { formatPhone, phoneVariants } from "./phone";
 import { sendText, sendVoice } from "./send";
@@ -1022,15 +1022,19 @@ export async function respondToOwner(owner: WaContact, pending: WaMessage[]): Pr
     return;
   }
 
-  // Até a última mensagem que a IA vai responder: respostas a botões enviadas agora há pouco ficam de fora,
-  // senão a conversa terminaria com uma fala da Margot e a pergunta nova ficaria sem resposta.
-  const lastId = rest[rest.length - 1].id;
-  const rows = await prisma.waMessage.findMany({
-    where: { contactId: owner.id, id: { lte: lastId } },
+  // As mensagens que esta resposta atende vão por último. O resto (inclusive respostas da Margot gravadas
+  // depois que elas chegaram, como a de uma foto mandada segundos antes) vem antes, na ordem em que aconteceu.
+  const answering = rest.map((m) => m.id);
+  const recent: WaMessage[] = await prisma.waMessage.findMany({
+    where: { contactId: owner.id },
     orderBy: { id: "desc" },
     take: 30,
   });
-  rows.reverse();
+  // Mensagem que chegou durante esta resposta fica para a próxima rodada.
+  const rows = replyOrder(
+    recent.filter((r) => !(r.direction === "in" && !r.handledAt && !answering.includes(r.id))),
+    answering,
+  );
   // Para a IA, o que a Margot mandou como aviso conta como fala dela; o que o Leonardo mandou é "user".
   const turns = buildHistory(
     rows.map((r) => ({ ...r, author: r.direction === "out" ? "margot" : "cliente" })),
@@ -1045,7 +1049,9 @@ export async function respondToOwner(owner: WaContact, pending: WaMessage[]): Pr
   const s: State = { owner, usage: [], after: [] };
   const messages: { role: string; content: unknown }[] = turns.map((t) => ({ role: t.role, content: t.content }));
   // Foto de nota fiscal ou comprovante: a Margot vê e pode propor o lançamento.
-  attachMedia(messages, await mediaBlocks(rest));
+  // Comprovante mandado minutos antes ("os 550 foram pelo marido" logo depois da foto): ela vê a foto de novo.
+  const media = visibleMedia(rest).length ? rest : [...recentInbound(rows, answering, new Date()), ...rest];
+  attachMedia(messages, await mediaBlocks(media));
   try {
     const result = await runAgent({
       system: systemBlocks(FIXED, variable),

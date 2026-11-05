@@ -80,3 +80,27 @@ export function buildHistory(rows: StoredMessage[], opts: { maxTurns?: number; m
   while (kept.length && kept[0].role !== "user") kept = kept.slice(1);
   return kept;
 }
+
+/**
+ * Ordem da conversa para responder: tudo o que já foi tratado (inclusive respostas da Margot enviadas
+ * depois que a mensagem nova chegou) e, por último, as mensagens que esta resposta vai atender.
+ *
+ * Sem isso, quem manda foto e texto em seguida recebia duas respostas que se contradiziam:
+ * a segunda não via a primeira, porque ela foi gravada com id maior que o do texto.
+ */
+export function replyOrder<T extends { id: number }>(rows: T[], answering: number[]): T[] {
+  const ids = new Set(answering);
+  const byId = (a: T, b: T) => a.id - b.id;
+  return [...rows.filter((r) => !ids.has(r.id)).sort(byId), ...rows.filter((r) => ids.has(r.id)).sort(byId)];
+}
+
+/** Ids das mídias (foto/PDF) que o dono mandou há pouco e que a resposta atual pode precisar ver de novo. */
+export function recentInbound<T extends { id: number; direction: string; createdAt: Date }>(
+  rows: T[],
+  answering: number[],
+  now: Date,
+  windowMs = 5 * 60_000,
+): T[] {
+  const ids = new Set(answering);
+  return rows.filter((r) => r.direction === "in" && !ids.has(r.id) && now.getTime() - r.createdAt.getTime() <= windowMs);
+}
