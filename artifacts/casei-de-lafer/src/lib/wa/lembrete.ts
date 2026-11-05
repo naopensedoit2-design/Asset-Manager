@@ -52,5 +52,5 @@ export function falaDoServico(text: string): boolean {
 
 export function textoLembrete(nome: string): string {
   const first = nome.trim().split(/\s|&/)[0];
-  return `Oi${first ? `, ${first}` : ""}! Passando para saber se ficou alguma dúvida sobre o MP Lafer. Se quiser, confiro outra data ou te mando a proposta por aqui. 😊`;
+  return `Olá${first ? `, ${first}` : ""}. Gostaria de saber se ficou alguma dúvida sobre o MP Lafer. Se desejar, verifico outra data ou envio a proposta por aqui.`;
 }

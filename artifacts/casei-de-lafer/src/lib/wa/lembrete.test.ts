@@ -39,8 +39,8 @@ test("uma vez só, e nunca para dono, ignorada, pausada, pedido fechado ou quem 
 });
 
 test("texto usa o primeiro nome", () => {
-  assert.match(textoLembrete("Ana & Beto"), /^Oi, Ana!/);
-  assert.match(textoLembrete(""), /^Oi! Passando/);
+  assert.match(textoLembrete("Ana & Beto"), /^Olá, Ana\./);
+  assert.match(textoLembrete(""), /^Olá\. Gostaria/);
 });
 
 import { falaDoServico } from "./lembrete.ts";
