@@ -46,8 +46,8 @@ import {
 import { buttonsMessage, send } from "./client";
 import { killFailedReply, parseKillCommand, planKillCommand } from "./commands";
 import { isAffirmative, isNegative, isTrivial, toWhatsApp, truncate } from "./format";
-import { buildHistory } from "./history";
-import { attachMedia, mediaBlocks } from "./media";
+import { buildHistory, recentInbound, replyOrder } from "./history";
+import { attachMedia, mediaBlocks, visibleMedia } from "./media";
 import { flushOwnerQueue } from "./notify";
 import { formatPhone, phoneVariants } from "./phone";
 import { sendText, sendVoice } from "./send";
@@ -342,7 +342,7 @@ Direta, prática e simpática, como uma secretária de confiança. Português do
 • Criar pedido ("cria o pedido do casamento de 05/12"): se o casamento está na Google Agenda, chame casamentos_da_agenda e passe o código em 'evento' de criar_pedido. Se o dia tiver "casamento" e "entrega de noiva", pergunte qual é a data do pedido antes de propor. O WhatsApp da cliente com DDD é obrigatório: se faltar, peça. Serviço padrão: Carro da Noiva. Valor: o total que ele disser; sem valor, vale a tabela. Se ele passar um sinal diferente do padrão, diga que o sinal segue a porcentagem padrão e que ele ajusta no painel. O pedido nasce como novo; a data só é reservada quando o sinal for recebido (confirmar_pagamento).
 • O Leonardo é o dono e tem acesso completo: tudo o que ele pedir sobre pedidos, pagamentos e despesas você prepara com a ferramenta certa, e o botão Confirmar é a trava. Não mande para o painel o que uma ferramenta sua faz.
 • Prioridade das informações: o que está em documento (contrato, comprovante, PDF, foto) e o que o Leonardo afirma valem mais que a tabela de preços, o sistema ou o seu palpite. Se ele disser "foi 400, não 380", use 400 sem discutir. Só aponte diferença quando ela existir entre documentos, e pergunte qual vale.
-• Datas: use exatamente o dia, mês e ano que ele disse. Nunca troque o ano por conta própria (ex.: data no passado não vira o ano seguinte). Data que já passou é evento realizado: use registrar_evento_passado. Na dúvida sobre o ano, pergunte.
+• Datas: use exatamente o dia, mês e ano que ele disse. Nunca troque o ano por conta própria (ex.: data no passado não vira o ano seguinte). Data que já passou é evento realizado: use registrar_evento_passado. Data sem ano ("22/01"): se um comprovante, contrato ou mensagem da conversa trouxer o ano, use esse ano (ex.: Pix de 10/03/2026 para um evento em 12/03 indica 12/03/2026, evento já realizado); sem nenhuma pista, pergunte o ano antes de propor. Não presuma o próximo ano.
 • Se você mandou um botão errado, diga para tocar em Cancelar nele antes de mandar o certo.
 • O WhatsApp do pedido pode ser da cerimonialista: nesse caso passe contato "cerimonialista" em criar_pedido.
 • Desconto ou valor diferente da tabela ("o valor é o do PDF", "dá R$ 55 de desconto"): use ajustar_valor_pedido com o total final (ou o desconto). Com sinal já recebido, o saldo em aberto é recalculado.
@@ -585,7 +585,11 @@ async function runTool(name: string, input: any, s: State): Promise<unknown> {
       if (!telefone) return { erro: "Falta o WhatsApp da cliente com DDD (ex.: 51 99999-0000). Pergunte ao Leonardo." };
       const data = isDateString(input?.data) ? input.data : booking?.eventDate;
       if (!data) return { erro: "Falta a data do casamento. Pergunte." };
-      if (data < today) return { erro: "Essa data já passou." };
+      if (data < today) {
+        return {
+          erro: "Essa data já passou. Se o evento já aconteceu, use registrar_evento_passado com esta mesma data; não troque o ano e não mande para o painel.",
+        };
+      }
       if (booking && booking.eventDate !== data) {
         return { erro: `O evento da agenda é de ${formatDateBR(booking.eventDate)}. Para outra data, crie o pedido sem o código do evento.` };
       }
@@ -1022,15 +1026,19 @@ export async function respondToOwner(owner: WaContact, pending: WaMessage[]): Pr
     return;
   }
 
-  // Até a última mensagem que a IA vai responder: respostas a botões enviadas agora há pouco ficam de fora,
-  // senão a conversa terminaria com uma fala da Margot e a pergunta nova ficaria sem resposta.
-  const lastId = rest[rest.length - 1].id;
-  const rows = await prisma.waMessage.findMany({
-    where: { contactId: owner.id, id: { lte: lastId } },
+  // As mensagens que esta resposta atende vão por último. O resto (inclusive respostas da Margot gravadas
+  // depois que elas chegaram, como a de uma foto mandada segundos antes) vem antes, na ordem em que aconteceu.
+  const answering = rest.map((m) => m.id);
+  const recent: WaMessage[] = await prisma.waMessage.findMany({
+    where: { contactId: owner.id },
     orderBy: { id: "desc" },
     take: 30,
   });
-  rows.reverse();
+  // Mensagem que chegou durante esta resposta fica para a próxima rodada.
+  const rows = replyOrder(
+    recent.filter((r) => !(r.direction === "in" && !r.handledAt && !answering.includes(r.id))),
+    answering,
+  );
   // Para a IA, o que a Margot mandou como aviso conta como fala dela; o que o Leonardo mandou é "user".
   const turns = buildHistory(
     rows.map((r) => ({ ...r, author: r.direction === "out" ? "margot" : "cliente" })),
@@ -1045,7 +1053,9 @@ export async function respondToOwner(owner: WaContact, pending: WaMessage[]): Pr
   const s: State = { owner, usage: [], after: [] };
   const messages: { role: string; content: unknown }[] = turns.map((t) => ({ role: t.role, content: t.content }));
   // Foto de nota fiscal ou comprovante: a Margot vê e pode propor o lançamento.
-  attachMedia(messages, await mediaBlocks(rest));
+  // Comprovante mandado minutos antes ("os 550 foram pelo marido" logo depois da foto): ela vê a foto de novo.
+  const media = visibleMedia(rest).length ? rest : [...recentInbound(rows, answering, new Date()), ...rest];
+  attachMedia(messages, await mediaBlocks(media));
   try {
     const result = await runAgent({
       system: systemBlocks(FIXED, variable),
