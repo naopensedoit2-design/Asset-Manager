@@ -30,3 +30,9 @@ test("linha da conversa marca quem falou e a ação proposta", () => {
   assert.equal(l.acao, "pedido: pendente");
   assert.equal(linha({ ...base, direction: "in", type: "document", text: "", fileName: "Termo.pdf" }).texto, "[arquivo: Termo.pdf]");
 });
+
+test("na conversa de cliente, quem escreve é o cliente; o dono assumindo aparece como leonardo", () => {
+  const base = { id: 1, createdAt: new Date("2026-11-04T19:05:00Z"), type: "text", text: "oi", fileName: "", action: "", actionDoneAt: null };
+  assert.equal(linha({ ...base, direction: "in", author: "cliente" }, "cliente").de, "cliente");
+  assert.equal(linha({ ...base, direction: "out", author: "leonardo" }, "cliente").de, "leonardo");
+});

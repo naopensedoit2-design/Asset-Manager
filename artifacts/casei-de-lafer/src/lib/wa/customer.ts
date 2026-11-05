@@ -73,6 +73,16 @@ const WA_TOOLS: ToolDef[] = [
     },
   },
   {
+    name: "marcar_engano",
+    description:
+      "Marca a conversa como mensagem por engano (número errado ou assunto sem relação com casamento, ensaio ou carro). A Margot para de responder e não manda lembrete; se a pessoa voltar falando de casamento, a conversa volta sozinha.",
+    input_schema: {
+      type: "object",
+      properties: { motivo: { type: "string", description: "Em poucas palavras, ex.: 'perguntou de progressiva'" } },
+      required: ["motivo"],
+    },
+  },
+  {
     name: "encaminhar_para_equipe",
     description:
       "Avisa a equipe, no celular, de algo que você não pode resolver (desconto, local fora da Serra, mudança depois da reserva, reclamação, pedido para falar com uma pessoa, parceria).",
@@ -315,6 +325,12 @@ async function runTool(name: string, input: any, s: State): Promise<unknown> {
         copy,
       );
       return { ok: true, instrucao: "Agradeça e diga que nossa equipe confere e confirma a reserva em seguida." };
+    }
+
+    if (name === "marcar_engano") {
+      if (s.orderId) return { erro: "Esta conversa tem pedido: não é engano. Responda normalmente." };
+      await prisma.waContact.update({ where: { id: s.contact.id }, data: { ignoredAt: new Date(), ignoredReason: "engano", unread: 0 } });
+      return { ok: true, instrucao: "Conversa encerrada. Se ainda não respondeu, responda uma vez, curto, sem perguntas." };
     }
 
     if (name === "encaminhar_para_equipe") {

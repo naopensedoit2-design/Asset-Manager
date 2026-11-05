@@ -7,7 +7,7 @@
 // e só quando parece mensagem em massa.
 
 /** Por que a conversa está ignorada (WaContact.ignoredReason). "manual" = o dono decidiu; os outros vêm da triagem. */
-export type IgnoreReason = "manual" | "encaminhada" | "figurinha" | "video" | "contato" | "localizacao";
+export type IgnoreReason = "manual" | "encaminhada" | "figurinha" | "video" | "contato" | "localizacao" | "engano";
 
 const LABEL: Record<IgnoreReason, string> = {
   manual: "Ignorada por você",
@@ -16,6 +16,7 @@ const LABEL: Record<IgnoreReason, string> = {
   video: "Começou com vídeo",
   contato: "Começou com um contato",
   localizacao: "Começou com uma localização",
+  engano: "Mensagem por engano (a Margot percebeu)",
 };
 
 /** Texto curto do motivo, para a lista e para a faixa da conversa. */

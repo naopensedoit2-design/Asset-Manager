@@ -76,11 +76,15 @@ export async function processContact(job: Job): Promise<void> {
       }
       // Marca antes de responder: se algo falhar, a mesma mensagem não gera respostas repetidas.
       await prisma.waMessage.updateMany({ where: { id: { in: pending.map((p) => p.id) } }, data: { handledAt: new Date() } });
+      const started = Date.now();
       try {
         await respond(contact, pending);
       } catch (e) {
         console.error(`[whatsapp] resposta ao contato ${contact.id}`, e);
       }
+      // Sai no log (stderr) para dar para ver quando a resposta chega perto do limite da função.
+      const took = Date.now() - started;
+      if (took > 40_000) console.warn(`[whatsapp] resposta lenta ao contato ${contact.id}: ${Math.round(took / 1000)} s`);
     }
   } finally {
     await releaseContact(job.contactId);

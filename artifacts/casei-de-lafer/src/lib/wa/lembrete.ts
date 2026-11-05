@@ -39,6 +39,17 @@ export function precisaLembrete(c: ConversaParada, now: Date): boolean {
   return h >= 9 && h < 21;
 }
 
+// Palavras que mostram interesse no serviço. "Valor" ou "preço" sozinhos não bastam: "qual o valor da progressiva?"
+// é engano, não lead.
+const SERVICO = /\b(casamento|casar|casei|noiv[ao]s?|ensaio|pre[\s-]?wedding|lafer|carro|cerimonia|cerimonialista|igreja|capela|chegada|datas? livres?|mp)\b/;
+
+const plain = (t: string) => t.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+
+/** A mensagem da pessoa fala de casamento, ensaio ou do carro? */
+export function falaDoServico(text: string): boolean {
+  return SERVICO.test(plain(text));
+}
+
 export function textoLembrete(nome: string): string {
   const first = nome.trim().split(/\s|&/)[0];
   return `Oi${first ? `, ${first}` : ""}! Passando para saber se ficou alguma dúvida sobre o MP Lafer. Se quiser, confiro outra data ou te mando a proposta por aqui. 😊`;
