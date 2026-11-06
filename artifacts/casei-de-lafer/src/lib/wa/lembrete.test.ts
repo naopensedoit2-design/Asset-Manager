@@ -39,6 +39,17 @@ test("uma vez só, e nunca para dono, ignorada, pausada, pedido fechado ou quem 
 });
 
 test("texto usa o primeiro nome", () => {
-  assert.match(textoLembrete("Ana & Beto"), /^Oi, Ana!/);
-  assert.match(textoLembrete(""), /^Oi! Passando/);
+  assert.match(textoLembrete("Ana & Beto"), /^Olá, Ana\./);
+  assert.match(textoLembrete(""), /^Olá\. Gostaria/);
+});
+
+import { falaDoServico } from "./lembrete.ts";
+
+test("lead é quem fala do serviço; valor sozinho não conta", () => {
+  assert.equal(falaDoServico("oii\nqual o valor da progressiva?"), false);
+  assert.equal(falaDoServico("Qual o valor do carro para o casamento?"), true);
+  assert.equal(falaDoServico("Oi! Vi o anúncio que o dia 12/12/2026 (sábado) está livre."), false);
+  assert.equal(falaDoServico("Oi! Vi no site que o dia 12/12 está livre. Quero saber sobre o MP Lafer para essa data."), true);
+  assert.equal(falaDoServico("vocês fazem ensaio pré-wedding?"), true);
+  assert.equal(falaDoServico("A NOIVA vai se arrumar no salão"), true);
 });

@@ -228,7 +228,7 @@ export async function contactForClientPhone(phone: string): Promise<WaContact | 
 }
 
 /** Trava o contato enquanto a Margot responde (outra execução para e deixa esta terminar). */
-export async function claimContact(contactId: number, seconds = 55): Promise<boolean> {
+export async function claimContact(contactId: number, seconds = 240): Promise<boolean> {
   const now = new Date();
   const r = await prisma.waContact.updateMany({
     where: { id: contactId, OR: [{ lockedUntil: null }, { lockedUntil: { lt: now } }] },

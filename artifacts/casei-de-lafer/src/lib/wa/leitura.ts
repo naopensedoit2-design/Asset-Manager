@@ -25,7 +25,7 @@ export function semDocumentos(text: string): string {
 export interface LinhaConversa {
   id: number;
   em: string;
-  de: "leonardo" | "margot" | "sistema";
+  de: "leonardo" | "cliente" | "margot" | "sistema";
   tipo: string;
   texto: string;
   /** Mensagem com botão de confirmação: o que foi proposto e se ele confirmou. */
@@ -42,8 +42,9 @@ export function linha(m: {
   fileName: string;
   action: string;
   actionDoneAt: Date | null;
-}): LinhaConversa {
-  const de = m.direction === "in" ? "leonardo" : m.author === "sistema" ? "sistema" : "margot";
+}, quemEscreve: "leonardo" | "cliente" = "leonardo"): LinhaConversa {
+  // Na conversa de um cliente, o que sai assinado pelo dono (ele assumiu) aparece como "leonardo".
+  const de = m.direction === "in" ? quemEscreve : m.author === "sistema" ? "sistema" : m.author === "leonardo" ? "leonardo" : "margot";
   const texto = semDocumentos(m.text || (m.fileName ? `[arquivo: ${m.fileName}]` : `[${m.type}]`)).slice(0, 4000);
   const out: LinhaConversa = { id: m.id, em: m.createdAt.toISOString(), de, tipo: m.type, texto };
   if (m.action) {

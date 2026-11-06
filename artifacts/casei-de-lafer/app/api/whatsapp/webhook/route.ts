@@ -8,12 +8,13 @@ import { after, NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { waConfig } from "@/lib/wa/config";
 import { ingest, processContact } from "@/lib/wa/process";
-import { sendFollowUps } from "@/lib/wa/lembrete-service";
+import { rescueUnanswered, sendFollowUps } from "@/lib/wa/lembrete-service";
 import { isValidSignature } from "@/lib/wa/signature";
 
 export const dynamic = "force-dynamic";
 // A resposta para a Meta sai na hora; a Margot responde em seguida, dentro deste limite.
-export const maxDuration = 60;
+// Áudio (transcrição) + espera + várias rodadas da IA com ferramentas passavam de 60 s e a resposta morria no meio.
+export const maxDuration = 300;
 
 /** Verificação feita pela Meta ao salvar a URL do webhook. */
 export async function GET(req: NextRequest) {
@@ -54,6 +55,8 @@ export async function POST(req: NextRequest) {
     if (jobs.length) {
       await Promise.all(jobs.map((job) => processContact(job).catch((e) => console.error("[whatsapp] processamento", e))));
     }
+    // Mensagem que ficou sem resposta por falha: uma nova tentativa (no máximo uma rodada a cada 2 min).
+    await rescueUnanswered().catch((e) => console.error("[whatsapp] resgate", e));
     // Lembrete para lead parado: aproveita o webhook (no máximo uma rodada a cada 10 min).
     await sendFollowUps().catch((e) => console.error("[whatsapp] lembretes", e));
   });
