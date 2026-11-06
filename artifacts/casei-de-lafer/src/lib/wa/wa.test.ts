@@ -295,3 +295,25 @@ test("erros da Meta traduzidos: 131037 aponta o nome de exibição; 131045 e 133
   // O texto vai para a conversa do painel (campo de 300 caracteres): precisa caber.
   for (const texto of Object.values(EXTRA_ERROR_TEXT)) assert.ok(texto.length <= 300);
 });
+
+// ─── Ordem da conversa para responder ───────────────────────
+
+test("foto e texto seguidos: a segunda resposta vê a primeira e o texto novo fica por último", async () => {
+  const { replyOrder, recentInbound } = await import("./history.ts");
+  const at = (min: number) => new Date(Date.UTC(2026, 0, 10, 12, min));
+  const rows = [
+    { id: 10, direction: "in", author: "cliente", type: "image", text: "", fileName: "", status: "", createdAt: at(0) },
+    { id: 11, direction: "in", author: "cliente", type: "text", text: "o resto foi em Pix", fileName: "", status: "", createdAt: at(0) },
+    { id: 12, direction: "out", author: "margot", type: "text", text: "Vi o comprovante de R$ 100.", fileName: "", status: "enviada", createdAt: at(1) },
+    { id: 13, direction: "out", author: "margot", type: "interactive", text: "Confirma?", fileName: "", status: "enviada", createdAt: at(1) },
+  ];
+  const ordered = replyOrder([...rows].reverse(), [11]);
+  assert.deepEqual(ordered.map((r) => r.id), [10, 12, 13, 11]);
+  const turns = buildHistory(ordered);
+  assert.equal(turns[turns.length - 1].role, "user");
+  assert.equal(turns[turns.length - 1].content, "o resto foi em Pix");
+  assert.match(turns[turns.length - 2].content, /Vi o comprovante/);
+  // A foto de minutos antes volta para a resposta; a de horas atrás, não.
+  assert.deepEqual(recentInbound(rows, [11], at(3)).map((r) => r.id), [10]);
+  assert.deepEqual(recentInbound(rows, [11], at(30)).map((r) => r.id), []);
+});
