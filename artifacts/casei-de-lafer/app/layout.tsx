@@ -3,7 +3,7 @@ import "./globals.css";
 import Providers from "./providers";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://caseidalafer.com.br"),
+  metadataBase: new URL("https://www.eucaseidelafer.com"),
   title: "Casei de Lafer — Carro Clássico para Casamentos na Serra Gaúcha",
   description:
     "Alugue o clássico MP Lafer conversível para o seu casamento na Serra Gaúcha. Chegada da noiva, ensaios fotográficos e fuga dos noivos.",

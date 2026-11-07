@@ -2,7 +2,7 @@
 
 API usada pelos agentes externos (a Margot, rodando no n8n) para atender clientes sem passar pelo painel. Tudo o que ela faz aparece no painel `/admin` e no histórico de cada pedido, com o autor "Margot".
 
-- Base: `https://eucaseidelafer.vercel.app/api/v1`
+- Base: `https://www.eucaseidelafer.com/api/v1`
 - Autenticação: header `Authorization: Bearer <AGENT_API_TOKEN>` em todas as rotas.
 - Formato: JSON. Sucesso → `{ "ok": true, "data": ... }`. Erro → `{ "ok": false, "erro": { "codigo": "...", "mensagem": "..." } }`.
 - Datas: `AAAA-MM-DD`. Dinheiro: centavos (inteiro). `260000` = R$ 2.600,00.
