@@ -93,6 +93,9 @@ export default function ConversationPage({ params }: { params: Promise<{ id: str
             <div className="max-w-3xl mx-auto w-full px-3 sm:px-6 pt-3 pb-4">
               {toggleError && <ErrorNote message={toggleError} />}
               <IgnoredNotice c={data.contact} busy={busy} act={act} />
+              {data.contact.ad && !data.contact.isOwner && (
+                <NoticePill>Veio de um anúncio{data.contact.ad.headline ? `: “${data.contact.ad.headline}”` : ""}.</NoticePill>
+              )}
               {data.contact.paused && !data.contact.isOwner && !data.contact.ignored && (
                 <NoticePill>
                   Margot pausada

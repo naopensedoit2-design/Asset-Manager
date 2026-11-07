@@ -89,6 +89,10 @@ export async function saveInbound(m: InboundMessage, owner: string): Promise<{ c
       lastInboundAt: at > (contact.lastInboundAt ?? new Date(0)) ? at : contact.lastInboundAt,
       lastMessageAt: new Date(),
       ...ignoredPatch,
+      // Veio de um anúncio de clique para o WhatsApp: guarda o primeiro (é a origem da pessoa).
+      ...(m.referral && !contact.adSourceId && !contact.adClickId && !isOwner
+        ? { adSourceId: m.referral.sourceId, adHeadline: m.referral.headline, adClickId: m.referral.clickId, adAt: at }
+        : {}),
       ...(counted && !isOwner ? { unread: { increment: 1 } } : {}),
     },
   });

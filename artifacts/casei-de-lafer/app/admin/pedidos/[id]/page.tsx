@@ -96,7 +96,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
 
 /** Atalho para a conversa deste cliente no WhatsApp da Margot, se existir. */
 function MargotConversation({ orderId }: { orderId: number }) {
-  const { data } = useQuery<{ id: number; unread: number; paused: boolean }[]>({
+  const { data } = useQuery<{ id: number; unread: number; paused: boolean; ad: { id: string; headline: string } | null }[]>({
     queryKey: ["wa-conversa-do-pedido", orderId],
     queryFn: () => api(`/api/admin/whatsapp/conversas?pedido=${orderId}`),
     retry: false,
@@ -109,6 +109,23 @@ function MargotConversation({ orderId }: { orderId: number }) {
         Conversa com a Margot{c.unread > 0 ? ` (${c.unread})` : ""}
       </Button>
     </Link>
+  );
+}
+
+/** De qual anúncio (clique para o WhatsApp) a pessoa veio, se veio de um: é o que permite medir o custo por pedido. */
+function AdOrigin({ orderId }: { orderId: number }) {
+  const { data } = useQuery<{ ad: { id: string; headline: string } | null }[]>({
+    queryKey: ["wa-conversa-do-pedido", orderId],
+    queryFn: () => api(`/api/admin/whatsapp/conversas?pedido=${orderId}`),
+    retry: false,
+  });
+  const ad = data?.find((c) => c.ad)?.ad;
+  if (!ad) return null;
+  return (
+    <p className="text-sm text-text-secondary">
+      Veio de um anúncio{ad.headline ? `: ${ad.headline}` : ""}
+      {ad.id ? ` (código ${ad.id})` : ""}.
+    </p>
   );
 }
 
@@ -227,6 +244,7 @@ function Summary({ order, onChange }: { order: OrderView; onChange: (o: OrderVie
       </div>
 
       <GoogleOrigin orderId={order.id} />
+      <AdOrigin orderId={order.id} />
 
       {order.proximosStatus.length > 0 && (
         <div className="flex flex-wrap gap-2">

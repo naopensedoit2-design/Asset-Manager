@@ -22,6 +22,8 @@ export interface ConversationSummary {
   /** Fixada à mão no topo da lista (a conversa do dono não precisa: é sempre a primeira). */
   pinned: boolean;
   pinOrder: number | null;
+  /** Anúncio de clique para o WhatsApp de onde a pessoa veio (o primeiro); null quando não veio de anúncio. */
+  ad: { id: string; headline: string; at: string | null } | null;
   /** A última mensagem é um aviso do WhatsApp sem conteúdo (enquete, "ver uma vez", chamada…). */
   onlyNotice: boolean;
   order: { id: number; status: string; statusLabel: string; eventDate: string | null } | null;
