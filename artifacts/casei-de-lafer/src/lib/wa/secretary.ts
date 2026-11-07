@@ -27,7 +27,6 @@ import { dateFacts } from "@/lib/margot/clock";
 import { toolError } from "@/lib/margot/orders";
 import { overMonthlyLimit, recordUsage, type CallUsage } from "@/lib/margot/usage";
 import { describeExpense, proposeAction, resolveAction } from "./actions";
-import { resumirAnuncios } from "./anuncios";
 import {
   descontoPara,
   descreverAjuste,
@@ -44,6 +43,7 @@ import {
   type PedidoNovo,
   type Recebimento,
 } from "./pedido";
+import { resumirAnuncios } from "./anuncios";
 import { buttonsMessage, send } from "./client";
 import { killFailedReply, parseKillCommand, planKillCommand } from "./commands";
 import { isAffirmative, isNegative, isTrivial, toWhatsApp, truncate } from "./format";
