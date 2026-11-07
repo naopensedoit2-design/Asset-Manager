@@ -11,15 +11,20 @@ Uma data só comporta um evento (existe um único carro).
 ### Serviços e preços atuais (editáveis em /admin → Regras)
 | Serviço | Preço |
 |---|---|
-| Carro da Noiva | R$ 2.600,00 |
-| Adicional "Saída dos Noivos" (carro permanece após a chegada da noiva para um segundo deslocamento no mesmo local) | + R$ 500,00 |
+| Carro da Noiva (valor-base: Gramado e Canela) | a partir de R$ 2.400,00 |
+| Adicional "Região de Caxias (Carro da Noiva)" | + R$ 200,00 (a partir de R$ 2.600,00 em Caxias e região) |
+| Ensaio Pré-Wedding (valor-base: Gramado e Canela) | a partir de R$ 1.950,00 |
+| Adicional "Região de Caxias (Ensaio)" | + R$ 250,00 (a partir de R$ 2.200,00 em Caxias e região) |
+| Adicional "Saída dos Noivos" (carro permanece após a chegada da noiva para um segundo deslocamento no mesmo local) | valor combinado pela equipe: **não é exposto** no site, no Instagram nem pela Margot (o orçamento em PDF mostra) |
+
+Faixas decididas pelo dono em 07/11/2026. Os valores vivem em Regras (banco): a Margot lê os serviços de lá. As cidades de "Caxias e região" ficam no texto de Regras → Área de atendimento, nunca no código. Em Regras, o preço-base passa a ser 2.400 e 1.950, e os dois adicionais "Região de Caxias" são cadastrados como serviços adicionais.
 
 ### Regras comerciais (editáveis em /admin → Regras)
 - Sinal de **40%** via Pix para reservar a data; a data só é bloqueada no calendário público depois que o sinal é pago.
 - Saldo de 60% até 1 dia antes do evento.
 - Reserva provisória sem sinal expira em 48h (padrão).
 - Cancelamento: sinal não reembolsável (reserva de data). Ensaios: chuva forte permite remarcar sem custo em até 60 dias.
-- Ensaio Pré-Wedding: R$ 1.900, até 3h com o carro em um único local de ensaio (segundo local é orçado à parte); traje de motorista (chofer) só mediante solicitação, sem custo (já está no valor).
+- Ensaio Pré-Wedding: a partir de R$ 1.950 (R$ 2.200 em Caxias e região), até 3h com o carro em um único local de ensaio (segundo local é orçado à parte); traje de motorista (chofer) só mediante solicitação, sem custo (já está no valor).
 - Raio de atendimento: Serra Gaúcha; fora dela, valor avaliado caso a caso.
 - **Os preços são "a partir de" (valor-base).** A Margot sempre diz "a partir de". A região de valor-base é o texto de Regras → Área de atendimento (banco, nunca o código). Cidade fora dela, ou trajeto da noiva até a cerimônia acima de ~10 km: a equipe confirma o valor final, e a Margot não apresenta total, sinal e saldo como definitivos nem manda o link da proposta (anota "valor por distância a confirmar" no resumo e usa `encaminhar_para_equipe`). Adicionais, pacotes e decoração também vão para a equipe. **A Margot nunca revela de onde o carro sai, a cidade-base, quilometragens nem o raio**: são parâmetros internos do dono e o repositório é público, então não os escreva aqui, em testes ou em exemplos.
 
