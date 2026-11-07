@@ -120,3 +120,21 @@ test("edição mostra só o que muda, com antes e depois", () => {
   assert.ok(r.linhas.some((l) => /05\/12\/2026 → 06\/12\/2026/.test(l)));
   assert.equal(mudancas(atual, { cidade: "Gramado" }).linhas.length, 0);
 });
+
+import { descreverExclusao } from "./pedido.ts";
+
+test("exclusão: o texto diz qual é o repetido, o que continua contado e que não tem volta", () => {
+  const repetido = descreverExclusao({ pedido: 6, nome: "Ana & Beto", data: "2026-01-22", recebidoCents: 40000, duplicadoDe: 5, motivo: "duplicado do #5" });
+  assert.match(repetido, /pedido #6/);
+  assert.match(repetido, /22\/01\/2026/);
+  assert.match(repetido, /#5/);
+  assert.match(repetido, /R\$\s?400,00/);
+  assert.match(repetido, /contado uma vez/);
+  assert.match(repetido, /Motivo: duplicado do #5/);
+  assert.match(repetido, /não dá para desfazer/);
+
+  const semDinheiro = descreverExclusao({ pedido: 7, nome: "Carla", data: null, recebidoCents: 0, duplicadoDe: null });
+  assert.match(semDinheiro, /Não há pagamento recebido/);
+  assert.doesNotMatch(semDinheiro, /Motivo/);
+  assert.doesNotMatch(semDinheiro, /contado/);
+});

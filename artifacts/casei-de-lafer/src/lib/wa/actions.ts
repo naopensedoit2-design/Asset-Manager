@@ -41,6 +41,8 @@ export type Action =
   | { tipo: "recebimento"; pedido: number; recebimento: Recebimento }
   | { tipo: "edicao"; pedido: number; campos: Edicao }
   | { tipo: "status"; pedido: number; status: string; nota: string }
+  // Excluir de vez um pedido repetido ou criado por engano (a regra está em gestor/exclusao.ts e roda de novo ao confirmar).
+  | { tipo: "exclusao"; pedido: number; motivo?: string }
   // Abater parte de (ou quitar) uma conta a pagar. `saldoCents` é o saldo que o Leonardo viu na confirmação.
   | { tipo: "abatimento"; conta: number; valorCents: number; saldoCents: number; data: string };
 
@@ -67,6 +69,9 @@ export function parseAction(raw: string): Action | null {
     if (a?.tipo === "recebimento" && Number.isInteger(a.pedido) && a.recebimento && Number.isInteger(a.recebimento.amountCents)) return a;
     if (a?.tipo === "edicao" && Number.isInteger(a.pedido) && a.campos && typeof a.campos === "object") return a;
     if (a?.tipo === "status" && Number.isInteger(a.pedido) && typeof a.status === "string") return a;
+    if (a?.tipo === "exclusao" && Number.isInteger(a.pedido)) {
+      return { tipo: "exclusao", pedido: a.pedido, motivo: typeof a.motivo === "string" ? a.motivo : "" };
+    }
     if (a?.tipo === "pedido") {
       const pedido = lerPedido(a.pedido);
       return pedido ? { tipo: "pedido", pedido } : null;
@@ -129,6 +134,7 @@ export async function resolveAction(owner: WaContact, rowId: number, confirm: bo
     if (action.tipo === "recebimento") return await receivePayment(action.pedido, action.recebimento);
     if (action.tipo === "edicao") return await editOrder(action.pedido, action.campos);
     if (action.tipo === "status") return await setStatus(action.pedido, action.status, action.nota);
+    if (action.tipo === "exclusao") return await removeOrder(action.pedido, action.motivo ?? "");
     if (action.tipo === "despesa") return await createExpense(action.despesa);
     if (action.tipo === "abatimento") return await payExpense(action);
     if (action.tipo === "pedido") return await createOrderFromChat(action.pedido);
@@ -140,6 +146,29 @@ export async function resolveAction(owner: WaContact, rowId: number, confirm: bo
     console.error("[whatsapp] ação do Leonardo", e);
     return "Deu um erro ao fazer isso. Tente pelo painel, por favor.";
   }
+}
+
+// ─── Pedido repetido ─────────────────────────────────────────
+
+/**
+ * Pedido ativo (nem cancelado nem perdido) desta cliente para este dia. Só há um carro, então não existem dois:
+ * quem repete o pedido de um mesmo dia está duplicando (foi o que aconteceu com dois botões iguais confirmados).
+ */
+export async function pedidoDoMesmoDia(telefone: string, data: string) {
+  return prisma.order.findFirst({
+    where: {
+      client: { phone: { in: phoneVariants(telefone) } },
+      eventDate: new Date(`${data}T00:00:00Z`),
+      status: { notIn: ["cancelado", "perdido"] },
+    },
+    select: { id: true, status: true, client: { select: { name: true } } },
+    orderBy: { id: "asc" },
+  });
+}
+
+function jaExiste(o: { id: number; status: string; client: { name: string } }, data: string): string {
+  const status = STATUS_LABELS[o.status as keyof typeof STATUS_LABELS] ?? o.status;
+  return `⚠️ Não criei outro: ${o.client.name} já tem o pedido #${o.id} para ${formatDateBR(data)} (${status}). Nada foi duplicado.`;
 }
 
 // ─── Execução ────────────────────────────────────────────────
@@ -215,6 +244,9 @@ async function createExpense(d: Extract<Action, { tipo: "despesa" }>["despesa"])
 }
 
 async function createOrderFromChat(p: PedidoNovo): Promise<string> {
+  // Se um botão igual já foi confirmado, o pedido existe: não cria o segundo.
+  const ja = await pedidoDoMesmoDia(p.telefone, p.data);
+  if (ja) return jaExiste(ja, p.data);
   const services = await gestor.listServices({ activeOnly: true });
   const items = itensDoOrcamento(p.servicos, services, p.valorCents);
   // Mantém o telefone já cadastrado (pode estar na forma sem o nono dígito).
@@ -288,6 +320,9 @@ async function adjustOrderValue(a: Extract<Action, { tipo: "valor" }>): Promise<
 }
 
 async function createPastFromChat(p: PedidoNovo, pagamentos: Recebimento[]): Promise<string> {
+  // Se um botão igual já foi confirmado, o evento existe: não registra o segundo (o dinheiro entraria duas vezes).
+  const ja = await pedidoDoMesmoDia(p.telefone, p.data);
+  if (ja) return jaExiste(ja, p.data);
   const services = await gestor.listServices();
   const items = itensDoOrcamento(p.servicos, services, p.valorCents);
   const known = await prisma.client.findFirst({ where: { phone: { in: phoneVariants(p.telefone) } }, select: { phone: true } });
@@ -343,6 +378,16 @@ async function editOrder(orderId: number, c: Edicao): Promise<string> {
 async function setStatus(orderId: number, status: string, note: string): Promise<string> {
   const order = await gestor.changeStatus(orderId, status, "admin", note || "Pelo WhatsApp (Margot)");
   return `✅ Pedido #${orderId}: ${STATUS_LABELS[order.status as keyof typeof STATUS_LABELS] ?? order.status}.`;
+}
+
+async function removeOrder(orderId: number, motivo: string): Promise<string> {
+  const r = await gestor.deleteOrder(orderId, "margot", motivo);
+  const quando = r.data ? ` de ${formatDateBR(r.data)}` : "";
+  const resto =
+    r.duplicadoDe !== null
+      ? ` O pedido #${r.duplicadoDe} continua${r.recebidoCents ? ", com os pagamentos; o Financeiro conta cada valor uma vez só" : ""}.`
+      : "";
+  return `🗑️ Pedido #${r.pedido} (${r.cliente}${quando}) excluído.${resto}`;
 }
 
 async function saveContractData(a: Extract<Action, { tipo: "contrato" }>): Promise<string> {
