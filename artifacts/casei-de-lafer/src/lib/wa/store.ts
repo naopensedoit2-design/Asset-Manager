@@ -89,6 +89,10 @@ export async function saveInbound(m: InboundMessage, owner: string): Promise<{ c
       lastInboundAt: at > (contact.lastInboundAt ?? new Date(0)) ? at : contact.lastInboundAt,
       lastMessageAt: new Date(),
       ...ignoredPatch,
+      // Veio de um anúncio de clique para o WhatsApp: guarda o primeiro (é a origem da pessoa).
+      ...(m.referral && !contact.adSourceId && !contact.adClickId && !isOwner
+        ? { adSourceId: m.referral.sourceId, adHeadline: m.referral.headline, adClickId: m.referral.clickId, adAt: at }
+        : {}),
       ...(counted && !isOwner ? { unread: { increment: 1 } } : {}),
     },
   });
@@ -107,8 +111,9 @@ export async function saveInbound(m: InboundMessage, owner: string): Promise<{ c
         mediaMime: m.mediaMime,
         fileName: m.fileName.slice(0, 200),
         status: "recebida",
-        // Reações, mensagens de sistema e conversas ignoradas não pedem resposta.
-        handledAt: triage.ignored || ["reaction", "system", "unsupported", "request_welcome", "ephemeral"].includes(m.type) ? new Date() : null,
+        // Reações, mensagens de sistema e conversas ignoradas não pedem resposta. Tipo que o WhatsApp não entrega
+        // ("unsupported") pede: process.ts avisa a pessoa para reenviar.
+        handledAt: triage.ignored || ["reaction", "system", "request_welcome", "ephemeral"].includes(m.type) ? new Date() : null,
         action: m.buttonId ? JSON.stringify({ button: m.buttonId.slice(0, 256) }) : "",
         createdAt: at,
       },

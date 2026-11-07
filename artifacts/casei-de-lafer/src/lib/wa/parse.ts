@@ -1,6 +1,16 @@
 // Lê o webhook da API oficial do WhatsApp (Cloud API) e devolve mensagens e status num formato simples.
 // Puro: testado em wa.test.ts. Nada aqui confia no conteúdo: tudo é convertido para string/número.
 
+/** De onde a pessoa veio quando clicou em um anúncio (ou publicação) de clique para o WhatsApp. */
+export interface AdReferral {
+  sourceId: string; // id do anúncio ou da publicação
+  sourceType: string; // ad | post
+  headline: string;
+  body: string;
+  sourceUrl: string;
+  clickId: string; // ctwa_clid
+}
+
 export interface InboundMessage {
   wamid: string;
   from: string; // wa_id de quem mandou (só dígitos)
@@ -17,6 +27,7 @@ export interface InboundMessage {
   replyTo: string; // wamid da mensagem citada, se houver
   reactionTo: string; // wamid da mensagem que recebeu a reação
   forwarded: boolean; // "Encaminhada" (ou encaminhada muitas vezes): típico de corrente e lista de transmissão
+  referral: AdReferral | null; // só na primeira mensagem de quem clicou em um anúncio de clique para o WhatsApp
 }
 
 export interface StatusUpdate {
@@ -39,6 +50,21 @@ const obj = (v: unknown): Record<string, any> => (v && typeof v === "object" && 
 const arr = (v: unknown): any[] => (Array.isArray(v) ? v : []);
 
 const MEDIA_TYPES = ["image", "audio", "video", "document", "sticker"];
+
+function referralOf(raw: unknown): AdReferral | null {
+  const r = obj(raw);
+  const sourceId = s(r.source_id).slice(0, 64);
+  const clickId = s(r.ctwa_clid).slice(0, 300);
+  if (!sourceId && !clickId) return null;
+  return {
+    sourceId,
+    sourceType: s(r.source_type).slice(0, 20),
+    headline: s(r.headline).slice(0, 200),
+    body: s(r.body).slice(0, 400),
+    sourceUrl: s(r.source_url).slice(0, 300),
+    clickId,
+  };
+}
 
 function readable(type: string, m: Record<string, any>): { text: string; buttonId: string } {
   switch (type) {
@@ -123,6 +149,7 @@ export function parseWebhook(body: unknown): ParsedWebhook {
           replyTo: s(obj(m.context).id),
           reactionTo: type === "reaction" ? s(obj(m.reaction).message_id) : "",
           forwarded: obj(m.context).forwarded === true || obj(m.context).frequently_forwarded === true,
+          referral: referralOf(m.referral),
         });
       }
 

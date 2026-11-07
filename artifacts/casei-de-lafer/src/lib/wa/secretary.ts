@@ -44,6 +44,7 @@ import {
   type PedidoNovo,
   type Recebimento,
 } from "./pedido";
+import { resumirAnuncios } from "./anuncios";
 import { buttonsMessage, send } from "./client";
 import { killFailedReply, parseKillCommand, planKillCommand } from "./commands";
 import { isAffirmative, isNegative, isTrivial, toWhatsApp, truncate } from "./format";
@@ -330,6 +331,12 @@ const TOOLS: ToolDef[] = [
     input_schema: { type: "object", properties: {} },
   },
   {
+    name: "anuncios_origem",
+    description:
+      "De quais anúncios de clique para o WhatsApp vieram as conversas: por anúncio, quantas conversas, quantas viraram pedido e quantas fecharam (data garantida ou realizado). Só leitura. O custo de cada anúncio está no gerenciador de anúncios da Meta, não aqui.",
+    input_schema: { type: "object", properties: { dias: { type: "integer", description: "Janela em dias (padrão 90)" } } },
+  },
+  {
     name: "preferencia_audio",
     description: "Como o Leonardo quer receber as respostas: 'sempre' em áudio também, 'perguntar' (botão para ouvir) ou 'nunca'.",
     input_schema: { type: "object", properties: { modo: { type: "string", enum: ["sempre", "perguntar", "nunca"] } }, required: ["modo"] },
@@ -359,6 +366,7 @@ Direta, prática e simpática, como uma secretária de confiança. Português do
 • Datas: use exatamente o dia, mês e ano que ele disse. Nunca troque o ano por conta própria (ex.: data no passado não vira o ano seguinte). Data que já passou é evento realizado: use registrar_evento_passado. Data sem ano ("22/01"): se um comprovante, contrato ou mensagem da conversa trouxer o ano, use esse ano (ex.: Pix de 10/03/2026 para um evento em 12/03 indica 12/03/2026, evento já realizado); sem nenhuma pista, pergunte o ano antes de propor. Não presuma o próximo ano.
 • Se você mandou um botão errado, diga para tocar em Cancelar nele antes de mandar o certo.
 • O WhatsApp do pedido pode ser da cerimonialista: nesse caso passe contato "cerimonialista" em criar_pedido.
+• De onde vêm as conversas e quanto cada anúncio rende ("qual anúncio trouxe mais gente", "quantos fecharam por anúncio"): use anuncios_origem. Ela só diz conversas, pedidos e fechamentos por anúncio; o gasto de cada um está no gerenciador de anúncios, então não invente custo.
 • Desconto ou valor diferente da tabela ("o valor é o do PDF", "dá R$ 55 de desconto"): use ajustar_valor_pedido com o total final (ou o desconto). Com sinal já recebido, o saldo em aberto é recalculado.
 • Dados do contrato colados por ele (nome completo, CPF, endereço, e-mail): use dados_do_contrato. RG, profissão, estado civil e nacionalidade não são guardados: diga isso em uma linha. Não repita CPF, RG nem endereço na sua resposta.
 • Comprovante que ele mandar (imagem ou PDF): confira valor e nome e use confirmar_pagamento; o comprovante fica anotado no pedido e a imagem segue em Conversas. Não existe "anexar no painel": não mande ele anexar lá.
@@ -915,6 +923,26 @@ async function runTool(name: string, input: any, s: State): Promise<unknown> {
     }
 
     if (name === "conversas") return { conversas: await waitingConversations() };
+
+    if (name === "anuncios_origem") {
+      const dias = Number.isInteger(input?.dias) && input.dias > 0 ? Math.min(input.dias, 730) : 90;
+      const contatos = await prisma.waContact.findMany({
+        where: { isOwner: false, adAt: { gte: new Date(Date.now() - dias * 86_400_000) } },
+        select: { adSourceId: true, adHeadline: true, orderId: true },
+      });
+      if (!contatos.length) {
+        return { anuncios: [], aviso: `Nenhuma conversa dos últimos ${dias} dias veio de anúncio de clique para o WhatsApp (isso só começa quando houver anúncio no ar).` };
+      }
+      const ids = contatos.flatMap((c) => (c.orderId ? [c.orderId] : []));
+      const pedidos = ids.length ? await prisma.order.findMany({ where: { id: { in: ids } }, select: { id: true, status: true } }) : [];
+      const status = new Map(pedidos.map((o) => [o.id, o.status]));
+      return {
+        janela_dias: dias,
+        anuncios: resumirAnuncios(
+          contatos.map((c) => ({ adSourceId: c.adSourceId, adHeadline: c.adHeadline, orderStatus: c.orderId ? (status.get(c.orderId) ?? null) : null })),
+        ),
+      };
+    }
 
     if (name === "preferencia_audio") {
       const modo = input?.modo;

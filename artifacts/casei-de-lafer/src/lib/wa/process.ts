@@ -12,6 +12,7 @@ import { respondToClient } from "./customer";
 import { parseWebhook } from "./parse";
 import { samePhone } from "./phone";
 import { respondToOwner } from "./secretary";
+import { sendText } from "./send";
 import { applyStatus, claimContact, ownerPhone, releaseContact, saveInbound, type WaContact, type WaMessage } from "./store";
 import { transcribe, voiceReady } from "./voice";
 
@@ -110,6 +111,20 @@ async function respond(contact: WaContact, pending: WaMessage[]) {
   }
 
   const owner = await ownerPhone();
-  if (owner && samePhone(contact.waId, owner)) await respondToOwner(contact, pending);
+  const isOwner = Boolean(owner && samePhone(contact.waId, owner));
+
+  // Tipo de mensagem que o WhatsApp não entrega (enquete, "ver uma vez", chamada): a IA não lê isso. Para o dono, a Margot
+  // diz na hora; para cliente, quem decide é respondToClient (só avisa se a Margot estiver ativa na conversa).
+  if (isOwner && pending.some((m) => m.type === "unsupported")) {
+    await sendText(
+      contact,
+      "Esse tipo de mensagem (enquete, “ver uma vez”, chamada) o WhatsApp não entrega para mim. Mande em texto, áudio, foto ou PDF, por favor.",
+      { author: "margot", kind: "sem_suporte" },
+    );
+    pending = pending.filter((m) => m.type !== "unsupported");
+    if (!pending.length) return;
+  }
+
+  if (isOwner) await respondToOwner(contact, pending);
   else await respondToClient(contact, pending);
 }

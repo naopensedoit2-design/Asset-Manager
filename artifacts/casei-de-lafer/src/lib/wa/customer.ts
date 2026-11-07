@@ -363,7 +363,10 @@ async function runTool(name: string, input: any, s: State): Promise<unknown> {
 /** Avisa o Leonardo (no máximo a cada 10 minutos por conversa) que chegou mensagem e a Margot não vai responder. */
 async function forwardToOwner(contact: WaContact, pending: WaMessage[], reason: string) {
   if (contact.notifiedAt && Date.now() - contact.notifiedAt.getTime() < 10 * 60_000) return;
-  const preview = truncate(pending.map((m) => m.text || `[${m.type}]`).join(" / "), 300);
+  const preview = truncate(
+    pending.map((m) => (m.type === "unsupported" ? "[mensagem que o WhatsApp não entrega]" : m.text || `[${m.type}]`)).join(" / "),
+    300,
+  );
   const name = await contactLabel(contact);
   const body = `💬 ${name}: ${preview}\n(${reason})`;
   await notifyOwner({
@@ -385,6 +388,24 @@ async function fallbackReply(contact: WaContact) {
     "Olá! Recebemos sua mensagem. Nossa equipe responde por aqui assim que possível. 💍",
     { author: "sistema", kind: "resposta_automatica" },
   );
+}
+
+/**
+ * A pessoa mandou algo que o WhatsApp não entrega por aqui (enquete, "ver uma vez", chamada). Sem isso ela ficava
+ * sem resposta e sem saber: pede, com educação, que reenvie, e avisa o dono. No máximo uma vez a cada 12h por conversa.
+ */
+async function replyUnsupported(contact: WaContact, pending: WaMessage[]): Promise<void> {
+  const recent = await prisma.waMessage.findFirst({
+    where: { contactId: contact.id, kind: "sem_suporte", createdAt: { gte: new Date(Date.now() - 12 * 3_600_000) } },
+    select: { id: true },
+  });
+  if (recent) return;
+  await sendText(
+    contact,
+    "Olá! Recebemos a sua mensagem, mas este tipo de conteúdo (como enquete, “ver uma vez” ou chamada) não chega até nós pelo WhatsApp. Poderia nos enviar em texto, áudio, foto ou PDF? Agradecemos a compreensão.",
+    { author: "sistema", kind: "sem_suporte" },
+  );
+  await forwardToOwner(contact, pending, "pedi que reenviasse em texto, áudio, foto ou PDF");
 }
 
 export async function respondToClient(contact: WaContact, pending: WaMessage[]): Promise<void> {
@@ -412,6 +433,13 @@ export async function respondToClient(contact: WaContact, pending: WaMessage[]):
     await prisma.waContact.update({ where: { id: contact.id }, data: { pausedUntil: new Date(Date.now() + 12 * 3_600_000) } });
     await forwardToOwner(contact, meaningful, "muitas mensagens em pouco tempo: pausei a Margot nesta conversa por 12h");
     return;
+  }
+
+  // Só mensagem que o WhatsApp não entrega: pede o reenvio (a IA não tem o que ler).
+  const sem = meaningful.filter((m) => m.type === "unsupported");
+  if (sem.length) {
+    await replyUnsupported(contact, sem);
+    if (sem.length === meaningful.length) return;
   }
 
   const rows = await prisma.waMessage.findMany({
@@ -474,6 +502,12 @@ export async function respondToClient(contact: WaContact, pending: WaMessage[]):
       : toWhatsApp(result.text);
     if (result.exhausted) await forwardToOwner(s.contact, meaningful, "a Margot se enrolou nesta conversa");
     if (text) await sendText(s.contact, text, { author: "margot" });
+    else {
+      // O modelo terminou sem escrever nada: a pessoa não pode ficar sem retorno e o dono precisa saber.
+      console.warn(`[whatsapp] resposta vazia ao contato ${s.contact.id}`);
+      await fallbackReply(s.contact);
+      await forwardToOwner(s.contact, meaningful, "a Margot não escreveu resposta desta vez");
+    }
   } catch (e) {
     console.error("[whatsapp] Margot", e);
     await sendText(

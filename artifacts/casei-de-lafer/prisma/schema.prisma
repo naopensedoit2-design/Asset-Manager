@@ -223,6 +223,11 @@ model WaContact {
   ignoredReason String      @default("") // manual | encaminhada | figurinha | video | contato | localizacao (src/lib/wa/triage.ts)
   blockedAt     DateTime? // bloqueado no WhatsApp pela API da Meta: a pessoa não consegue mais escrever
   pinOrder      Int? // fixada à mão no topo da lista (menor = mais acima); vazio = ordem automática (src/lib/wa/ordem.ts)
+  // Anúncio de clique para o WhatsApp que abriu a conversa (objeto "referral" da Meta na primeira mensagem). Só o primeiro vale.
+  adSourceId    String      @default("") // id do anúncio (ou da publicação)
+  adHeadline    String      @default("") // título do anúncio, para o painel
+  adClickId     String      @default("") // ctwa_clid: liga a conversa ao clique (medição de conversões)
+  adAt          DateTime? // quando a pessoa veio do anúncio
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
   messages      WaMessage[]

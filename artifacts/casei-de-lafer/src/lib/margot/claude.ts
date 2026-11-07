@@ -109,6 +109,9 @@ export async function runAgent(run: AgentRun): Promise<AgentResult> {
   // pode se apoiar em datas de mensagens antigas da conversa (ex.: o resumo de dias atrás).
   const messages = stampLastUserTurn([...run.messages] as { role: string; content: unknown }[], run.now);
   const maxRounds = run.maxRounds ?? 6;
+  // O que o modelo escreveu ANTES de chamar uma ferramenta (ex.: respondeu à pessoa e só então marcou "engano").
+  // Se a última rodada vier sem texto, é isso que a pessoa deve receber: antes, ninguém recebia nada.
+  let spoken = "";
   for (let round = 0; round < maxRounds; round++) {
     const response = await callClaude(run.system, run.tools, messages, run.maxTokens ?? 800);
     const u = response.usage ?? {};
@@ -120,14 +123,15 @@ export async function runAgent(run: AgentRun): Promise<AgentResult> {
       cacheReadTokens: u.cache_read_input_tokens ?? 0,
     });
     const toolUses = response.content.filter((b) => b.type === "tool_use") as { id: string; name: string; input: unknown }[];
+    const text = response.content
+      .filter((b) => b.type === "text")
+      .map((b) => (b as { text: string }).text)
+      .join("\n")
+      .trim();
     if (response.stop_reason !== "tool_use" || toolUses.length === 0) {
-      const text = response.content
-        .filter((b) => b.type === "text")
-        .map((b) => (b as { text: string }).text)
-        .join("\n")
-        .trim();
-      return { text, exhausted: false };
+      return { text: text || spoken, exhausted: false };
     }
+    if (text) spoken = text;
     messages.push({ role: "assistant", content: response.content });
     const results = [];
     for (const use of toolUses) {

@@ -42,6 +42,8 @@ function contactView(c: WaContact) {
     blocked: Boolean(c.blockedAt),
     pinned: c.pinOrder !== null,
     pinOrder: c.pinOrder,
+    // Anúncio de que a pessoa veio (clique para o WhatsApp), se veio de um.
+    ad: c.adSourceId || c.adClickId ? { id: c.adSourceId, headline: c.adHeadline, at: c.adAt?.toISOString() ?? null } : null,
   };
 }
 

@@ -119,7 +119,7 @@ export function renderTermo(d: DocData): string {
 
   <div class="accept">O pagamento do sinal implica ciência e aceite integral dos termos acima, dispensando assinatura física.</div>
   <div class="forum">Foro eleito: ${esc(d.settings.forum || "a definir")}, para dirimir quaisquer questões decorrentes deste termo.</div>
-  <div class="foot">Eu Casei de Lafer · eucaseidelafer.vercel.app</div>
+  <div class="foot">Eu Casei de Lafer · www.eucaseidelafer.com</div>
 </div>
 ${chrome.html}
 </body></html>`;

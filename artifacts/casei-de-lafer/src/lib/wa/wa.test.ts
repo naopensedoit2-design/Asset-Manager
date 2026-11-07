@@ -317,3 +317,49 @@ test("foto e texto seguidos: a segunda resposta vê a primeira e o texto novo fi
   assert.deepEqual(recentInbound(rows, [11], at(3)).map((r) => r.id), [10]);
   assert.deepEqual(recentInbound(rows, [11], at(30)).map((r) => r.id), []);
 });
+
+// ─── Anúncio de clique para o WhatsApp ───────────────────────
+
+test("clique em anúncio: guarda de onde a pessoa veio; mensagem comum fica sem origem", () => {
+  const r = parseWebhook(
+    payload([
+      {
+        from: "555481112222",
+        id: "w20",
+        timestamp: "1700000000",
+        type: "text",
+        text: { body: "Olá! Tenho interesse e gostaria de mais informações." },
+        referral: {
+          source_url: "https://fb.me/exemplo",
+          source_id: "120200000000000",
+          source_type: "ad",
+          headline: "Chegue ao casamento em um clássico",
+          body: "Reserve a sua data",
+          media_type: "video",
+          ctwa_clid: "AfAbC123",
+        },
+      },
+      { from: "555481112222", id: "w21", timestamp: "1700000010", type: "text", text: { body: "oi" } },
+    ]),
+  );
+  assert.deepEqual(r.messages[0].referral, {
+    sourceId: "120200000000000",
+    sourceType: "ad",
+    headline: "Chegue ao casamento em um clássico",
+    body: "Reserve a sua data",
+    sourceUrl: "https://fb.me/exemplo",
+    clickId: "AfAbC123",
+  });
+  assert.equal(r.messages[1].referral, null);
+});
+
+test("referral sem id do anúncio nem clique, ou com lixo, é ignorado", () => {
+  const msg = (referral: unknown, id: string) => ({ from: "555481112222", id, timestamp: "1", type: "text", text: { body: "x" }, referral });
+  const r = parseWebhook(payload([msg({ headline: "só título" }, "w30"), msg("lixo", "w31"), msg(null, "w32"), msg({ source_id: 12345 }, "w33")]));
+  assert.deepEqual(
+    r.messages.map((m) => m.referral?.sourceId ?? null),
+    [null, null, null, "12345"],
+  );
+  const longo = parseWebhook(payload([msg({ source_id: "1", headline: "x".repeat(900) }, "w34")]));
+  assert.equal(longo.messages[0].referral?.headline.length, 200);
+});
