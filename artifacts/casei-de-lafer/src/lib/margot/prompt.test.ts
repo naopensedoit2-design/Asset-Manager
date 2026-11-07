@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { buildSystemPrompt, type PromptContext } from "./prompt.ts";
+import { buildSystemPrompt, isSaidaDosNoivos, type PromptContext } from "./prompt.ts";
 import { DEFAULT_SETTINGS, formatBRL } from "../gestor/rules.ts";
 
 // Regras do prompt que o briefing exige e que um texto novo não pode apagar sem querer.
@@ -195,4 +195,52 @@ test("o texto variável traz o dia de hoje e a conversa", () => {
   const { variable } = buildSystemPrompt(ctx("whatsapp", { conversation: "Primeiro contato: sim." }));
   assert.match(variable, /quinta-feira, 29\/10\/2026/);
   assert.match(variable, /Primeiro contato: sim\./);
+});
+
+// Faixas de preço por região e Saída dos Noivos sem valor exposto (decisão do dono, 07/11/2026).
+const SERVICOS = [
+  { id: 1, name: "Carro da Noiva", description: "Chegada da noiva.", priceCents: 240000, isAddon: false },
+  { id: 2, name: "Saída dos Noivos", description: "Segundo deslocamento.", priceCents: 50000, isAddon: true },
+  { id: 3, name: "Região de Caxias (Carro da Noiva)", description: "Faixa regional.", priceCents: 20000, isAddon: true },
+];
+
+test("a Saída dos Noivos aparece sem valor e a Margot manda o assunto para a equipe", () => {
+  for (const channel of CHANNELS) {
+    const { fixed } = buildSystemPrompt(ctx(channel, { services: SERVICOS }));
+    const linha = fixed.split("\n").find((l) => l.includes("Saída dos Noivos (adicional)")) ?? "";
+    assert.ok(linha.includes("valor combinado pela nossa equipe"), `${channel}: ${linha}`);
+    assert.ok(!linha.includes(formatBRL(50000)), `${channel}: o valor da saída vazou na lista`);
+    assert.ok(fixed.includes("Não informe valor nem some a saída ao orçamento"), channel);
+    // os demais preços continuam na lista
+    assert.ok(fixed.includes(formatBRL(240000)), channel);
+    assert.ok(fixed.includes(formatBRL(20000)), channel);
+  }
+});
+
+test("só o adicional de saída/fuga tem o valor escondido", () => {
+  
+  assert.equal(isSaidaDosNoivos({ name: "Saída dos Noivos", isAddon: true }), true);
+  assert.equal(isSaidaDosNoivos({ name: "Fuga dos Noivos", isAddon: true }), true);
+  assert.equal(isSaidaDosNoivos({ name: "Saída dos Noivos", isAddon: false }), false);
+  assert.equal(isSaidaDosNoivos({ name: "Região de Caxias (Carro da Noiva)", isAddon: true }), false);
+  assert.equal(isSaidaDosNoivos({ name: "Ensaio Pré-Wedding", isAddon: false }), false);
+});
+
+test("a faixa Caxias e região é incluída pela própria Margot e a saída vai para a equipe", () => {
+  for (const channel of CHANNELS) {
+    const { fixed } = buildSystemPrompt(ctx(channel, { services: SERVICOS }));
+    assert.ok(fixed.includes('Faixa "Caxias e região"'), channel);
+    assert.ok(fixed.includes('adicionais chamados "Região de Caxias"'), channel);
+    assert.ok(fixed.includes("Esse adicional você mesma inclui"), channel);
+    assert.ok(fixed.includes('adicional (menos o "Região de Caxias")'), channel);
+    assert.ok(fixed.includes("saída dos noivos"), channel);
+  }
+});
+
+test("o prompt não traz a cidade-base, quilometragens nem lista de cidades das faixas", () => {
+  const { fixed } = buildSystemPrompt(ctx("whatsapp", { services: SERVICOS }));
+  // Única distância permitida no texto: o trajeto da noiva (~10 km). Raio e distância da base são segredo do dono.
+  const kms = (fixed.match(/\d[\d.,]*\s*km/gi) ?? []).map((x) => x.replace(/\s+/g, " ").toLowerCase());
+  assert.deepEqual([...new Set(kms)], ["10 km"], "quilometragem no prompt");
+  assert.ok(!fixed.includes("Flores da Cunha"), "lista de cidades deve vir de Regras, não do código");
 });
