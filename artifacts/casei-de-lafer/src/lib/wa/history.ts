@@ -38,6 +38,7 @@ export function describe(m: StoredMessage): string {
     case "document":
       return `[documento${m.fileName ? `: ${m.fileName}` : ""}]${text ? ` ${text}` : ""}`;
     case "reaction":
+    case "unsupported": // o texto dela é só o erro da Meta; a pessoa recebe o pedido de reenvio (process.ts)
       return "";
     default: {
       const label = LABELS[m.type];
