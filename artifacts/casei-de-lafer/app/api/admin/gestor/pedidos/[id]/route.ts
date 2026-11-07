@@ -9,3 +9,6 @@ export const GET = route(async (_req: NextRequest, ctx: IdContext) => ok(await g
 export const PATCH = route(async (req: NextRequest, ctx: IdContext) =>
   ok(await gestor.updateOrder((await ctx.params).id, await readJson(req), "admin")),
 );
+
+/** Excluir de vez: sem pagamento recebido, ou duplicado comprovado (regra em src/lib/gestor/exclusao.ts). */
+export const DELETE = route(async (_req: NextRequest, ctx: IdContext) => ok(await gestor.deleteOrder((await ctx.params).id, "admin")));
