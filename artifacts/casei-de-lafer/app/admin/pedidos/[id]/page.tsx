@@ -2,6 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ExternalLink, MessageCircle } from "lucide-react";
 import {
@@ -14,6 +15,7 @@ import {
   type Settings,
 } from "@/lib/gestor/rules";
 import type { OrderView } from "@/lib/gestor/service";
+import type { Exclusao } from "@/lib/gestor/exclusao";
 import {
   api,
   Button,
@@ -85,6 +87,7 @@ export default function OrderPage({ params }: { params: Promise<{ id: string }> 
             <PaymentsSection order={order} onChange={refresh} />
             <DetailsSection order={order} onChange={refresh} />
             <History order={order} />
+            <DeleteOrder order={order} />
           </>
         )}
       </main>
@@ -766,6 +769,95 @@ function History({ order }: { order: OrderView }) {
           </li>
         ))}
       </ol>
+    </Panel>
+  );
+}
+
+// ─── Excluir pedido ──────────────────────────────────────────
+
+/**
+ * Para pedido criado por engano ou repetido. A regra está em src/lib/gestor/exclusao.ts e roda de novo no servidor:
+ * pedido com dinheiro já recebido só sai se for duplicado comprovado. Casamento que não vai acontecer se cancela.
+ */
+function DeleteOrder({ order }: { order: OrderView }) {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const [verdict, setVerdict] = useState<Exclusao | null>(null);
+  const [busy, setBusy] = useState<"check" | "delete" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function check() {
+    setBusy("check");
+    setError(null);
+    try {
+      setVerdict(await api<Exclusao>(`/api/admin/gestor/pedidos/${order.id}/exclusao`));
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function remove() {
+    setBusy("delete");
+    setError(null);
+    try {
+      await api(`/api/admin/gestor/pedidos/${order.id}`, { method: "DELETE" });
+      for (const k of ["gestor-pedidos", "gestor-resumo", "financeiro", "hoje", "gestor-calendario"]) {
+        queryClient.invalidateQueries({ queryKey: [k] });
+      }
+      router.push("/admin/pedidos");
+    } catch (e) {
+      setError((e as Error).message);
+      setBusy(null);
+    }
+  }
+
+  return (
+    <Panel title="Excluir pedido">
+      {!verdict && (
+        <div className="space-y-3">
+          <p className="text-sm text-text-secondary">
+            Para pedido criado por engano ou repetido. Se o casamento não vai acontecer, use Cancelar ou Marcar como perdido: assim o histórico e
+            o dinheiro recebido ficam guardados.
+          </p>
+          <Button variant="ghost" onClick={check} disabled={!!busy}>
+            {busy === "check" ? "Verificando…" : "Excluir este pedido…"}
+          </Button>
+        </div>
+      )}
+      {verdict && !verdict.pode && (
+        <div className="space-y-3">
+          <p className="text-sm text-text-secondary">{verdict.motivo}</p>
+          <Button variant="ghost" onClick={() => setVerdict(null)}>
+            Entendi
+          </Button>
+        </div>
+      )}
+      {verdict?.pode && (
+        <div className="space-y-3">
+          <p className="text-sm text-text-primary">
+            Excluir o pedido #{order.id} de {order.client.name}?
+          </p>
+          <p className="text-sm text-text-secondary">
+            {verdict.duplicadoDe !== null
+              ? `O pedido #${verdict.duplicadoDe} é do mesmo cliente e da mesma data${verdict.recebidos ? " e já tem esses pagamentos" : ""}; este é o repetido. ${
+                  verdict.recebidos ? "O dinheiro continua contado uma vez no Financeiro." : ""
+                }`
+              : "Nenhum pagamento recebido será perdido."}{" "}
+            Orçamentos, reservas, pagamentos e histórico deste pedido serão apagados, e não dá para desfazer.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="danger" onClick={remove} disabled={!!busy}>
+              {busy === "delete" ? "Excluindo…" : "Sim, excluir"}
+            </Button>
+            <Button variant="ghost" onClick={() => setVerdict(null)} disabled={!!busy}>
+              Voltar
+            </Button>
+          </div>
+        </div>
+      )}
+      <ErrorNote message={error} />
     </Panel>
   );
 }

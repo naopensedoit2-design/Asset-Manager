@@ -35,6 +35,7 @@ import {
   type QuoteItem,
   type Settings,
 } from "./rules";
+import { avaliarExclusao, type Exclusao, type PedidoDaRegra } from "./exclusao";
 
 type Tx = Prisma.TransactionClient;
 export type Actor = "admin" | "margot" | "sistema";
@@ -518,6 +519,94 @@ export async function changeStatus(id: unknown, to: unknown, actor: Actor, note 
 
   await syncOrderCalendar(orderId);
   return getOrder(orderId);
+}
+
+// ─── Exclusão de pedido ──────────────────────────────────────
+
+/** Chave onde fica o registro de um pedido excluído (sem telefone nem documento): o painel não tem lixeira. */
+export const EXCLUIDO_PREFIX = "pedidoExcluido:";
+
+function paraRegra(o: {
+  id: number;
+  clientId: number;
+  status: string;
+  eventDate: Date | null;
+  payments: { amountCents: number; status: string; paidAt: Date | null }[];
+}): PedidoDaRegra {
+  return {
+    id: o.id,
+    clientId: o.clientId,
+    status: o.status,
+    eventDate: dateToISO(o.eventDate),
+    // O dia do recebimento é o do Financeiro (fuso de São Paulo), para comparar com o que o caixa conta.
+    payments: o.payments.map((p) => ({ amountCents: p.amountCents, status: p.status, paidAt: p.paidAt ? todayISO(p.paidAt) : null })),
+  };
+}
+
+/** O que valeria se este pedido fosse excluído agora: o pedido e o veredito da regra (./exclusao, testada à parte). */
+export async function previewOrderDeletion(id: unknown, db: Tx | typeof prisma = prisma): Promise<{ order: OrderView; verdict: Exclusao }> {
+  const orderId = requireInt(id, "id");
+  const order = await loadOrder(orderId, db);
+  const outros = await db.order.findMany({
+    where: { clientId: order.clientId, id: { not: orderId } },
+    select: {
+      id: true,
+      clientId: true,
+      status: true,
+      eventDate: true,
+      payments: { select: { amountCents: true, status: true, paidAt: true } },
+    },
+  });
+  return { order: serializeOrder(order), verdict: avaliarExclusao(paraRegra(order), outros.map(paraRegra)) };
+}
+
+/**
+ * Exclui o pedido de vez: orçamentos, reservas, pagamentos e histórico vão junto. Quem decide se pode é a regra de
+ * ./exclusao: pedido sem dinheiro recebido sai; com dinheiro recebido, só se for duplicado comprovado (o outro pedido já
+ * tem aqueles pagamentos). Casamento que não vai acontecer se cancela. A regra roda dentro da transação, com os
+ * dados de agora. Fica um registro em Setting (`pedidoExcluido:<id>`) com o que foi apagado.
+ */
+export async function deleteOrder(id: unknown, actor: Actor, motivo = "") {
+  const orderId = requireInt(id, "id");
+  const reservas = await prisma.reservation.findMany({ where: { orderId }, select: { googleEventId: true } });
+  const eventIds = [...new Set(reservas.flatMap((r) => (r.googleEventId ? [r.googleEventId] : [])))];
+
+  const feito = await prisma.$transaction(async (tx) => {
+    const { order, verdict } = await previewOrderDeletion(orderId, tx);
+    if (!verdict.pode) throw new RuleError("exclusao_bloqueada", verdict.motivo, 409);
+
+    await releaseInTx(orderId, tx);
+    const registro = {
+      pedido: orderId,
+      em: new Date().toISOString(),
+      por: actor,
+      motivo: str(motivo, 300),
+      cliente: order.client.name,
+      data: order.eventDate,
+      status: order.status,
+      totalCents: order.quotes[0]?.totalCents ?? null,
+      recebidoCents: verdict.recebidoCents,
+      duplicadoDe: verdict.duplicadoDe,
+    };
+    const chave = `${EXCLUIDO_PREFIX}${orderId}`;
+    await tx.setting.upsert({ where: { key: chave }, create: { key: chave, value: JSON.stringify(registro) }, update: { value: JSON.stringify(registro) } });
+    await tx.setting.deleteMany({ where: { key: linkKey(orderId) } });
+    // Sem ligação no banco: gasto e conversa só guardam o número do pedido, então soltam-se aqui.
+    await tx.expense.updateMany({ where: { orderId }, data: { orderId: null } });
+    await tx.waContact.updateMany({ where: { orderId }, data: { orderId: null } });
+    await tx.order.delete({ where: { id: orderId } });
+    return { cliente: order.client.name, data: order.eventDate, recebidoCents: verdict.recebidoCents, duplicadoDe: verdict.duplicadoDe };
+  });
+
+  // Depois de gravar: tira da Google Agenda só o evento que o próprio site criou (o do dono nunca é apagado).
+  for (const eventId of eventIds) {
+    try {
+      await deleteOrderEvent(eventId, orderId);
+    } catch (e) {
+      console.error(`[google] remover evento do pedido #${orderId} excluído`, e);
+    }
+  }
+  return { ok: true as const, pedido: orderId, ...feito };
 }
 
 // ─── Casamentos da Google Agenda que viram pedido (só o painel usa) ───

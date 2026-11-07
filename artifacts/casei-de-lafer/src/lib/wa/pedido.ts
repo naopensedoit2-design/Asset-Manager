@@ -212,6 +212,32 @@ export function descreverEventoPassado(p: PedidoNovo, nomesServicos: string[], t
   return lines.join("\n");
 }
 
+// ─── Excluir pedido ──────────────────────────────────────────
+
+/** Texto da confirmação de excluir um pedido repetido ou criado por engano. Os números vêm da regra (gestor/exclusao.ts). */
+export function descreverExclusao(o: {
+  pedido: number;
+  nome: string;
+  data: string | null;
+  recebidoCents: number;
+  duplicadoDe: number | null;
+  motivo?: string;
+}): string {
+  const lines = [`Excluir de vez o pedido #${o.pedido} (*${o.nome}*${o.data ? `, ${formatDateBR(o.data)}` : ""})`];
+  if (o.duplicadoDe !== null) {
+    lines.push(
+      o.recebidoCents
+        ? `É o repetido: o pedido #${o.duplicadoDe}, do mesmo cliente e da mesma data, já tem esses ${formatBRL(o.recebidoCents)} recebidos. No Financeiro o valor continua contado uma vez.`
+        : `É o repetido: o pedido #${o.duplicadoDe} é do mesmo cliente e da mesma data.`,
+    );
+  } else {
+    lines.push("Não há pagamento recebido nele.");
+  }
+  if (o.motivo) lines.push(`Motivo: ${o.motivo}`);
+  lines.push("Orçamentos, reservas, pagamentos e histórico deste pedido são apagados e não dá para desfazer.");
+  return lines.join("\n");
+}
+
 // ─── Editar pedido ───────────────────────────────────────────
 
 export interface Edicao {
