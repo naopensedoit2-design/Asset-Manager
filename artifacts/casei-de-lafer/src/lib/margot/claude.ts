@@ -102,6 +102,8 @@ export interface AgentResult {
   text: string;
   /** true quando o modelo ainda queria usar ferramentas e o limite de rodadas acabou. */
   exhausted: boolean;
+  /** true quando a resposta foi cortada pelo limite de tamanho (max_tokens). */
+  truncated: boolean;
 }
 
 export async function runAgent(run: AgentRun): Promise<AgentResult> {
@@ -129,7 +131,7 @@ export async function runAgent(run: AgentRun): Promise<AgentResult> {
       .join("\n")
       .trim();
     if (response.stop_reason !== "tool_use" || toolUses.length === 0) {
-      return { text: text || spoken, exhausted: false };
+      return { text: text || spoken, exhausted: false, truncated: response.stop_reason === "max_tokens" };
     }
     if (text) spoken = text;
     messages.push({ role: "assistant", content: response.content });
@@ -140,5 +142,5 @@ export async function runAgent(run: AgentRun): Promise<AgentResult> {
     }
     messages.push({ role: "user", content: results });
   }
-  return { text: "", exhausted: true };
+  return { text: "", exhausted: true, truncated: false };
 }

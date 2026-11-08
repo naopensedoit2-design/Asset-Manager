@@ -4,7 +4,7 @@ import { createHmac } from "node:crypto";
 import { isValidSignature, signBody } from "./signature.ts";
 import { canonicalPhone, formatPhone, phoneVariants, samePhone } from "./phone.ts";
 import { parseWebhook } from "./parse.ts";
-import { buttonTitle, isAffirmative, isNegative, isTrivial, oneLine, splitText, toWhatsApp } from "./format.ts";
+import { buttonTitle, isAffirmative, isNegative, isTrivial, oneLine, ownerReplyText, splitText, toWhatsApp } from "./format.ts";
 import { buildHistory, describe } from "./history.ts";
 import { accountModeText, canSendText, EXTRA_ERROR_TEXT, nameStatusText, parseHealth } from "./health.ts";
 
@@ -362,4 +362,12 @@ test("referral sem id do anúncio nem clique, ou com lixo, é ignorado", () => {
   );
   const longo = parseWebhook(payload([msg({ source_id: "1", headline: "x".repeat(900) }, "w34")]));
   assert.equal(longo.messages[0].referral?.headline.length, 200);
+});
+
+test("resposta ao dono nunca sai vazia, mesmo cortada pelo tamanho", () => {
+  assert.equal(ownerReplyText({ text: "Tudo certo", exhausted: false, truncated: false }), "Tudo certo");
+  assert.match(ownerReplyText({ text: "", exhausted: false, truncated: true }), /grande demais/);
+  assert.match(ownerReplyText({ text: "  ", exhausted: false, truncated: false }), /pedir de novo/);
+  assert.match(ownerReplyText({ text: "Parte 1", exhausted: false, truncated: true }), /^Parte 1[\s\S]*continua/);
+  assert.match(ownerReplyText({ text: "x", exhausted: true }), /enrolei/);
 });

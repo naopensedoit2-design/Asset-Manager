@@ -82,3 +82,18 @@ export const isAffirmative = (text: string) => YES.has(normalize(text));
 export const isNegative = (text: string) => NO.has(normalize(text));
 /** Mensagem que só "abre a conversa" (por exemplo, depois de um aviso), sem pedido real. */
 export const isTrivial = (text: string) => TRIVIAL.has(normalize(text)) || normalize(text) === "";
+
+/**
+ * O que a secretária manda ao dono a partir do resultado do modelo. Nunca fica muda:
+ * resposta vazia (cortada antes de escrever) e resposta cortada no meio viram aviso.
+ */
+export function ownerReplyText(r: { text: string; exhausted: boolean; truncated?: boolean }): string {
+  if (r.exhausted) return "Me enrolei aqui. Pode pedir de outro jeito ou ver no painel?";
+  const text = toWhatsApp(r.text);
+  if (!text) {
+    return r.truncated
+      ? "Esse pedido ficou grande demais para uma resposta só. Pode dividir em partes? Ex.: primeiro o faturamento, depois os custos."
+      : "Não consegui montar a resposta. Pode pedir de novo, de outro jeito?";
+  }
+  return r.truncated ? `${text}\n\n(Parei aqui por tamanho. Diga *continua* que eu sigo.)` : text;
+}
