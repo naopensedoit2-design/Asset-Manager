@@ -281,3 +281,23 @@ export function mudancas(atual: Record<keyof Edicao, string>, pedido: Edicao): {
   }
   return { campos, linhas };
 }
+
+/**
+ * Erro de mudar_status quando a transição não existe. Se o pedido pode ser excluído (sem pagamento
+ * ou duplicado comprovado) e o dono queria tirá-lo do caminho (cancelar/perder), aponta excluir_pedido,
+ * para a Margot não dizer "não consigo, faça no painel" tendo a ferramenta.
+ */
+export function erroTransicao(o: {
+  pedido: number;
+  de: string;
+  para: string;
+  possiveis: string[];
+  paraCancelar: boolean;
+  podeExcluir: boolean;
+  duplicadoDe?: number | null;
+}): string {
+  const base = `De "${o.de}" não dá para ir direto para "${o.para}". Possíveis: ${o.possiveis.join(", ") || "nenhum"}.`;
+  if (!o.paraCancelar || !o.podeExcluir) return base;
+  const porque = o.duplicadoDe ? `é duplicado comprovado do #${o.duplicadoDe}` : "não tem pagamento recebido";
+  return `${base} Mas o pedido #${o.pedido} ${porque} e pode ser excluído: se ele é repetido ou foi criado por engano, chame excluir_pedido com o número ${o.pedido} agora. Não mande para o painel e não diga que não consegue excluir.`;
+}
