@@ -28,6 +28,7 @@ Nada disso exige VPS nem computador ligado: roda no próprio site, na Vercel.
   - "o sinal do pedido 14 caiu"
   - "cria o pedido do casamento de 05/12, WhatsApp 51 99999-0000, total 2.400" (ela lê a Google Agenda para trazer nome, data, hora e local; se o dia tiver "casamento" e "entrega de noiva", pergunta qual é a data)
   - "o valor do pedido 3 é 2.545" ou "dá 55 de desconto no 3" (só antes de lançar o sinal)
+  - "a Fulana vai te chamar, atende bem e dá 5% de desconto": ela guarda um **recado** (tabela `Setting`, chave `margotRecado:<código>`, vale 180 dias; regras em `src/lib/wa/recados.ts`). A Margot do atendimento não aplica nem promete o desconto: quando o pedido de uma cliente com esse nome chega, o aviso de novo pedido traz o recado, e a secretária propõe o ajuste no botão Confirmar. "Quais recados?" lista; "apaga o recado X" apaga
   - colar nome completo, CPF, endereço e e-mail da cliente: ela guarda para o Termo (RG, profissão e estado civil não são guardados)
   - "registra o evento de 22/01/2026, já feito, Pix de 400" (evento antigo: entra como realizado, com o pagamento na data certa)
   - "registra 1.018 de sinal no pedido 3, entrou ontem" / "muda o horário do 2 para 16h" / "marca o 2 como realizado"

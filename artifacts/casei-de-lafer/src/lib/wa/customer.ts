@@ -28,6 +28,8 @@ import { attachMedia, mediaBlocks, visibleMedia } from "./media";
 import { toWhatsApp, truncate } from "./format";
 import { buildHistory } from "./history";
 import { notifyOwner } from "./notify";
+import { descreverRecados } from "./recados";
+import { recadosDaCliente } from "./recados-service";
 import { canonicalPhone, formatPhone, phoneVariants } from "./phone";
 import { sendText } from "./send";
 import { contactLabel, isPaused, type WaContact, type WaMessage } from "./store";
@@ -196,10 +198,15 @@ async function runTool(name: string, input: any, s: State): Promise<unknown> {
       const site = gestor.siteUrl();
       if (r.created) {
         const o = r.order;
-        const body = `🆕 Novo pedido pela Margot no WhatsApp\n${o.client.name} · ${r.resultado.data}${o.city ? ` · ${o.city}` : ""}\n${r.resultado.servicos.join(" + ")}\nTotal ${r.resultado.total}. Proposta enviada.`;
+        // Recado do Leonardo sobre esta cliente ("dá 5% de desconto"): vai no aviso; nada é aplicado sozinho.
+        const recados = await recadosDaCliente(o.client.name);
+        const recadoTxt = recados.length
+          ? `\n\n📝 Seu recado sobre ela:\n${descreverRecados(recados)}\nMe diga "aplica o recado do pedido #${r.orderId}" que eu preparo no botão.`
+          : "";
+        const body = `🆕 Novo pedido pela Margot no WhatsApp\n${o.client.name} · ${r.resultado.data}${o.city ? ` · ${o.city}` : ""}\n${r.resultado.servicos.join(" + ")}\nTotal ${r.resultado.total}. Proposta enviada.${recadoTxt}`;
         await notifyOwner({
           text: body,
-          summary: `novo pedido de ${o.client.name} para ${r.resultado.data}, total ${r.resultado.total}`,
+          summary: `novo pedido de ${o.client.name} para ${r.resultado.data}, total ${r.resultado.total}${recados.length ? " (tem recado seu sobre ela)" : ""}`,
           build: () => linkButtonMessage(body, "Abrir pedido", adminLink(`pedidos/${r.orderId}`)),
         });
       }
