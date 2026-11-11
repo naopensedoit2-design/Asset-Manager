@@ -261,3 +261,11 @@ test("a Margot não fica só no 'não sei' e não usa palavra proibida da marca"
     assert.doesNotMatch(fixed, /inesquec/i);
   }
 });
+
+test("parceiros cadastrados entram no prompt do atendimento só quando preenchidos", () => {
+  assert.doesNotMatch(buildSystemPrompt(ctx("whatsapp")).fixed, /# Parceiros que indicamos/);
+  const parceiros = "Fulano, fotógrafo, @fulano-ficticio";
+  const fixed = buildSystemPrompt(ctx("whatsapp", { settings: { ...DEFAULT_SETTINGS, parceiros } })).fixed;
+  assert.match(fixed, /# Parceiros que indicamos/);
+  assert.ok(fixed.includes(parceiros));
+});

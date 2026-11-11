@@ -449,6 +449,12 @@ export async function respondToClient(contact: WaContact, pending: WaMessage[]):
 
   // Só mensagem que o WhatsApp não entrega: pede o reenvio (a IA não tem o que ler).
   const sem = meaningful.filter((m) => m.type === "unsupported");
+  if (sem.length && sem.length === meaningful.length) {
+    // Número que nunca mandou nada legível (chamada, enquete de empresa, spam): não responde nem avisa o dono.
+    // A mensagem fica registrada em Conversas.
+    const legiveis = await prisma.waMessage.count({ where: { contactId: contact.id, direction: "in", NOT: { type: "unsupported" } } });
+    if (!legiveis) return;
+  }
   if (sem.length) {
     await replyUnsupported(contact, sem);
     if (sem.length === meaningful.length) return;
