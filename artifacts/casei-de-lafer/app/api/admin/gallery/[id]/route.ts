@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { deleteImage } from "@/lib/storage";
+import { atualizarPaginaInicial } from "@/lib/landing/revalidar";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,7 @@ export async function DELETE(
   });
   if (image?.publicId) await deleteImage(image.publicId).catch(() => null);
   await prisma.galleryImage.delete({ where: { id: parseInt(id) } });
+  atualizarPaginaInicial();
   return NextResponse.json({ ok: true });
 }
 
@@ -27,5 +29,6 @@ export async function PATCH(
     where: { id: parseInt(id) },
     data: { coupleTag, location },
   });
+  atualizarPaginaInicial();
   return NextResponse.json(updated);
 }

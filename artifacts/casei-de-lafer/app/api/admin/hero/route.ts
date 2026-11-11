@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { uploadImage, deleteImage } from "@/lib/storage";
+import { atualizarPaginaInicial } from "@/lib/landing/revalidar";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,7 @@ export async function POST(request: NextRequest) {
     });
   }
 
+  atualizarPaginaInicial();
   return NextResponse.json({ ok: true });
 }
 
@@ -42,5 +44,6 @@ export async function DELETE(request: NextRequest) {
     if (existing.publicId) await deleteImage(existing.publicId).catch(() => null);
     await prisma.heroImage.delete({ where: { id: existing.id } });
   }
+  atualizarPaginaInicial();
   return NextResponse.json({ ok: true });
 }
