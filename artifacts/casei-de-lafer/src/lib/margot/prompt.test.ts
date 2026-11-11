@@ -244,3 +244,20 @@ test("o prompt não traz a cidade-base, quilometragens nem lista de cidades das 
   assert.deepEqual([...new Set(kms)], ["10 km"], "quilometragem no prompt");
   assert.ok(!fixed.includes("Flores da Cunha"), "lista de cidades deve vir de Regras, não do código");
 });
+
+test("perguntas frequentes do dono entram no prompt só quando preenchidas", () => {
+  const vazio = buildSystemPrompt(ctx("whatsapp")).fixed;
+  assert.doesNotMatch(vazio, /# Perguntas frequentes/);
+  const faq = "Indicam fotógrafo? Não temos parceria fixa; já trabalharam conosco @fotografo-ficticio.";
+  const cheio = buildSystemPrompt(ctx("whatsapp", { settings: { ...DEFAULT_SETTINGS, faq } })).fixed;
+  assert.match(cheio, /# Perguntas frequentes/);
+  assert.ok(cheio.includes(faq));
+});
+
+test("a Margot não fica só no 'não sei' e não usa palavra proibida da marca", () => {
+  for (const channel of CHANNELS) {
+    const { fixed } = buildSystemPrompt(ctx(channel));
+    assert.match(fixed, /Nunca deixe a pessoa só com "não sei"/);
+    assert.doesNotMatch(fixed, /inesquec/i);
+  }
+});

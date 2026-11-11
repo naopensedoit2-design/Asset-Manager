@@ -27,6 +27,7 @@ import { downloadMedia, linkButtonMessage, uploadMedia, type Header } from "./cl
 import { attachMedia, mediaBlocks, visibleMedia } from "./media";
 import { toWhatsApp, truncate } from "./format";
 import { buildHistory } from "./history";
+import { AVISO_PREFIX, deveAvisar, lerUltimoAviso } from "./aviso";
 import { notifyOwner } from "./notify";
 import { descreverRecados } from "./recados";
 import { recadosDaCliente } from "./recados-service";
@@ -343,8 +344,10 @@ async function runTool(name: string, input: any, s: State): Promise<unknown> {
     if (name === "encaminhar_para_equipe") {
       const motivo = String(input?.motivo ?? "").slice(0, 500);
       await appendOrderNote(s.orderId, `[Margot pediu sua ajuda] ${motivo}`);
-      const recent = s.contact.notifiedAt && Date.now() - s.contact.notifiedAt.getTime() < 10 * 60_000;
-      if (!recent) {
+      // Assunto novo avisa sempre; o mesmo assunto repetido em 10 minutos, não.
+      const chave = `${AVISO_PREFIX}${s.contact.id}`;
+      const salvo = await prisma.setting.findUnique({ where: { key: chave } });
+      if (deveAvisar(lerUltimoAviso(salvo?.value), Date.now(), motivo)) {
         const body = `🙋 ${who(s)} (${formatPhone(s.contact.waId)}${s.orderId ? ` · pedido #${s.orderId}` : ""}) precisa de você:\n${motivo}`;
         await notifyOwner({
           text: body,
@@ -352,6 +355,8 @@ async function runTool(name: string, input: any, s: State): Promise<unknown> {
           build: () => linkButtonMessage(body, "Abrir conversa", adminLink(`conversas/${s.contact.id}`)),
         });
         await prisma.waContact.update({ where: { id: s.contact.id }, data: { notifiedAt: new Date() } });
+        const valor = JSON.stringify({ at: Date.now(), motivo });
+        await prisma.setting.upsert({ where: { key: chave }, create: { key: chave, value: valor }, update: { value: valor } });
       }
       return { ok: true, instrucao: "Diga que nossa equipe já foi avisada e responde por aqui mesmo assim que puder." };
     }

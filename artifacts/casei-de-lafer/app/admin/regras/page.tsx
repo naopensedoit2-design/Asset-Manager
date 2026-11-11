@@ -487,6 +487,11 @@ const GROUPS: { id: string; title: string; note?: string; fields: FieldSpec[] }[
       { key: "followUpDays", kind: "number" },
       { key: "cancellationPolicy", kind: "long", hint: "Vai no termo e a Margot usa para responder." },
       { key: "serviceArea", kind: "long", hint: "Se vazio, a Margot encaminha essa pergunta para você." },
+      {
+        key: "faq",
+        kind: "long",
+        hint: "Uma pergunta por linha, com a resposta. Ex.: \"Indicam fotógrafo? Não temos parceria fixa; já trabalharam conosco @... e @...\". A Margot usa só o que estiver aqui.",
+      },
     ],
   },
   {
