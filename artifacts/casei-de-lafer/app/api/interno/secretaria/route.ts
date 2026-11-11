@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { linha, leituraPermitida } from "@/lib/wa/leitura";
+import { listarPendencias } from "@/lib/wa/pendencias-service";
 
 export const dynamic = "force-dynamic";
 
 /**
  * Conversa do dono com a Margot (modo secretária), para o Claude analisar e melhorar a Margot.
  * Só pelo endereço único do deploy (VERCEL_URL, atrás da Vercel Authentication) e com LEITURA_SECRETARIA=1. Somente leitura.
- * ?dias=1..31 (padrão 2); ?lista=1 lista as conversas do período; ?contato=ID lê a conversa de um cliente.
+ * ?dias=1..31 (padrão 2); ?lista=1 lista as conversas do período; ?contato=ID lê a conversa de um cliente;
+ * ?pendencias=1 lista as pendências da Margot (abertas e concluídas há até 30 dias).
  */
 export async function GET(req: NextRequest) {
   // Os dois cabeçalhos de endereço, quando existem, têm de ser o endereço único deste deploy.
@@ -19,6 +21,11 @@ export async function GET(req: NextRequest) {
   const dias = Math.min(Math.max(Number(q.get("dias")) || 2, 1), 31);
   const since = new Date(Date.now() - dias * 86_400_000);
   const headers = { "cache-control": "no-store", "x-robots-tag": "noindex" };
+
+  // ?pendencias=1: pedidos de melhoria que o dono ditou à Margot (para a rotina da manhã do Claude).
+  if (q.get("pendencias") === "1") {
+    return NextResponse.json({ ok: true, data: { pendencias: await listarPendencias() } }, { headers });
+  }
 
   // ?lista=1: conversas com movimento no período (para achar a de um cliente). ?contato=ID: a conversa desse contato.
   if (q.get("lista") === "1") {
