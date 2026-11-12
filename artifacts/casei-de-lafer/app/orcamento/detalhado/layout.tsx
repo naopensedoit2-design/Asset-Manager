@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import "./chat.css";
+import { fontesDaLanding } from "@/components/landing/fontes";
 
 export const metadata: Metadata = {
   title: "Orçamento detalhado — Eu Casei de Lafer",
@@ -7,5 +9,6 @@ export const metadata: Metadata = {
 };
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  return children;
+  // As fontes da página inicial chegam por variável; o visual fica em chat.css.
+  return <div className={fontesDaLanding}>{children}</div>;
 }

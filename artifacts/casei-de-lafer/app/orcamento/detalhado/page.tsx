@@ -120,62 +120,45 @@ export default function OrcamentoDetalhado() {
   const started = state.messages.length > 1;
 
   return (
-    <div className="min-h-[100dvh] bg-bg-primary flex flex-col">
-      <header className="sticky top-0 z-10 bg-bg-primary/95 backdrop-blur border-b border-border-subtle">
-        <div className="max-w-2xl mx-auto px-4 h-16 flex items-center gap-3">
-          <div
-            aria-hidden
-            className="w-10 h-10 rounded-full border border-gold/60 bg-gold-muted flex items-center justify-center font-serif text-gold text-lg"
-          >
+    <div className="margot">
+      <header className="topo">
+        <div className="miolo">
+          <div aria-hidden className="selo">
             M
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-serif text-text-primary leading-tight">Margot</p>
-            <p className="text-xs text-text-muted truncate">Orçamento detalhado</p>
+          <div className="quem">
+            <b>Margot</b>
+            <span>Orçamento detalhado</span>
           </div>
           {started && (
-            <button onClick={restart} aria-label="Nova conversa" className="p-2 text-text-muted hover:text-gold cursor-pointer">
+            <button onClick={restart} aria-label="Nova conversa" className="acao-topo icone">
               <RotateCcw className="w-4 h-4" />
             </button>
           )}
-          <Link href="/" className="text-sm text-text-secondary hover:text-gold whitespace-nowrap">
+          <Link href="/" className="acao-topo">
             Ver o site
           </Link>
         </div>
       </header>
 
-      <main className="flex-1 w-full max-w-2xl mx-auto px-4 py-6" aria-live="polite">
-        <ol className="space-y-3">
+      <main className="conversa miolo" aria-live="polite">
+        <ol className="falas">
           {state.messages.map((m, i) => (
-            <li key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
-              <p
-                className={`max-w-[85%] whitespace-pre-line rounded-2xl px-4 py-3 text-[15px] leading-relaxed ${
-                  m.role === "user"
-                    ? "bg-gold-muted border border-gold/30 text-text-primary rounded-br-sm"
-                    : "bg-bg-card border border-border-subtle text-text-primary rounded-bl-sm"
-                }`}
-              >
-                {m.content}
-              </p>
+            <li key={i} className={`fala entra ${m.role === "user" ? "cliente" : "margot-fala"}`}>
+              <p>{m.content}</p>
             </li>
           ))}
           {sending && (
-            <li className="flex justify-start">
-              <p className="rounded-2xl rounded-bl-sm bg-bg-card border border-border-subtle px-4 py-3 text-sm text-text-muted">
-                Margot está escrevendo…
-              </p>
+            <li className="fala margot-fala escrevendo entra">
+              <p>Margot está escrevendo…</p>
             </li>
           )}
         </ol>
 
         {!started && (
-          <div className="flex flex-wrap gap-2 mt-5">
+          <div className="sugestoes">
             {SUGGESTIONS.map((s) => (
-              <button
-                key={s}
-                onClick={() => send(s)}
-                className="text-sm border border-border-gold text-gold rounded-full px-4 py-2 hover:bg-gold-muted transition-colors cursor-pointer"
-              >
+              <button key={s} onClick={() => send(s)} className="sugestao">
                 {s}
               </button>
             ))}
@@ -183,21 +166,14 @@ export default function OrcamentoDetalhado() {
         )}
 
         {showWhatsapp && (
-          <div className="mt-6 border border-border-gold bg-bg-card rounded-xl p-4 sm:p-5">
-            <p className="font-serif text-lg text-text-primary">
-              {state.orderId ? "Seu orçamento está registrado" : "Continue com a nossa equipe"}
-            </p>
-            <p className="text-sm text-text-secondary mt-1">
+          <div className="cartao">
+            <h2>{state.orderId ? "Seu orçamento está registrado" : "Continue com a nossa equipe"}</h2>
+            <p>
               {state.orderId
                 ? "Para garantir a data, fale com a nossa equipe no WhatsApp. Ela já recebeu o seu pedido."
                 : "Nossa equipe responde pessoalmente pelo WhatsApp."}
             </p>
-            <a
-              href={state.whatsappUrl!}
-              target="_blank"
-              rel="noreferrer"
-              className="mt-4 w-full inline-flex items-center justify-center gap-3 bg-gold hover:bg-gold-light text-black font-semibold text-sm py-3.5 rounded transition-colors"
-            >
+            <a href={state.whatsappUrl!} target="_blank" rel="noreferrer">
               <FaWhatsapp className="w-5 h-5" /> Falar com a nossa equipe
             </a>
           </div>
@@ -210,10 +186,9 @@ export default function OrcamentoDetalhado() {
           e.preventDefault();
           send(input);
         }}
-        className="sticky bottom-0 bg-bg-primary/95 backdrop-blur border-t border-border-subtle"
-        style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
+        className="escrever"
       >
-        <div className="max-w-2xl mx-auto px-4 py-3 flex items-end gap-2">
+        <div className="miolo">
           <label htmlFor="margot-input" className="sr-only">
             Sua mensagem
           </label>
@@ -231,14 +206,8 @@ export default function OrcamentoDetalhado() {
               }
             }}
             placeholder="Escreva para a Margot…"
-            className="flex-1 resize-none max-h-32 bg-bg-card border border-border-subtle text-text-primary placeholder-text-muted rounded-2xl px-4 py-3 text-base focus:outline-none focus:border-gold/60"
           />
-          <button
-            type="submit"
-            disabled={sending || !input.trim()}
-            aria-label="Enviar"
-            className="shrink-0 w-12 h-12 rounded-full bg-gold hover:bg-gold-light disabled:opacity-30 text-black flex items-center justify-center transition-colors cursor-pointer disabled:cursor-not-allowed"
-          >
+          <button type="submit" disabled={sending || !input.trim()} aria-label="Enviar" className="enviar">
             <ArrowUp className="w-5 h-5" />
           </button>
         </div>

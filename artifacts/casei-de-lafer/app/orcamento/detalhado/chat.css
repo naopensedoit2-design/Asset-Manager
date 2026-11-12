@@ -1,0 +1,68 @@
+/* Chat da Margot com a cara da página inicial: verde-inglês, pérola e as mesmas fontes.
+   Tudo preso à classe .margot: o painel e as outras páginas não usam esta classe. */
+html:has(.margot), html:has(.margot) body { background: #12241B; }
+.margot {
+  --verde: #12241B; --verde-2: #1A3226; --fio: #35523F; --perola: #F0EFEA; --perola-2: #E3E3DB;
+  --apoio: #AEBDB1; --apoio-tinta: #4C5E53; --madeira: #D39A5C;
+  --display: var(--font-fraunces), Georgia, serif;
+  --texto: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --ficha: var(--font-plex-mono), ui-monospace, Menlo, monospace;
+  --gl: max(16px, env(safe-area-inset-left, 0px));
+  --gr: max(16px, env(safe-area-inset-right, 0px));
+  min-height: 100dvh; display: flex; flex-direction: column;
+  background: var(--verde); color: var(--perola); font-family: var(--texto); font-size: 16px; line-height: 1.55;
+  -webkit-font-smoothing: antialiased; color-scheme: dark;
+}
+.margot *, .margot *::before, .margot *::after { box-sizing: border-box; }
+.margot :focus-visible { outline: 2px solid var(--madeira); outline-offset: 3px; }
+.margot ::selection { background: var(--madeira); color: var(--verde); }
+.margot .miolo { width: 100%; max-width: 680px; margin-inline: auto; padding-left: var(--gl); padding-right: var(--gr); }
+
+/* Topo */
+.margot .topo { position: sticky; top: 0; z-index: 10; background: rgb(18 36 27 / .92); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border-bottom: 1px solid var(--fio); }
+.margot .topo .miolo { display: flex; align-items: center; gap: 12px; min-height: 68px; }
+.margot .selo { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--fio); font: italic 400 22px/1 var(--display); color: var(--perola); }
+.margot .quem { flex: 1; min-width: 0; }
+.margot .quem b { display: block; font: italic 400 22px/1.1 var(--display); letter-spacing: -.01em; font-weight: 400; }
+.margot .quem span { display: block; margin-top: 3px; font: 400 14px/1.2 var(--ficha); letter-spacing: .03em; text-transform: uppercase; color: var(--apoio); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.margot .acao-topo { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; padding: 0 6px; background: none; border: 0; color: var(--apoio); cursor: pointer; font-size: 15px; text-decoration: underline; text-underline-offset: 4px; text-decoration-thickness: 1px; white-space: nowrap; }
+.margot .acao-topo:hover { color: var(--perola); }
+.margot .acao-topo.icone { text-decoration: none; }
+
+/* Conversa */
+.margot .conversa { flex: 1; padding-block: 28px 20px; }
+.margot .falas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.margot .fala { display: flex; }
+.margot .fala.cliente { justify-content: flex-end; }
+.margot .fala p { margin: 0; max-width: 85%; white-space: pre-line; overflow-wrap: anywhere; padding: 12px 16px; font-size: 16px; line-height: 1.55; border-radius: 2px; }
+.margot .fala.margot-fala p { background: var(--verde-2); border: 1px solid var(--fio); color: var(--perola); border-left: 2px solid var(--madeira); }
+.margot .fala.cliente p { background: var(--perola); color: var(--verde); }
+.margot .fala.escrevendo p { color: var(--apoio); font: italic 400 17px/1.4 var(--display); }
+.margot .entra { animation: margot-sobe .5s cubic-bezier(.16, .84, .24, 1) both; }
+@keyframes margot-sobe { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+.margot .sugestoes { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 20px; }
+.margot .sugestoes > span { font: 400 14px/1.3 var(--ficha); letter-spacing: .06em; text-transform: uppercase; color: var(--apoio); margin-bottom: 2px; }
+.margot .sugestao { min-height: 44px; padding: 10px 16px; background: transparent; border: 1px solid var(--fio); border-radius: 2px; color: var(--perola); font: 500 15px/1.3 var(--texto); text-align: left; cursor: pointer; transition: border-color .2s, background .2s; }
+.margot .sugestao:hover { border-color: var(--perola); background: rgb(240 239 234 / .06); }
+
+/* Cartão de continuar no WhatsApp: a peça pérola da tela */
+.margot .cartao { margin-top: 28px; padding: 22px 20px 20px; background: var(--perola); color: var(--verde); border-radius: 2px; }
+.margot .cartao h2 { margin: 0; color: inherit; font: italic 300 28px/1.05 var(--display); letter-spacing: -.02em; }
+.margot .cartao p { margin: 8px 0 0; font-size: 15px; color: var(--apoio-tinta); }
+.margot .cartao a { margin-top: 18px; display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 52px; padding: 8px 18px; background: var(--verde); color: var(--perola); font: 600 16px/1.2 var(--texto); text-decoration: none; border-radius: 2px; }
+
+/* Campo de escrever */
+.margot .escrever { position: sticky; bottom: 0; background: rgb(18 36 27 / .94); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); border-top: 1px solid var(--fio); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.margot .escrever .miolo { display: flex; align-items: flex-end; gap: 8px; padding-block: 12px; }
+.margot .escrever textarea { flex: 1; min-width: 0; min-height: 52px; max-height: 8rem; resize: none; padding: 13px 14px; background: rgb(240 239 234 / .06); border: 1px solid var(--fio); border-radius: 2px; color: var(--perola); font: 400 16px/1.5 var(--texto); }
+.margot .escrever textarea::placeholder { color: var(--apoio); opacity: 1; }
+.margot .escrever textarea:focus { outline: none; border-color: var(--perola); }
+.margot .enviar { flex: none; display: grid; place-items: center; width: 52px; height: 52px; border: 0; border-radius: 2px; cursor: pointer; color: var(--verde);
+  background: linear-gradient(100deg, #F4F3EE 0%, #E6EDF0 28%, #F3E7EC 52%, #EDF1E3 76%, #F4F3EE 100%); background-size: 240% 100%; transition: opacity .2s; }
+.margot .enviar:disabled { opacity: .35; cursor: not-allowed; }
+
+@media (prefers-reduced-motion: reduce) {
+  .margot .entra { animation: none; }
+  .margot .sugestao { transition: none; }
+}
