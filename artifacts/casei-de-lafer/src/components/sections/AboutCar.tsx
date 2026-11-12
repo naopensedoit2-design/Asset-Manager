@@ -1,8 +1,5 @@
-"use client";
-
 import SectionWrapper from "@/components/ui/SectionWrapper";
-import { useSiteConfig } from "@/hooks/useSiteConfig";
-import { getWhatsAppUrl } from "@/lib/whatsapp";
+import { WHATSAPP_HREF } from "@/lib/landing/links";
 import { FaWhatsapp } from "react-icons/fa";
 
 const features = [
@@ -14,8 +11,7 @@ const features = [
 ];
 
 export default function AboutCar() {
-  const { data: siteConfig } = useSiteConfig();
-  const whatsappUrl = getWhatsAppUrl(siteConfig?.whatsappNumber ?? "");
+  const whatsappUrl = WHATSAPP_HREF;
 
   return (
     <SectionWrapper className="bg-bg-primary">

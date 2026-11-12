@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { atualizarPaginaInicial } from "@/lib/landing/revalidar";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    atualizarPaginaInicial();
     return NextResponse.json({
       id: blocked.id,
       date: blocked.date.toISOString().split("T")[0],

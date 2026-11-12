@@ -1,9 +1,9 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import SectionWrapper from "@/components/ui/SectionWrapper";
-import { useSiteConfig } from "@/hooks/useSiteConfig";
-import { getWhatsAppUrl } from "@/lib/whatsapp";
+import FotoSegura from "@/components/landing/FotoSegura";
+import type { FotoGaleria } from "@/lib/landing/dados";
+import { WHATSAPP_HREF } from "@/lib/landing/links";
 import { FaWhatsapp } from "react-icons/fa";
 import {
   Carousel,
@@ -13,26 +13,12 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 
-interface GalleryImage {
-  id: number;
-  url: string;
-  alt: string;
-  coupleTag: string;
-  location: string;
-}
+// Texto alternativo quando a foto não tem um no painel (sem nome de casal).
+const ALT_PADRAO = "MP Lafer conversível em casamento ou ensaio";
 
-function useGallery() {
-  return useQuery<GalleryImage[]>({
-    queryKey: ["gallery"],
-    queryFn: () => fetch("/api/gallery").then((r) => r.json()),
-    staleTime: 2 * 60 * 1000,
-  });
-}
-
-export default function Gallery() {
-  const { data: images = [], isLoading } = useGallery();
-  const { data: siteConfig } = useSiteConfig();
-  const whatsappUrl = getWhatsAppUrl(siteConfig?.whatsappNumber ?? "");
+// As fotos chegam do servidor (já no HTML) e cada uma vem do Cloudinary no tamanho da tela.
+export default function Gallery({ fotos }: { fotos: FotoGaleria[] }) {
+  const whatsappUrl = WHATSAPP_HREF;
 
   return (
     <SectionWrapper className="bg-bg-secondary">
@@ -58,13 +44,7 @@ export default function Gallery() {
       </div>
 
       {/* Gallery grid */}
-      {isLoading ? (
-        <div className="grid grid-cols-3 gap-4 h-[400px]">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="bg-bg-elevated animate-pulse" />
-          ))}
-        </div>
-      ) : images.length === 0 ? (
+      {fotos.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-24 border border-border-subtle">
           <div className="w-8 h-px bg-gold mb-6 mx-auto" />
           <p className="font-serif text-text-secondary text-2xl italic">
@@ -84,15 +64,17 @@ export default function Gallery() {
             className="w-full"
           >
             <CarouselContent className="-ml-3 md:-ml-4">
-              {images.map((img) => (
+              {fotos.map((img) => (
                 <CarouselItem
                   key={img.id}
                   className="pl-3 md:pl-4 basis-[85%] sm:basis-1/2 md:basis-1/3 lg:basis-1/4"
                 >
                   <div className="overflow-hidden bg-bg-elevated group aspect-[3/4] w-full">
-                    <img
+                    <FotoSegura
                       src={img.url}
-                      alt={img.alt || `Casamento com MP Lafer — ${img.coupleTag}`}
+                      alt={img.alt || ALT_PADRAO}
+                      larguras={[480, 720, 960]}
+                      sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, (min-width: 640px) 50vw, 85vw"
                       className="w-full h-full object-cover object-center transition-transform duration-700 group-hover:scale-105"
                     />
                   </div>

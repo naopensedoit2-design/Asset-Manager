@@ -1,15 +1,8 @@
-"use client";
-
-import { useSiteConfig } from "@/hooks/useSiteConfig";
-import { getWhatsAppUrl } from "@/lib/whatsapp";
+import { WHATSAPP_HREF } from "@/lib/landing/links";
 import { FaWhatsapp } from "react-icons/fa";
 
 export default function Footer() {
-  const { data: siteConfig } = useSiteConfig();
-  const whatsappUrl = getWhatsAppUrl(
-    siteConfig?.whatsappNumber ?? "",
-    "Olá! Gostaria de garantir minha data exclusiva com o MP Lafer para o meu casamento.",
-  );
+  const whatsappUrl = WHATSAPP_HREF;
   const year = new Date().getFullYear();
 
   return (
@@ -83,12 +76,6 @@ export default function Footer() {
               className="font-sans text-text-muted hover:text-gold transition-colors text-xs"
             >
               Privacidade
-            </a>
-            <a
-              href="/admin"
-              className="font-sans text-text-muted hover:text-gold transition-colors text-xs"
-            >
-              Admin
             </a>
           </div>
         </div>

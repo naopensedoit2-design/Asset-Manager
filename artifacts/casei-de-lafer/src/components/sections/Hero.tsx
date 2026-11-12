@@ -1,86 +1,41 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { FaWhatsapp } from "react-icons/fa";
-import { useSiteConfig } from "@/hooks/useSiteConfig";
-import { getWhatsAppUrl } from "@/lib/whatsapp";
+import TopoFoto from "@/components/landing/TopoFoto";
+import HeroVideo from "@/components/landing/HeroVideo";
+import type { FotoTopo } from "@/lib/landing/dados";
+import { CHAT_URL, WHATSAPP_HREF } from "@/lib/landing/links";
 
-interface HeroImage {
-  id: number;
-  type: string;
-  url: string;
-  videoUrl: string;
+interface Props {
+  topo: { desktop: FotoTopo | null; mobile: FotoTopo | null };
+  /** Escurecimento da foto (0 a 100), como no painel. */
+  heroOpacity: number;
 }
 
-interface HeroData {
-  desktop: HeroImage | null;
-  mobile: HeroImage | null;
-}
+// Foto de reserva do repositório, para quando o painel ainda não tem foto do topo.
+const RESERVA = "/hero-desktop.jpg";
 
-function useHeroImage() {
-  return useQuery<HeroData>({
-    queryKey: ["hero"],
-    queryFn: () => fetch("/api/hero").then((r) => r.json()),
-    staleTime: 2 * 60 * 1000,
-  });
-}
-
-export default function Hero() {
-  const { data: hero } = useHeroImage();
-  const { data: siteConfig } = useSiteConfig();
-  const [isMobile, setIsMobile] = useState(false);
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
-
-  const whatsappUrl = getWhatsAppUrl(siteConfig?.whatsappNumber ?? "");
-
-  // Select appropriate image based on screen size
-  const heroImage = isMobile ? hero?.mobile : hero?.desktop;
-  const backgroundUrl = heroImage?.url ?? (isMobile ? "/hero-mobile.jpg" : "/hero-desktop.jpg");
-  const videoId = heroImage?.videoUrl;
-
-  const scrollToNext = () => {
-    const next = document.getElementById("experiences");
-    next?.scrollIntoView({ behavior: "smooth" });
-  };
+// Montado no servidor: a foto certa (celular ou computador) e o botão do WhatsApp já vêm no HTML,
+// sem esperar o JavaScript nem buscar nada depois que a página abre.
+export default function Hero({ topo, heroOpacity }: Props) {
+  const desktop = topo.desktop?.url || RESERVA;
+  const mobile = topo.mobile?.url || desktop;
+  const veu = (Math.min(100, Math.max(0, heroOpacity)) / 100).toFixed(2);
 
   return (
     <section className="relative w-full h-[100dvh] min-h-[650px] flex items-center justify-center overflow-hidden pb-16 md:pb-0">
       {/* Background image */}
-      <div
-        className="absolute inset-0 bg-center bg-cover bg-no-repeat"
-        style={{ backgroundImage: `url(${backgroundUrl})` }}
+      <TopoFoto
+        desktop={desktop}
+        mobile={mobile}
+        alt=""
+        className="absolute inset-0 w-full h-full object-cover object-center"
       />
 
-      {/* YouTube: 16:9 cover (crop overflow) so viewport fills without letterboxing */}
-      {mounted && videoId && (
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <iframe
-            className="absolute top-1/2 left-1/2 h-[56.25vw] min-h-screen w-screen min-w-[177.78vh] -translate-x-1/2 -translate-y-1/2 border-0"
-            src={`https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=0&modestbranding=1&playsinline=1&rel=0&fs=0`}
-            title="Hero Video"
-            allow="autoplay; clipboard-write; encrypted-media; picture-in-picture"
-            allowFullScreen
-          />
-        </div>
-      )}
+      {/* Vídeo do topo, quando cadastrado no painel */}
+      <HeroVideo desktop={topo.desktop?.videoUrl ?? ""} mobile={topo.mobile?.videoUrl ?? ""} />
 
       {/* Gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-black/30" />
-      <div
-        className="absolute inset-0"
-        style={{ backgroundColor: `rgba(0, 0, 0, ${((siteConfig?.heroOpacity ?? 60) / 100).toFixed(2)})` }}
-      />
+      <div className="absolute inset-0" style={{ backgroundColor: `rgba(0, 0, 0, ${veu})` }} />
 
       {/* Content */}
       <div className="relative z-10 w-full max-w-5xl mx-auto px-6 md:px-8 text-center mt-8 md:mt-0">
@@ -109,7 +64,7 @@ export default function Hero() {
           {/* CTA buttons */}
           <div className="flex flex-row items-center justify-center gap-4 mb-8">
             <a
-              href={whatsappUrl}
+              href={WHATSAPP_HREF}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-3 bg-gold text-black font-semibold uppercase tracking-widest text-sm px-10 py-4 transition-all duration-300 hover:bg-gold-light hover:shadow-[0_20px_25px_-5px_rgba(201,168,76,0.3)] cursor-pointer"
@@ -118,7 +73,7 @@ export default function Hero() {
               Consultar Disponibilidade
             </a>
             <a
-              href="/orcamento/detalhado"
+              href={CHAT_URL}
               className="font-sans text-text-secondary text-sm hover:text-gold transition-colors duration-200 underline underline-offset-4"
             >
               &rsaquo; Fazer orçamento detalhado
@@ -152,7 +107,7 @@ export default function Hero() {
           {/* CTA button */}
           <div className="w-full mb-6">
             <a
-              href={whatsappUrl}
+              href={WHATSAPP_HREF}
               target="_blank"
               rel="noopener noreferrer"
               className="w-full flex items-center justify-center gap-3 bg-gold text-black font-bold uppercase tracking-widest text-[11px] py-4 rounded-[2px] active:bg-gold-light transition-colors"
@@ -169,14 +124,14 @@ export default function Hero() {
         </div>
       </div>
 
-      {/* Scroll hint */}
-      <button
-        onClick={scrollToNext}
+      {/* Scroll hint: link para a próxima seção, funciona sem JavaScript */}
+      <a
+        href="#experiences"
         className="absolute bottom-4 md:bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-text-muted hover:text-gold transition-colors duration-200 group cursor-pointer"
       >
         <span className="font-sans tracking-[0.3em] uppercase text-[10px] md:text-xs">Descubra</span>
         <span className="block w-px h-8 md:h-10 bg-gradient-to-b from-gold/60 to-transparent group-hover:h-12 md:group-hover:h-14 transition-all duration-500" />
-      </button>
+      </a>
     </section>
   );
 }

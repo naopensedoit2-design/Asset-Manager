@@ -1,8 +1,5 @@
-"use client";
-
 import SectionWrapper from "@/components/ui/SectionWrapper";
-import { useSiteConfig } from "@/hooks/useSiteConfig";
-import { getWhatsAppUrl } from "@/lib/whatsapp";
+import { WHATSAPP_HREF } from "@/lib/landing/links";
 import { FaWhatsapp } from "react-icons/fa";
 
 const experiences = [
@@ -27,8 +24,7 @@ const experiences = [
 ];
 
 export default function Experiences() {
-  const { data: siteConfig } = useSiteConfig();
-  const whatsappUrl = getWhatsAppUrl(siteConfig?.whatsappNumber ?? "");
+  const whatsappUrl = WHATSAPP_HREF;
 
   return (
     <SectionWrapper id="experiences" className="bg-bg-secondary">

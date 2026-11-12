@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { uploadImage } from "@/lib/storage";
+import { atualizarPaginaInicial } from "@/lib/landing/revalidar";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -33,6 +34,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    atualizarPaginaInicial();
     return NextResponse.json(uploaded);
   } catch (err) {
     console.error("POST /api/admin/gallery error:", err);

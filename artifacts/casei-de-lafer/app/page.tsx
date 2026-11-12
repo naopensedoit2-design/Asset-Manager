@@ -6,16 +6,24 @@ import Testimonials from "@/components/sections/Testimonials";
 import Investment from "@/components/sections/Investment";
 import Faq from "@/components/sections/Faq";
 import Footer from "@/components/sections/Footer";
+import { getDadosLanding } from "@/lib/landing/dados";
+import { precoCarroDaNoiva } from "@/lib/landing/servicos";
 
-export default function Page() {
+// Montada no servidor e guardada por até 1 minuto. Mudar foto do topo, galeria, configuração ou datas no
+// painel a refaz na hora (src/lib/landing/revalidar.ts); valores de Regras chegam em até 1 minuto.
+export const revalidate = 60;
+
+export default async function Page() {
+  const dados = await getDadosLanding();
+
   return (
     <main>
-      <Hero />
+      <Hero topo={dados.topo} heroOpacity={dados.heroOpacity} />
       <Experiences />
       <AboutCar />
-      <Gallery />
+      <Gallery fotos={dados.galeria} />
       <Testimonials />
-      <Investment />
+      <Investment precoNoivaCents={precoCarroDaNoiva(dados.servicos)} showCalendar={dados.showCalendar} />
       <Faq />
       <Footer />
     </main>

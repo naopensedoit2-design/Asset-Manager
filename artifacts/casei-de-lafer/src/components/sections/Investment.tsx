@@ -17,8 +17,8 @@ import {
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import SectionWrapper from "@/components/ui/SectionWrapper";
-import { useSiteConfig } from "@/hooks/useSiteConfig";
-import { getWhatsAppUrl } from "@/lib/whatsapp";
+import { WHATSAPP_HREF } from "@/lib/landing/links";
+import { reais } from "@/lib/landing/reais";
 import { FaWhatsapp, FaChevronLeft, FaChevronRight } from "react-icons/fa";
 
 interface BlockedDate {
@@ -147,13 +147,16 @@ const includedItems = [
   "Cobertura na Serra Gaúcha",
 ];
 
-export default function Investment() {
+interface Props {
+  /** Valor-base do Carro da Noiva em Regras, em centavos; null quando o painel não tem o serviço. */
+  precoNoivaCents: number | null;
+  /** O calendário só some quando o dono desliga no painel. */
+  showCalendar: boolean;
+}
+
+export default function Investment({ precoNoivaCents, showCalendar }: Props) {
   const { data: blockedDates = [] } = useBlockedDates();
-  const { data: siteConfig } = useSiteConfig();
-  const whatsappUrl = getWhatsAppUrl(
-    siteConfig?.whatsappNumber ?? "",
-    "Olá! Gostaria de receber um orçamento personalizado para o MP Lafer no meu casamento.",
-  );
+  const whatsappUrl = WHATSAPP_HREF;
 
   return (
     <SectionWrapper className="bg-bg-secondary">
@@ -166,17 +169,25 @@ export default function Investment() {
         </h2>
       </div>
 
-      <div className={`grid ${siteConfig?.showCalendar !== false ? "md:grid-cols-2" : "max-w-xl mx-auto"} gap-10 items-start`}>
+      <div className={`grid ${showCalendar ? "md:grid-cols-2" : "max-w-xl mx-auto"} gap-10 items-start`}>
         {/* Pricing */}
         <div className="flex flex-col gap-6">
           <div className="bg-bg-card border border-border-gold p-8">
             <p className="font-sans text-text-muted text-xs tracking-widest uppercase mb-3">
               Investimento
             </p>
-            <p className="font-serif text-5xl text-gold mb-1">R$ 2.600</p>
-            <p className="font-sans text-text-secondary text-sm mb-8">
-              valor de entrada — orçamento final conforme data e serviço
-            </p>
+            {precoNoivaCents !== null ? (
+              <>
+                <p className="font-serif text-5xl text-gold mb-1">{reais(precoNoivaCents)}</p>
+                <p className="font-sans text-text-secondary text-sm mb-8">
+                  valor de entrada — orçamento final conforme data e serviço
+                </p>
+              </>
+            ) : (
+              <p className="font-sans text-text-secondary text-base mb-8">
+                Os valores são confirmados pela nossa equipe no orçamento.
+              </p>
+            )}
 
             <div className="divider-gold mb-8" />
 
@@ -200,7 +211,7 @@ export default function Investment() {
             </a>
           </div>
 
-          {siteConfig?.showCalendar !== false && (
+          {showCalendar && (
             <p className="font-sans text-text-muted text-xs text-center leading-relaxed">
               Os sábados marcados no calendário já estão reservados.
               <br />
@@ -210,7 +221,7 @@ export default function Investment() {
         </div>
 
         {/* Calendar */}
-        {siteConfig?.showCalendar !== false && (
+        {showCalendar && (
           <CalendarWidget blockedDates={blockedDates} />
         )}
       </div>
