@@ -4,8 +4,10 @@
 // (nada é inventado nem digitado aqui). A leitura é refeita na próxima atualização da página.
 
 import { prisma } from "@/lib/prisma";
+import { parseSettings } from "@/lib/gestor/rules";
 import type { FotoDoPainel } from "./curadoria.ts";
 import type { ServicoDoPainel } from "./servicos.ts";
+import { diasDeChuva, type RegrasPublicas } from "./textos.ts";
 
 export interface FotoTopo {
   url: string;
@@ -23,6 +25,26 @@ export interface DadosLanding {
   galeria: FotoGaleria[];
   /** Serviços ativos de Regras. Sem banco, a lista vem vazia e a página não mostra valor. */
   servicos: ServicoDoPainel[];
+  /** Sinal, saldo e prazos de Regras. Sem banco, valem os padrões do próprio módulo de regras. */
+  regras: RegrasPublicas;
+  /** O chat da Margot no site está ligado em Regras? Desligado, a página não oferece o chat. */
+  chatLigado: boolean;
+}
+
+// Só o que a página mostra: nada de Pix, documento ou nome do contratado sai de Regras para cá.
+const CHAVES_DE_REGRAS = ["depositPercent", "balanceDaysBefore", "cancellationPolicy", "margotSite"];
+
+function regrasDe(linhas: { key: string; value: string }[]): { regras: RegrasPublicas; chatLigado: boolean } {
+  const s = parseSettings(linhas);
+  return {
+    regras: {
+      sinalPercent: s.depositPercent,
+      saldoPercent: Math.max(0, 100 - s.depositPercent),
+      saldoDiasAntes: s.balanceDaysBefore,
+      chuvaDias: diasDeChuva(s.cancellationPolicy),
+    },
+    chatLigado: s.margotSite,
+  };
 }
 
 export const soDigitos = (valor: string | null | undefined) => (valor ?? "").replace(/\D/g, "");
@@ -37,6 +59,7 @@ function vazio(): DadosLanding {
     topo: { desktop: null, mobile: null },
     galeria: [],
     servicos: [],
+    ...regrasDe([]),
   };
 }
 
@@ -52,11 +75,12 @@ export async function getNumeroWhatsapp(): Promise<string> {
 
 export async function getDadosLanding(): Promise<DadosLanding> {
   try {
-    const [config, topos, fotos, servicos] = await Promise.all([
+    const [config, topos, fotos, servicos, ajustes] = await Promise.all([
       prisma.siteConfig.findFirst(),
       prisma.heroImage.findMany(),
       prisma.galleryImage.findMany({ orderBy: { createdAt: "desc" } }),
       prisma.service.findMany({ where: { active: true }, orderBy: [{ sortOrder: "asc" }, { id: "asc" }] }),
+      prisma.setting.findMany({ where: { key: { in: CHAVES_DE_REGRAS } } }),
     ]);
     const topo = (tipo: string): FotoTopo | null => {
       const linha = topos.find((t) => t.type === tipo);
@@ -74,6 +98,7 @@ export async function getDadosLanding(): Promise<DadosLanding> {
         priceCents: s.priceCents,
         isAddon: s.isAddon,
       })),
+      ...regrasDe(ajustes),
     };
   } catch {
     return vazio();
