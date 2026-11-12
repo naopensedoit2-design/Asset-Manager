@@ -4,6 +4,7 @@
 // (nada é inventado nem digitado aqui). A leitura é refeita na próxima atualização da página.
 
 import { prisma } from "@/lib/prisma";
+import type { FotoDoPainel } from "./curadoria.ts";
 import type { ServicoDoPainel } from "./servicos.ts";
 
 export interface FotoTopo {
@@ -11,11 +12,8 @@ export interface FotoTopo {
   videoUrl: string;
 }
 
-export interface FotoGaleria {
-  id: number;
-  url: string;
-  alt: string;
-}
+/** Foto da galeria do painel. `casal` e `local` são os campos "Tag do casal" e "Local": só a curadoria os lê. */
+export type FotoGaleria = FotoDoPainel;
 
 export interface DadosLanding {
   /** Escurecimento da foto do topo (0 a 100), como no painel. */
@@ -69,7 +67,7 @@ export async function getDadosLanding(): Promise<DadosLanding> {
       // Como antes: o calendário só some quando o dono desliga no painel.
       showCalendar: config?.showCalendar !== false,
       topo: { desktop: topo("desktop"), mobile: topo("mobile") },
-      galeria: fotos.map((f) => ({ id: f.id, url: f.url, alt: f.alt })),
+      galeria: fotos.map((f) => ({ id: f.id, url: f.url, alt: f.alt, casal: f.coupleTag, local: f.location })),
       servicos: servicos.map((s) => ({
         name: s.name,
         description: s.description,
