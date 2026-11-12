@@ -55,7 +55,7 @@ test("firstContactReason: encaminhada vale mesmo falando de casamento (propagand
 });
 
 test("firstContactReason: texto, áudio, foto, documento e botão começam conversa de verdade", () => {
-  for (const type of ["text", "audio", "image", "document", "interactive", "button", "reaction", "unsupported"]) {
+  for (const type of ["text", "audio", "image", "document", "interactive", "button", "reaction"]) {
     assert.equal(firstContactReason(msg({ type, text: "Bom dia!" })), null, type);
   }
 });
@@ -145,4 +145,22 @@ test("ignoreLabel e isAutoIgnored", () => {
   assert.equal(isAutoIgnored("manual"), false);
   assert.equal(isAutoIgnored(""), false);
   assert.equal(isAutoIgnored("figurinha"), true);
+});
+
+test("triageInbound: número novo que começa com mensagem que o WhatsApp não entrega fica em silêncio", () => {
+  assert.equal(firstContactReason(msg({ type: "unsupported" })), "nao_entregue");
+  assert.deepEqual(triageInbound(state(), msg({ type: "unsupported" })), { ignored: true, reason: "nao_entregue", change: "ignorar" });
+  // Cliente do painel e quem já conversou continuam recebendo o pedido de reenvio.
+  assert.deepEqual(triageInbound(state({ isClient: true }), msg({ type: "unsupported" })), { ignored: false, reason: "", change: null });
+  assert.deepEqual(triageInbound(state({ isNew: false }), msg({ type: "unsupported" })), { ignored: false, reason: "", change: null });
+});
+
+test("triageInbound: silêncio por mensagem não entregue acaba com qualquer texto, áudio, foto ou documento", () => {
+  const s = state({ isNew: false, ignored: true, reason: "nao_entregue" });
+  for (const type of ["text", "audio", "image", "document"]) {
+    assert.deepEqual(triageInbound(s, msg({ type, text: "Oi" })), { ignored: false, reason: "", change: "reativar" }, type);
+  }
+  assert.deepEqual(triageInbound(s, msg({ type: "unsupported" })), { ignored: true, reason: "nao_entregue", change: null });
+  assert.deepEqual(triageInbound(s, msg({ type: "sticker" })), { ignored: true, reason: "nao_entregue", change: null });
+  assert.deepEqual(triageInbound(s, msg({ forwarded: true, text: "Oi" })), { ignored: true, reason: "nao_entregue", change: null });
 });
