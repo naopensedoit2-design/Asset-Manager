@@ -47,7 +47,6 @@ function regrasDe(linhas: { key: string; value: string }[]): { regras: RegrasPub
   };
 }
 
-export const soDigitos = (valor: string | null | undefined) => (valor ?? "").replace(/\D/g, "");
 
 // Mesmo padrão que a página já usava antes de existir configuração no painel.
 const VEU_PADRAO = 60;
@@ -63,15 +62,6 @@ function vazio(): DadosLanding {
   };
 }
 
-/** Número de WhatsApp para a rota /whatsapp: o do painel e, se não houver, o da variável de ambiente. */
-export async function getNumeroWhatsapp(): Promise<string> {
-  try {
-    const config = await prisma.siteConfig.findFirst();
-    return soDigitos(config?.whatsappNumber) || soDigitos(process.env["WHATSAPP_NUMBER"]);
-  } catch {
-    return soDigitos(process.env["WHATSAPP_NUMBER"]);
-  }
-}
 
 export async function getDadosLanding(): Promise<DadosLanding> {
   try {
