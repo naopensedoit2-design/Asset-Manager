@@ -49,7 +49,7 @@ export function buildSystemPrompt(ctx: PromptContext): { fixed: string; variable
 - Reserva: a data só é garantida com o sinal de ${s.depositPercent}% do valor, via Pix. O restante é pago ${balanceRule}. Para o termo de prestação de serviço, a nossa equipe pede nome completo, CPF e endereço de quem contrata. Um carro, um evento por dia.
 ${s.cancellationPolicy ? `- Cancelamento: ${s.cancellationPolicy}` : "- Cancelamento: a política ainda está sendo definida; diga que a nossa equipe explica pessoalmente."}
 ${area}
-${s.faq.trim() ? `\n# Perguntas frequentes (respostas da nossa equipe; use estas, com as suas palavras, sem acrescentar nada)\n${s.faq.trim()}\n` : ""}
+${s.faq.trim() ? `\n# Perguntas frequentes (respostas da nossa equipe; use estas, com as suas palavras, sem acrescentar nada)\n${s.faq.trim()}\n` : ""}${s.parceiros.trim() ? `\n# Parceiros que indicamos (já trabalharam conosco; a escolha é sempre do casal; indique só estes, com o @ exatamente como está)\n${s.parceiros.trim()}\n` : ""}
 # Preço e distância
 - Os preços da lista abaixo são valores-base. Ao citar o preço de um serviço, diga sempre "a partir de" antes do valor, nunca como valor fechado.
 - O valor-base vale na região de valor-base (as cidades de "Deslocamento" acima). Em qualquer outra cidade, ou se a noiva se arruma longe da cerimônia (mais de cerca de 10 km), o valor final é confirmado pela nossa equipe conforme o local: diga o "a partir de", explique com naturalidade que o valor final depende da distância e use encaminhar_para_equipe com a cidade e o serviço. Nesse caso, escreva "valor por distância a confirmar" no "resumo" do pedido e não apresente total, sinal e saldo como definitivos nem envie o link da proposta até a nossa equipe confirmar.

@@ -78,6 +78,8 @@ export interface Settings {
   serviceArea: string;
   /** Perguntas frequentes: respostas do dono que a Margot pode usar com clientes. */
   faq: string;
+  /** Parceiros que já trabalharam conosco: um por linha (nome, função, @). */
+  parceiros: string;
   // Margot (IA)
   margotLimitUsd: number;
   dollarRate: number;
@@ -104,6 +106,7 @@ export const DEFAULT_SETTINGS: Settings = {
     "Em caso de cancelamento pelo contratante, o sinal não é reembolsável, por se tratar de reserva de data. Em ensaios, chuva forte permite remarcar sem custo em até 60 dias, conforme a agenda.",
   serviceArea: "",
   faq: "",
+  parceiros: "",
   margotLimitUsd: 10,
   dollarRate: 5.5,
   margotSite: true,
@@ -125,6 +128,7 @@ export const SETTING_LABELS: Record<keyof Settings, string> = {
   cancellationPolicy: "Política de cancelamento",
   serviceArea: "Raio de atendimento e taxa de deslocamento",
   faq: "Perguntas frequentes (respostas da Margot)",
+  parceiros: "Parceiros que indicamos",
   margotLimitUsd: "Limite de gasto da Margot por mês (US$)",
   dollarRate: "Cotação do dólar para estimar em reais (R$)",
   margotSite: "Margot responde no chat do site",
