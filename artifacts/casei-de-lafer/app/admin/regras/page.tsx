@@ -492,6 +492,11 @@ const GROUPS: { id: string; title: string; note?: string; fields: FieldSpec[] }[
         kind: "long",
         hint: "Uma pergunta por linha, com a resposta. Ex.: \"Indicam fotógrafo? Não temos parceria fixa; já trabalharam conosco @... e @...\". A Margot usa só o que estiver aqui.",
       },
+      {
+        key: "parceiros",
+        kind: "long",
+        hint: "Um por linha: nome, função, @ do Instagram. Ex.: \"Fulano, fotógrafo, @fulanofoto\". A Margot indica só quem estiver aqui; você também pode pedir a ela no WhatsApp para acrescentar.",
+      },
     ],
   },
   {
