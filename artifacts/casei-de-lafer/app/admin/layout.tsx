@@ -3,6 +3,7 @@ import "./whatsapp.css";
 import type { Metadata } from "next";
 import AdminShell from "@/components/admin/AdminShell";
 import { prePaintScript } from "@/lib/admin/look";
+import { fontesDaLanding } from "@/components/landing/fontes";
 
 export const metadata: Metadata = {
   title: "Painel · Eu casei de Lafer",
@@ -18,7 +19,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <>
       <script dangerouslySetInnerHTML={{ __html: prePaintScript() }} />
-      <AdminShell>{children}</AdminShell>
+      {/* As fontes da página inicial chegam por variável; só o tema Lafer as usa (theme.css). */}
+      <div className={fontesDaLanding}>
+        <AdminShell>{children}</AdminShell>
+      </div>
     </>
   );
 }

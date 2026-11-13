@@ -63,16 +63,16 @@ test("parseLook: valores válidos passam e lixo volta ao padrão", () => {
   assert.deepEqual(parseLook("não é json"), DEFAULT_LOOK);
   assert.deepEqual(parseLook({ theme: "neon", accent: 3, size: "gigante" }), DEFAULT_LOOK);
   // um campo ruim não derruba os outros
-  assert.deepEqual(parseLook({ theme: "grafite", accent: "xyz" }), { theme: "grafite", accent: "ouro", size: "md" });
+  assert.deepEqual(parseLook({ theme: "grafite", accent: "xyz" }), { theme: "grafite", accent: "madeira", size: "md" });
 });
 
-test("o padrão é o visual de sempre: Clássico, ouro, texto normal", () => {
-  assert.deepEqual(DEFAULT_LOOK, { theme: "classico", accent: "ouro", size: "md" });
+test("o padrão tem a cara do site: Lafer, madeira, texto normal", () => {
+  assert.deepEqual(DEFAULT_LOOK, { theme: "lafer", accent: "madeira", size: "md" });
 });
 
 test("resolveTheme: automático segue o celular", () => {
   assert.equal(resolveTheme("auto", true), "perola");
-  assert.equal(resolveTheme("auto", false), "classico");
+  assert.equal(resolveTheme("auto", false), "lafer");
   assert.equal(resolveTheme("sol", false), "sol");
 });
 
@@ -99,7 +99,7 @@ test("script de pré-pintura: aplica o que está salvo", () => {
 });
 
 test("script de pré-pintura: sem nada salvo usa o padrão e ignora lixo", () => {
-  const padrao = { "data-admin-theme": "classico", "data-admin-accent": "ouro", "data-admin-size": "md" };
+  const padrao = { "data-admin-theme": "lafer", "data-admin-accent": "madeira", "data-admin-size": "md" };
   assert.deepEqual(runPrePaint(null), padrao);
   assert.deepEqual(runPrePaint("{quebrado"), padrao);
   assert.deepEqual(runPrePaint(JSON.stringify({ theme: "x", accent: "y", size: "z" })), padrao);
@@ -107,7 +107,7 @@ test("script de pré-pintura: sem nada salvo usa o padrão e ignora lixo", () =>
 
 test("script de pré-pintura: automático escolhe Pérola quando o celular está no modo claro", () => {
   assert.equal(runPrePaint(JSON.stringify({ theme: "auto" }), true)["data-admin-theme"], "perola");
-  assert.equal(runPrePaint(JSON.stringify({ theme: "auto" }), false)["data-admin-theme"], "classico");
+  assert.equal(runPrePaint(JSON.stringify({ theme: "auto" }), false)["data-admin-theme"], "lafer");
 });
 
 // ─── TypeScript e CSS contam a mesma história ────────────────

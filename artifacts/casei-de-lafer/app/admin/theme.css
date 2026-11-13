@@ -7,12 +7,17 @@
    Fora do painel o <html> não tem essas marcas, então o site público continua
    com os padrões de globals.css.
 
-   O padrão é o tema "classico" com o destaque "ouro": o mesmo visual de sempre.
+   O padrão é o tema "lafer" com o destaque "madeira": as cores da página inicial (app/landing.css).
    src/lib/admin/look.test.ts confere o contraste de todas as combinações abaixo. */
 
 /* ── Cores de destaque ─────────────────────────────────────────
    dk = versão para fundo escuro, lt = versão para fundo claro,
    hi/lo = mais clara / mais escura (hover e variações). */
+/* Madeira: a cor do volante, o destaque da página inicial. */
+html[data-admin-accent="madeira"] {
+  --a-dk: #dba46a; --a-dk-hi: #e8bb88; --a-dk-lo: #c08548;
+  --a-lt: #8a5424; --a-lt-lo: #6e4118;
+}
 html[data-admin-accent="ouro"] {
   --a-dk: #c9a84c; --a-dk-hi: #dfc070; --a-dk-lo: #a8862e;
   --a-lt: #795e0f; --a-lt-lo: #5f4806;
@@ -39,6 +44,7 @@ html[data-admin-accent="cobre"] {
 }
 
 /* ── Temas escuros ─────────────────────────────────────────────── */
+html[data-admin-theme="lafer"],
 html[data-admin-theme="classico"],
 html[data-admin-theme="grafite"] {
   color-scheme: dark;
@@ -54,7 +60,25 @@ html[data-admin-theme="grafite"] {
   --info: #7dd3fc;
 }
 
-/* Clássico: o visual de sempre (fundo quase preto). Só o texto apagado ficou mais claro,
+/* Lafer: as cores da página inicial. Fundo verde-inglês, cartões um tom acima e texto pérola. */
+html[data-admin-theme="lafer"] {
+  /* No verde, o destaque usa a versão mais clara de cada cor, para as etiquetas tingidas continuarem legíveis. */
+  --gold: var(--a-dk-hi);
+  --gold-light: var(--a-dk-hi);
+  --gold-dark: var(--a-dk);
+  --bg-primary: #12241b;
+  --bg-secondary: #142a1f;
+  --bg-card: #172d22;
+  --bg-elevated: #1a3226;
+  --text-primary: #f0efea;
+  --text-secondary: #c6d1c8;
+  --text-muted: #aebdb1;
+  --border-subtle: rgba(174, 189, 177, 0.14);
+  --border-default: rgba(174, 189, 177, 0.2);
+  --input-default: rgba(174, 189, 177, 0.26);
+}
+
+/* Clássico: o visual antigo (fundo quase preto). Só o texto apagado ficou mais claro,
    porque o cinza antigo não passava no teste de contraste. */
 html[data-admin-theme="classico"] {
   --bg-primary: #0a0a0a;
@@ -141,6 +165,7 @@ html[data-admin-theme="sol"] {
    toda letra sobre o balão, a barra e o campo.
    wall/doodle = papel de parede e seus desenhos · bar = barra de cima · in/out = balão que chega/que sai
    time = hora · lbl = nome de quem escreveu · pill = dia · notice = aviso · sub = quadro dentro do balão. */
+html[data-admin-theme="lafer"],
 html[data-admin-theme="classico"],
 html[data-admin-theme="grafite"] {
   --wa-wall: #0b141a;
@@ -303,4 +328,14 @@ html[data-admin-size="xl"] .admin-pill-state[data-state="unknown"] {
 }
 .admin-sheet {
   animation: admin-sheet-in 0.2s ease-out;
+}
+
+/* ── Letras do tema Lafer ── Títulos na mesma letra da página inicial (Fraunces) e etiquetas na letra "de ficha".
+   As fontes chegam por variável (src/components/landing/fontes.ts) só dentro do painel. */
+html[data-admin-theme="lafer"] .admin-app .font-serif,
+html[data-admin-theme="lafer"] .admin-app h1,
+html[data-admin-theme="lafer"] .admin-app h2,
+html[data-admin-theme="lafer"] .admin-app h3 {
+  font-family: var(--font-fraunces), Georgia, serif;
+  letter-spacing: -0.01em;
 }
