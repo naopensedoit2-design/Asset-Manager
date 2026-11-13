@@ -24,6 +24,7 @@ const SECTIONS: { id?: string; title: string; body: string[] }[] = [
       "Para orçamento e reserva: nome, número de WhatsApp, data, horário, local e cidade do evento, serviços desejados e o que você contar na conversa.",
       "Para o Termo Simplificado de prestação de serviço: nome completo, CPF (ou passaporte) e endereço de quem contrata.",
       "Mensagens, fotos, áudios e documentos enviados no WhatsApp do atendimento, incluindo comprovantes de pagamento.",
+      "Mensagens trocadas com a Margot no chat do site (orçamento detalhado).",
     ],
   },
   {
@@ -44,6 +45,7 @@ const SECTIONS: { id?: string; title: string; body: string[] }[] = [
     title: "Por quanto tempo guardamos",
     body: [
       "Pelo tempo necessário para o atendimento e o contrato e, depois, pelo prazo exigido por obrigações legais e fiscais. Conversas sem contratação podem ser apagadas a qualquer momento a seu pedido.",
+      "As conversas do chat do site ficam guardadas por 6 meses, para nossa equipe conferir e dar continuidade ao atendimento, e depois são apagadas automaticamente.",
     ],
   },
   {

@@ -4,6 +4,8 @@ import { chat, type ChatMessage } from "@/lib/margot/agent";
 import { prisma } from "@/lib/prisma";
 import { getSettings } from "@/lib/gestor/service";
 import { overMonthlyLimit, recordUsage } from "@/lib/margot/usage";
+import { idDeConversa } from "@/lib/margot/site-conversas";
+import { guardarTroca } from "@/lib/margot/site-conversas-service";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -68,11 +70,21 @@ export const POST = route(async (req: NextRequest) => {
   }
 
   const conversationId = typeof body.conversationId === "string" ? body.conversationId : "";
+  // O texto da conversa fica guardado por 6 meses para a equipe conferir (src/lib/margot/site-conversas.ts).
+  // Só com um código de conversa válido; uma falha ao guardar nunca atrapalha a resposta.
+  const idGuardado = idDeConversa(conversationId);
+  const pergunta = history[history.length - 1]!.content;
+  const registrar = async (resposta: string, pedido: number | null) => {
+    if (!idGuardado) return;
+    await guardarTroca(idGuardado, pergunta, resposta, pedido).catch((e) => console.error("[margot] guardar conversa", e));
+  };
   const settings = await getSettings();
   // Chave "Margot responde no chat do site" desligada (Regras ou "pausar Margot" pelo WhatsApp): não chama a IA.
   if (!settings.margotSite || !process.env["ANTHROPIC_API_KEY"] || (await overMonthlyLimit(settings.margotLimitUsd))) {
+    const reply = "Nosso atendimento automático está em manutenção agora. Fale com nossa equipe pelo WhatsApp, ela responde rapidinho.";
+    await registrar(reply, orderId);
     return ok({
-      reply: "Nosso atendimento automático está em manutenção agora. Fale com nossa equipe pelo WhatsApp, ela responde rapidinho.",
+      reply,
       orderId,
       encaminhado: true,
       whatsappUrl: await whatsappUrl(orderId),
@@ -88,11 +100,14 @@ export const POST = route(async (req: NextRequest) => {
       name = order?.client.name.split(" ")[0];
     }
     const { usage: _usage, ...publicResult } = result;
+    await registrar(result.reply, result.orderId ?? orderId);
     return ok({ ...publicResult, whatsappUrl: await whatsappUrl(result.orderId, name) });
   } catch (e) {
     console.error("[margot]", e);
+    const reply = "Tive um probleminha para responder agora. Se preferir, continue com nossa equipe pelo WhatsApp.";
+    await registrar(reply, orderId);
     return ok({
-      reply: "Tive um probleminha para responder agora. Se preferir, continue com nossa equipe pelo WhatsApp.",
+      reply,
       orderId,
       encaminhado: true,
       whatsappUrl: await whatsappUrl(orderId),

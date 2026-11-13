@@ -46,6 +46,9 @@ html:has(.margot), html:has(.margot) body { background: #12241B; }
 .margot .sugestao { min-height: 44px; padding: 10px 16px; background: transparent; border: 1px solid var(--fio); border-radius: 2px; color: var(--perola); font: 500 15px/1.3 var(--texto); text-align: left; cursor: pointer; transition: border-color .2s, background .2s; }
 .margot .sugestao:hover { border-color: var(--perola); background: rgb(240 239 234 / .06); }
 
+.margot .aviso-guarda { margin: 24px 0 0; font-size: 14px; line-height: 1.5; color: var(--apoio); }
+.margot .aviso-guarda a { display: inline-flex; align-items: center; min-height: 44px; color: var(--perola); text-decoration: underline; text-underline-offset: 3px; }
+
 /* Cartão de continuar no WhatsApp: a peça pérola da tela */
 .margot .cartao { margin-top: 28px; padding: 22px 20px 20px; background: var(--perola); color: var(--verde); border-radius: 2px; }
 .margot .cartao h2 { margin: 0; color: inherit; font: italic 300 28px/1.05 var(--display); letter-spacing: -.02em; }
