@@ -72,7 +72,7 @@ test("o padrão tem a cara do site: Lafer, madeira, texto normal", () => {
 
 test("resolveTheme: automático segue o celular", () => {
   assert.equal(resolveTheme("auto", true), "perola");
-  assert.equal(resolveTheme("auto", false), "lafer");
+  assert.equal(resolveTheme("auto", false), "classico");
   assert.equal(resolveTheme("sol", false), "sol");
 });
 
@@ -107,7 +107,7 @@ test("script de pré-pintura: sem nada salvo usa o padrão e ignora lixo", () =>
 
 test("script de pré-pintura: automático escolhe Pérola quando o celular está no modo claro", () => {
   assert.equal(runPrePaint(JSON.stringify({ theme: "auto" }), true)["data-admin-theme"], "perola");
-  assert.equal(runPrePaint(JSON.stringify({ theme: "auto" }), false)["data-admin-theme"], "lafer");
+  assert.equal(runPrePaint(JSON.stringify({ theme: "auto" }), false)["data-admin-theme"], "classico");
 });
 
 // ─── TypeScript e CSS contam a mesma história ────────────────
@@ -245,4 +245,32 @@ test("o site público não muda: os padrões do :root são os de sempre", () => 
   assert.equal(rootDefaults["--bg-card"], "#161616");
   assert.equal(rootDefaults["--text-primary"], "#f5f0e8");
   assert.equal(rootDefaults["--text-muted"], "#6b6560");
+});
+
+test("Lafer: os menus em verde-inglês também são legíveis, com qualquer cor de destaque", () => {
+  const corpo = /html\[data-admin-theme="lafer"\]\s+\.admin-menu\s*\{([^}]*)\}/.exec(themeCss.replace(/\/\*[\s\S]*?\*\//g, ""));
+  assert.ok(corpo, "bloco dos menus do Lafer não encontrado em theme.css");
+  const menu = parseDecls(corpo[1]);
+  const falhas: string[] = [];
+  for (const a of ACCENTS) {
+    const base = resolved("lafer", a.key);
+    const v = (nome: string): string => {
+      const raw = menu[nome] ?? base[nome];
+      const ref = /^var\((--[\w-]+)\)$/.exec(raw);
+      return ref ? v(ref[1]) : raw;
+    };
+    const check = (nome: string, x: string, y: string, min = 4.5) => {
+      const c = contrast(x, y);
+      if (c < min) falhas.push(`lafer/${a.key} menu ${nome}: ${c.toFixed(2)} (mínimo ${min}) — ${x} sobre ${y}`);
+    };
+    for (const bg of ["--bg-secondary", "--bg-card", "--bg-elevated"]) {
+      check(`texto principal em ${bg}`, v("--text-primary"), v(bg), 7);
+      check(`texto secundário em ${bg}`, v("--text-secondary"), v(bg));
+      check(`destaque em ${bg}`, v("--gold"), v(bg));
+    }
+    check("item ativo do menu lateral", v("--gold"), blend(v("--gold"), 0.15, v("--bg-secondary")));
+    check("número sobre a bolinha de destaque", v("--bg-primary"), v("--gold"));
+    check("número sobre a bolinha de alerta", v("--bg-primary"), v("--bad"));
+  }
+  assert.deepEqual(falhas, [], `\n${falhas.join("\n")}`);
 });
