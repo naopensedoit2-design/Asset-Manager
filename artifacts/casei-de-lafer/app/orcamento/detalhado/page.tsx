@@ -165,6 +165,13 @@ export default function OrcamentoDetalhado() {
           </div>
         )}
 
+        {!started && (
+          <p className="aviso-guarda">
+            A conversa fica registrada por 6 meses para nossa equipe dar continuidade.{" "}
+            <Link href="/privacidade">Política de privacidade</Link>
+          </p>
+        )}
+
         {showWhatsapp && (
           <div className="cartao">
             <h2>{state.orderId ? "Seu orçamento está registrado" : "Continue com a nossa equipe"}</h2>
