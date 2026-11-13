@@ -202,6 +202,21 @@ model AiUsage {
   @@index([createdAt])
 }
 
+// ─── Chat da Margot no site (/orcamento/detalhado) ───────────
+// Tabela nova: cada fala da conversa, guardada por 6 meses (a rotina diária apaga as mais antigas).
+// conversationId é o código que o navegador do visitante cria; não identifica a pessoa.
+model SiteChatMessage {
+  id             Int      @id @default(autoincrement())
+  createdAt      DateTime @default(now())
+  conversationId String
+  role           String // cliente | margot
+  content        String
+  orderId        Int?
+
+  @@index([conversationId, createdAt])
+  @@index([createdAt])
+}
+
 // ─── WhatsApp da Margot (API oficial da Meta) ────────────────
 // Tabelas novas: índices únicos aqui são seguros (não existem dados antigos).
 
