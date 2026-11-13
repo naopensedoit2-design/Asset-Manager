@@ -7,12 +7,17 @@
    Fora do painel o <html> não tem essas marcas, então o site público continua
    com os padrões de globals.css.
 
-   O padrão é o tema "classico" com o destaque "ouro": o mesmo visual de sempre.
+   O padrão é o tema "lafer" com o destaque "madeira": as cores da página inicial (app/landing.css).
    src/lib/admin/look.test.ts confere o contraste de todas as combinações abaixo. */
 
 /* ── Cores de destaque ─────────────────────────────────────────
    dk = versão para fundo escuro, lt = versão para fundo claro,
    hi/lo = mais clara / mais escura (hover e variações). */
+/* Madeira: a cor do volante, o destaque da página inicial. */
+html[data-admin-accent="madeira"] {
+  --a-dk: #dba46a; --a-dk-hi: #e8bb88; --a-dk-lo: #c08548;
+  --a-lt: #8a5424; --a-lt-lo: #6e4118;
+}
 html[data-admin-accent="ouro"] {
   --a-dk: #c9a84c; --a-dk-hi: #dfc070; --a-dk-lo: #a8862e;
   --a-lt: #795e0f; --a-lt-lo: #5f4806;
@@ -54,7 +59,7 @@ html[data-admin-theme="grafite"] {
   --info: #7dd3fc;
 }
 
-/* Clássico: o visual de sempre (fundo quase preto). Só o texto apagado ficou mais claro,
+/* Clássico: o visual antigo (fundo quase preto). Só o texto apagado ficou mais claro,
    porque o cinza antigo não passava no teste de contraste. */
 html[data-admin-theme="classico"] {
   --bg-primary: #0a0a0a;
@@ -84,6 +89,7 @@ html[data-admin-theme="grafite"] {
 }
 
 /* ── Temas claros ──────────────────────────────────────────────── */
+html[data-admin-theme="lafer"],
 html[data-admin-theme="perola"],
 html[data-admin-theme="sol"] {
   color-scheme: light;
@@ -111,6 +117,53 @@ html[data-admin-theme="perola"] {
   --warn: #8a5300;
   --bad: #b42318;
   --info: #0b67a4;
+}
+
+/* Lafer (o padrão): a dupla da página inicial. A parte de trabalho em pérola, com texto verde-inglês e
+   destaque escuro; os menus (barra de cima, menu de baixo e menu lateral, classe .admin-menu) em verde-inglês. */
+html[data-admin-theme="lafer"] {
+  --gold: var(--a-lt);
+  --gold-light: var(--a-lt-lo);
+  --gold-dark: var(--a-lt-lo);
+  --bg-primary: #f3f2ed;
+  --bg-secondary: #f7f6f2;
+  --bg-card: #fcfbf8;
+  --bg-elevated: #f0efea;
+  --text-primary: #12241b;
+  --text-secondary: #3f5247;
+  --text-muted: #4c5e53;
+  --border-subtle: rgba(18, 36, 27, 0.14);
+  --border-default: rgba(18, 36, 27, 0.2);
+  --input-default: rgba(18, 36, 27, 0.26);
+  --ok: #0a7146;
+  --warn: #8a5300;
+  --bad: #b42318;
+  --info: #0b67a4;
+}
+
+/* Menus do Lafer: as mesmas variáveis, trocadas só dentro deles (verde-inglês com texto pérola).
+   look.test.ts confere o contraste destas cores também. */
+html[data-admin-theme="lafer"] .admin-menu {
+  color-scheme: dark;
+  --gold: var(--a-dk-hi);
+  --gold-light: var(--a-dk-hi);
+  --gold-dark: var(--a-dk);
+  --gold-muted: color-mix(in srgb, var(--a-dk-hi) 15%, transparent);
+  --border-gold: color-mix(in srgb, var(--a-dk-hi) 35%, transparent);
+  --bg-primary: #12241b;
+  --bg-secondary: #12241b;
+  --bg-card: #1a3226;
+  --bg-elevated: #213b2e;
+  --text-primary: #f0efea;
+  --text-secondary: #c6d1c8;
+  --text-muted: #aebdb1;
+  --border-subtle: rgba(174, 189, 177, 0.16);
+  --border-default: rgba(174, 189, 177, 0.22);
+  --input-default: rgba(174, 189, 177, 0.28);
+  --ok: #6ee7b7;
+  --warn: #fcd34d;
+  --bad: #fca5a5;
+  --info: #7dd3fc;
 }
 
 /* Sol: contraste máximo (letras pretas, bordas firmes e destaque mais escuro) para usar na rua, com sol na tela. */
@@ -178,6 +231,7 @@ html[data-admin-theme="grafite"] {
   --wa-sub: rgba(0, 0, 0, 0.18);
 }
 
+html[data-admin-theme="lafer"],
 html[data-admin-theme="perola"] {
   --wa-wall: #efeae2;
   --wa-doodle: rgba(11, 20, 26, 0.07);
@@ -303,4 +357,14 @@ html[data-admin-size="xl"] .admin-pill-state[data-state="unknown"] {
 }
 .admin-sheet {
   animation: admin-sheet-in 0.2s ease-out;
+}
+
+/* ── Letras do tema Lafer ── Títulos na mesma letra da página inicial (Fraunces) e etiquetas na letra "de ficha".
+   As fontes chegam por variável (src/components/landing/fontes.ts) só dentro do painel. */
+html[data-admin-theme="lafer"] .admin-app .font-serif,
+html[data-admin-theme="lafer"] .admin-app h1,
+html[data-admin-theme="lafer"] .admin-app h2,
+html[data-admin-theme="lafer"] .admin-app h3 {
+  font-family: var(--font-fraunces), Georgia, serif;
+  letter-spacing: -0.01em;
 }

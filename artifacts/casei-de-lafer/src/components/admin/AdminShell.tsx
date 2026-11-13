@@ -72,7 +72,7 @@ function Frame({ children }: { children: React.ReactNode }) {
         </a>
 
         {/* Menu lateral: computador */}
-        <aside className="hidden lg:flex fixed inset-y-0 left-0 z-30 w-[248px] flex-col bg-bg-secondary border-r border-border-subtle">
+        <aside className="admin-menu hidden lg:flex fixed inset-y-0 left-0 z-30 w-[248px] flex-col bg-bg-secondary border-r border-border-subtle">
           <Link href="/admin/hoje" className="px-6 pt-7 pb-6 font-serif text-xl leading-tight text-text-primary">
             Eu casei de Lafer
           </Link>
@@ -122,7 +122,7 @@ function Frame({ children }: { children: React.ReactNode }) {
         <div className="lg:pl-[248px]">
           {/* Topo: celular (dentro de uma conversa quem aparece é o cabeçalho dela, como no WhatsApp) */}
           <header
-            className={`lg:hidden sticky top-0 z-40 bg-bg-secondary/95 backdrop-blur border-b border-border-subtle pt-[env(safe-area-inset-top)] ${hideTop ? "hidden" : ""}`}
+            className={`admin-menu lg:hidden sticky top-0 z-40 bg-bg-secondary/95 backdrop-blur border-b border-border-subtle pt-[env(safe-area-inset-top)] ${hideTop ? "hidden" : ""}`}
           >
             <div className="h-14 px-4 flex items-center gap-3">
               <Link href="/admin/hoje" className="min-w-0 truncate font-serif text-[17px] leading-none text-text-primary">
@@ -161,7 +161,7 @@ function Frame({ children }: { children: React.ReactNode }) {
 
         {/* Menu inferior: celular */}
         {!hideBar && (
-          <nav aria-label="Seções do painel" className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-bg-secondary/95 backdrop-blur border-t border-border-subtle pb-[env(safe-area-inset-bottom)]">
+          <nav aria-label="Seções do painel" className="admin-menu lg:hidden fixed bottom-0 inset-x-0 z-40 bg-bg-secondary/95 backdrop-blur border-t border-border-subtle pb-[env(safe-area-inset-bottom)]">
             <ul className="grid grid-cols-5 h-16 max-w-xl mx-auto">
               {TABS.map((t) => {
                 const on = current === t.key;
