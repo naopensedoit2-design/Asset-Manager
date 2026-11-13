@@ -167,6 +167,9 @@ export default function ConversationsPage() {
         <div>
           <h1 className="font-serif text-3xl text-text-primary">Conversas</h1>
           <p className="text-sm text-text-muted mt-1">WhatsApp da Margot. Toque numa conversa para ler e responder.</p>
+          <Link href="/admin/conversas/site" className="text-sm text-gold hover:text-gold-light inline-flex items-center min-h-11">
+            Ver as conversas do chat do site →
+          </Link>
         </div>
 
         {status && !status.configurado && (
