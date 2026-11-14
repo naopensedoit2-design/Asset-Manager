@@ -13,8 +13,9 @@ import { itensDoOrcamento, lerPedido, type Edicao, type PedidoNovo, type Recebim
 import { phoneVariants } from "./phone";
 import { buttonsMessage, type Header } from "./client";
 import { notifyOwner } from "./notify";
+import { botaoRepetido, JANELA_REPETIDA_MS } from "./repetida";
 import { sendText } from "./send";
-import { contactForClientPhone, contactLabel, windowOpen, type WaContact } from "./store";
+import { contactForClientPhone, contactLabel, ownerContact, windowOpen, type WaContact } from "./store";
 
 export type Action =
   // `comprovante`: mensagem do WhatsApp em que o Leonardo mandou o comprovante (fica anotada no pedido).
@@ -91,8 +92,29 @@ export function parseAction(raw: string): Action | null {
   return null;
 }
 
-/** Propõe a ação ao Leonardo com os botões Confirmar / Cancelar. */
+/** Botão igual a este ainda sem resposta, mandado há pouco ao Leonardo (id da mensagem), ou null. */
+export async function botaoJaEnviado(action: Action): Promise<number | null> {
+  const owner = await ownerContact();
+  if (!owner) return null;
+  const pendentes = await prisma.waMessage.findMany({
+    where: {
+      contactId: owner.id,
+      kind: "confirmacao",
+      actionDoneAt: null,
+      createdAt: { gte: new Date(Date.now() - JANELA_REPETIDA_MS) },
+    },
+    select: { id: true, action: true, createdAt: true, actionDoneAt: true },
+  });
+  return botaoRepetido(pendentes, JSON.stringify(action));
+}
+
+/**
+ * Propõe a ação ao Leonardo com os botões Confirmar / Cancelar.
+ * Se o mesmo botão ainda está esperando resposta, não manda outro: dois botões iguais obrigavam a cancelar um.
+ */
 export async function proposeAction(action: Action, body: string, summary: string, header?: Header, media?: { id: string; mime: string }) {
+  const repetido = await botaoJaEnviado(action);
+  if (repetido !== null) return { result: "repetido" as const, row: null };
   return notifyOwner({
     text: `${body}\n\nConfirma? (toque no botão ou responda *sim*)`,
     summary,

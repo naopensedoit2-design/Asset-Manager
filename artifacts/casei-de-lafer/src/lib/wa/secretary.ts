@@ -27,7 +27,7 @@ import { runAgent, systemBlocks, type ToolDef } from "@/lib/margot/claude";
 import { dateFacts } from "@/lib/margot/clock";
 import { toolError } from "@/lib/margot/orders";
 import { overMonthlyLimit, recordUsage, type CallUsage } from "@/lib/margot/usage";
-import { describeExpense, pedidoDoMesmoDia, proposeAction, resolveAction } from "./actions";
+import { botaoJaEnviado, describeExpense, pedidoDoMesmoDia, proposeAction, resolveAction, type Action } from "./actions";
 import {
   descontoPara,
   descreverAjuste,
@@ -59,7 +59,7 @@ import { attachMedia, mediaBlocks, visibleMedia } from "./media";
 import { flushOwnerQueue } from "./notify";
 import { formatPhone, phoneVariants } from "./phone";
 import { sendText, sendVoice } from "./send";
-import { contactLabel, isPaused, PAUSED_FOREVER, saveOutbound, updateOutbound, windowOpen, type WaContact, type WaMessage } from "./store";
+import { contactForClientPhone, contactLabel, isPaused, PAUSED_FOREVER, saveOutbound, updateOutbound, windowOpen, type WaContact, type WaMessage } from "./store";
 import { speechReady, voiceReady } from "./voice";
 
 const PERIOD = { type: "string", description: "AAAA-MM-DD" };
@@ -1040,9 +1040,12 @@ async function runTool(name: string, input: any, s: State): Promise<unknown> {
       if (p?.status === "recebido") return { erro: `O ${kind} do pedido #${o.id} já está como recebido.` };
       const amount = p?.amountCents ?? (kind === "sinal" ? o.quotes[0]?.depositCents : undefined);
       if (!amount) return { erro: `Não achei ${kind === "sinal" ? "o sinal" : "o saldo"} do pedido #${o.id}. Confira no painel.` };
+      // Só promete avisar a cliente se a conversa dela comigo estiver aberta; senão, o texto vai para o Leonardo mandar.
+      const cliente = await contactForClientPhone(o.client.phone);
+      const aviso = cliente && windowOpen(cliente) ? " Eu aviso a cliente." : " A conversa da cliente comigo está fechada: te passo o texto para você mandar.";
       const body = `Dar baixa no *${kind}* de ${formatBRL(amount)} — ${o.client.name} (pedido #${o.id}${o.eventDate ? ` · ${formatDateBR(o.eventDate)}` : ""}).${
-        kind === "sinal" ? " A data fica confirmada e bloqueada no site, e eu aviso a cliente." : " Eu aviso a cliente."
-      }`;
+        kind === "sinal" ? " A data fica confirmada e bloqueada no site." : ""
+      }${aviso}`;
       const receipt = await prisma.waMessage.findFirst({
         where: {
           contactId: s.owner.id,
@@ -1054,9 +1057,15 @@ async function runTool(name: string, input: any, s: State): Promise<unknown> {
         select: { id: true },
       });
       const fullBody = receipt ? `${body}\nO comprovante que você mandou fica anotado no pedido.` : body;
-      s.after.push(() =>
-        proposeAction({ tipo: "pagamento", pedido: o.id, pagamento: kind, comprovante: receipt?.id ?? null }, fullBody, `confirmar ${kind} de ${o.client.name}`),
-      );
+      const acao: Action = { tipo: "pagamento", pedido: o.id, pagamento: kind, comprovante: receipt?.id ?? null };
+      if ((await botaoJaEnviado(acao)) !== null) {
+        return {
+          aguardando_confirmacao: true,
+          botao_ja_enviado: true,
+          instrucao: "Este botão já foi mandado e ainda espera o toque do Leonardo. Não mande outro nem peça para cancelar nada: diga só que falta tocar em Confirmar no botão acima.",
+        };
+      }
+      s.after.push(() => proposeAction(acao, fullBody, `confirmar ${kind} de ${o.client.name}`));
       return { aguardando_confirmacao: true, resumo: fullBody };
     }
 
