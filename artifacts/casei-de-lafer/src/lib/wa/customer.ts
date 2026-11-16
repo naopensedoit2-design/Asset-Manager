@@ -33,6 +33,7 @@ import { descreverRecados } from "./recados";
 import { recadosDaCliente } from "./recados-service";
 import { canonicalPhone, formatPhone, phoneVariants } from "./phone";
 import { sendText } from "./send";
+import { nomeDoPerfil } from "./nome";
 import { contactLabel, isPaused, type WaContact, type WaMessage } from "./store";
 
 const WA_TOOLS: ToolDef[] = [
@@ -147,7 +148,7 @@ async function describeOrder(orderId: number): Promise<string> {
 
 async function conversationContext(s: State, firstContact: boolean): Promise<string> {
   const lines = [
-    `Nome no perfil do WhatsApp: ${s.contact.name || "(sem nome)"} (pode ser apelido; confirme o nome do casal antes de registrar).`,
+    `Nome no perfil do WhatsApp: ${s.contact.name || "(sem nome)"}${nomeDoPerfil(s.contact.name) && nomeDoPerfil(s.contact.name) !== s.contact.name ? ` (sem números e símbolos: ${nomeDoPerfil(s.contact.name)})` : ""} (pode ser apelido; confirme o nome do casal antes de registrar).`,
     firstContact
       ? "Primeiro contato: sim. Apresente-se em uma frase."
       : "Primeiro contato: não. Vocês já conversaram; não se apresente de novo.",

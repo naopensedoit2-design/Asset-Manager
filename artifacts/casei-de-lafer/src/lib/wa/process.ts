@@ -14,6 +14,7 @@ import { samePhone } from "./phone";
 import { respondToOwner } from "./secretary";
 import { sendText } from "./send";
 import { applyStatus, claimContact, ownerPhone, releaseContact, saveInbound, type WaContact, type WaMessage } from "./store";
+import { dicaDeTranscricao, nomeDoPerfil } from "./nome";
 import { transcribe, voiceReady } from "./voice";
 
 export interface Job {
@@ -100,7 +101,7 @@ async function respond(contact: WaContact, pending: WaMessage[]) {
     if (m.type !== "audio" || m.text || !m.mediaId || !voiceReady()) continue;
     try {
       const { data, mime } = await downloadMedia(m.mediaId);
-      const text = await transcribe(data, mime || m.mediaMime);
+      const text = await transcribe(data, mime || m.mediaMime, dicaDeTranscricao(nomeDoPerfil(contact.name)));
       if (text) {
         m.text = text.slice(0, 4000);
         await prisma.waMessage.update({ where: { id: m.id }, data: { text: m.text } });

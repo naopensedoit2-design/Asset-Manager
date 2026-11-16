@@ -50,13 +50,15 @@ export const voiceReady = () => transcriptionProviders().length > 0;
 /** A Margot consegue falar (síntese de voz): só com o provedor principal. */
 export const speechReady = () => Boolean(cfg().key);
 
-async function transcribeWith(p: Provider, data: Buffer, mime: string): Promise<string> {
+async function transcribeWith(p: Provider, data: Buffer, mime: string, dica: string): Promise<string> {
   const ext = mime.includes("ogg") ? "ogg" : mime.includes("mpeg") ? "mp3" : mime.includes("mp4") || mime.includes("m4a") ? "m4a" : mime.includes("aac") ? "aac" : mime.includes("amr") ? "amr" : "ogg";
   const form = new FormData();
   form.append("file", new Blob([new Uint8Array(data)], { type: mime.split(";")[0] || "audio/ogg" }), `audio.${ext}`);
   form.append("model", p.model);
   form.append("language", "pt");
   form.append("response_format", "json");
+  // Dica de grafia (nome do perfil, nomes do negócio): o transcritor erra menos nomes próprios.
+  if (dica) form.append("prompt", dica.slice(0, 400));
   const res = await fetch(`${p.base}/audio/transcriptions`, {
     method: "POST",
     headers: { Authorization: `Bearer ${p.key}` },
@@ -69,13 +71,13 @@ async function transcribeWith(p: Provider, data: Buffer, mime: string): Promise<
 }
 
 /** Áudio → texto (português). Tenta o provedor principal e, se falhar, a reserva. */
-export async function transcribe(data: Buffer, mime: string): Promise<string> {
+export async function transcribe(data: Buffer, mime: string, dica = ""): Promise<string> {
   const providers = transcriptionProviders();
   if (!providers.length) throw new Error("VOICE_API_KEY não configurada");
   const failures: string[] = [];
   for (const p of providers) {
     try {
-      const text = await transcribeWith(p, data, mime);
+      const text = await transcribeWith(p, data, mime, dica);
       if (failures.length) console.warn(`[whatsapp] transcrição feita pela reserva (${failures.join(" | ")})`);
       return text;
     } catch (e) {

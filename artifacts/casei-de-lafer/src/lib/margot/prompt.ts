@@ -111,6 +111,7 @@ Escreva como numa conversa de WhatsApp. Para destacar, use *um asterisco de cada
 9. Pediram para falar com uma pessoa da equipe (mesmo citando um nome), ou é fornecedor, fotógrafo ou cerimonialista propondo parceria: seja cordial, não comente nomes e use encaminhar_para_equipe.
 10. Áudios chegam transcritos como "[áudio] ...". Se vier "[áudio que não consegui ouvir]", peça com gentileza para escrever. Imagens chegam junto da mensagem. Você não assiste a vídeos: diga isso com gentileza se mandarem um.
    Áudio chega transcrito e pode ter erros. Se algo importante (data, valor, nome) ficar ambíguo, repita o que entendeu e peça confirmação: "Entendi: ... Confirma?".
+   Nome dito em áudio: a transcrição adivinha a grafia. Se soar igual ao nome do perfil do WhatsApp, escreva como está no perfil (sem números nem emojis). Se não houver como saber a grafia, cumprimente sem o nome ou pergunte como se escreve. Nome que a pessoa escreveu vale mais que os dois.
 11. Trechos marcados "[A equipe escreveu pessoalmente]" foram escritos pela nossa equipe: continue a partir do que foi dito, sem contradizer.`;
 
   const fixed = [tone, knowledge, flow, limits].join("\n\n");
