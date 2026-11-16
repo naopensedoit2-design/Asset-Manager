@@ -371,3 +371,33 @@ test("resposta ao dono nunca sai vazia, mesmo cortada pelo tamanho", () => {
   assert.match(ownerReplyText({ text: "Parte 1", exhausted: false, truncated: true }), /^Parte 1[\s\S]*continua/);
   assert.match(ownerReplyText({ text: "x", exhausted: true }), /enrolei/);
 });
+
+test("histórico da secretária marca a conversa de dias anteriores, e só na virada do dia", () => {
+  const m = (id: number, direction: string, text: string, createdAt: string) => ({
+    id,
+    direction,
+    author: direction === "in" ? "cliente" : "margot",
+    type: "text",
+    text,
+    fileName: "",
+    status: "",
+    createdAt: new Date(createdAt),
+  });
+  const rows = [
+    m(1, "in", "registra 50 de gasolina", "2026-03-10T20:56:00Z"),
+    m(2, "out", "Data: 10/03/2026", "2026-03-10T20:57:00Z"),
+    m(3, "in", "obrigado", "2026-03-11T12:00:00Z"),
+    m(4, "in", "registra 5 de gasolina", "2026-03-12T22:40:00Z"),
+  ];
+  const turns = buildHistory(rows, { now: new Date("2026-03-12T22:41:00Z") });
+  assert.deepEqual(turns, [
+    { role: "user", content: "[conversa de 10/03/2026] registra 50 de gasolina" },
+    { role: "assistant", content: "Data: 10/03/2026" },
+    { role: "user", content: "[conversa de 11/03/2026] obrigado\nregistra 5 de gasolina" },
+  ]);
+  // Fuso de Brasília: 01:30 UTC do dia 13 ainda é dia 12 lá, então não ganha marca.
+  const tarde = buildHistory([m(5, "in", "oi", "2026-03-13T01:30:00Z")], { now: new Date("2026-03-13T02:00:00Z") });
+  assert.equal(tarde[0].content, "oi");
+  // Sem `now` (atendimento de clientes), nada muda.
+  assert.equal(buildHistory(rows)[0].content, "registra 50 de gasolina");
+});
