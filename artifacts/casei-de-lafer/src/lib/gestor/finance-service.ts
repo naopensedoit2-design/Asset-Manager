@@ -130,6 +130,13 @@ export async function listExpenses(filter: { period?: unknown; status?: unknown 
   return rows.map(serialize);
 }
 
+export async function getExpense(id: unknown) {
+  const n = Number(id);
+  if (!Number.isInteger(n)) return null;
+  const e = await prisma.expense.findUnique({ where: { id: n } });
+  return e ? serialize(e) : null;
+}
+
 export async function saveExpense(input: Record<string, any>, actor: "admin" | "margot" = "admin") {
   const amountCents = Number(input.amountCents);
   if (!Number.isInteger(amountCents) || amountCents <= 0) {
