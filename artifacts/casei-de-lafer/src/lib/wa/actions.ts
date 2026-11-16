@@ -4,7 +4,8 @@
 
 import { prisma } from "@/lib/prisma";
 import * as gestor from "@/lib/gestor/service";
-import { payExpensePart, saveExpense } from "@/lib/gestor/finance-service";
+import { deleteExpense, getExpense, payExpensePart, saveExpense } from "@/lib/gestor/finance-service";
+import { checkExpenseRemoval, planExpenseFix, type ExpenseChanges, type ExpenseSnapshot } from "@/lib/gestor/expense-fix";
 import { categoryLabel } from "@/lib/gestor/finance";
 import { formatBRL, formatCpf, formatDateBR, RuleError, STATUS_LABELS, TIMEZONE } from "@/lib/gestor/rules";
 import { ensurePublicToken } from "@/lib/documents/data";
@@ -45,7 +46,10 @@ export type Action =
   // Excluir de vez um pedido repetido ou criado por engano (a regra está em gestor/exclusao.ts e roda de novo ao confirmar).
   | { tipo: "exclusao"; pedido: number; motivo?: string }
   // Abater parte de (ou quitar) uma conta a pagar. `saldoCents` é o saldo que o Leonardo viu na confirmação.
-  | { tipo: "abatimento"; conta: number; valorCents: number; saldoCents: number; data: string };
+  | { tipo: "abatimento"; conta: number; valorCents: number; saldoCents: number; data: string }
+  // Corrigir ou apagar despesa já lançada. `visto` é como ela estava no botão (regra em gestor/expense-fix.ts).
+  | { tipo: "correcao_despesa"; conta: number; campos: ExpenseChanges; visto: ExpenseSnapshot }
+  | { tipo: "exclusao_despesa"; conta: number; visto: ExpenseSnapshot };
 
 export function parseAction(raw: string): Action | null {
   try {
@@ -86,6 +90,10 @@ export function parseAction(raw: string): Action | null {
     ) {
       return a;
     }
+    const visto =
+      a?.visto && typeof a.visto.date === "string" && Number.isInteger(a.visto.amountCents) && typeof a.visto.description === "string";
+    if (a?.tipo === "correcao_despesa" && Number.isInteger(a.conta) && visto && a.campos && typeof a.campos === "object") return a;
+    if (a?.tipo === "exclusao_despesa" && Number.isInteger(a.conta) && visto) return a;
   } catch {
     // ignora
   }
@@ -159,6 +167,8 @@ export async function resolveAction(owner: WaContact, rowId: number, confirm: bo
     if (action.tipo === "exclusao") return await removeOrder(action.pedido, action.motivo ?? "");
     if (action.tipo === "despesa") return await createExpense(action.despesa);
     if (action.tipo === "abatimento") return await payExpense(action);
+    if (action.tipo === "correcao_despesa") return await fixExpense(action);
+    if (action.tipo === "exclusao_despesa") return await removeExpense(action);
     if (action.tipo === "pedido") return await createOrderFromChat(action.pedido);
     return await messageClient(action.contato, action.texto);
   } catch (e) {
@@ -428,6 +438,21 @@ async function payExpense(a: Extract<Action, { tipo: "abatimento" }>): Promise<s
     return `✅ Conta quitada: ${r.paid.description} · ${formatBRL(r.paid.amountCents)}. Já aparece em "Pagas" no Financeiro.`;
   }
   return `✅ Abatidos ${formatBRL(r.paid.amountCents)} de "${r.open.description}". Saldo em aberto: ${formatBRL(r.open.amountCents)}. O pagamento aparece em "Pagas" no Financeiro, e o custo total não mudou.`;
+}
+
+async function fixExpense(a: Extract<Action, { tipo: "correcao_despesa" }>): Promise<string> {
+  const e = await getExpense(a.conta);
+  if (!e) throw new RuleError("despesa_nao_encontrada", "Não achei essa despesa. Ela pode ter sido apagada no painel.");
+  const saved = await saveExpense(planExpenseFix(e, a.campos, a.visto), "margot");
+  return `✅ Despesa corrigida: ${saved.description} · ${formatBRL(saved.amountCents)} · ${categoryLabel(saved.category)} · ${formatDateBR(saved.date)}. Já aparece assim no Financeiro.`;
+}
+
+async function removeExpense(a: Extract<Action, { tipo: "exclusao_despesa" }>): Promise<string> {
+  const e = await getExpense(a.conta);
+  if (!e) return "Essa despesa já não existe no Financeiro. Nada foi alterado.";
+  checkExpenseRemoval(e, a.visto);
+  await deleteExpense(e.id);
+  return `✅ Despesa apagada: ${e.description} · ${formatBRL(e.amountCents)} · ${formatDateBR(e.date)}. Saiu do Financeiro.`;
 }
 
 async function messageClient(contactId: number, text: string): Promise<string> {
