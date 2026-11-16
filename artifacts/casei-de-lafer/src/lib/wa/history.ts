@@ -1,5 +1,7 @@
 // Monta o histórico que vai para o Claude a partir das mensagens guardadas. Puro: testado em wa.test.ts.
 
+import { formatDateBR, todayISO } from "../gestor/rules.ts";
+
 export interface StoredMessage {
   id: number;
   direction: string; // in | out
@@ -8,6 +10,8 @@ export interface StoredMessage {
   text: string;
   fileName: string;
   status: string;
+  /** Quando a mensagem foi gravada. Com `now` nas opções, marca as mensagens de dias anteriores. */
+  createdAt?: Date;
 }
 
 export interface TextTurn {
@@ -58,10 +62,15 @@ function visible(m: StoredMessage): boolean {
  * Converte a conversa em turnos alternados (exigência da API): começa pela pessoa,
  * junta mensagens seguidas do mesmo lado e marca o que a equipe escreveu pessoalmente.
  */
-export function buildHistory(rows: StoredMessage[], opts: { maxTurns?: number; maxChars?: number } = {}): TextTurn[] {
+export function buildHistory(
+  rows: StoredMessage[],
+  opts: { maxTurns?: number; maxChars?: number; now?: Date } = {},
+): TextTurn[] {
   const maxTurns = opts.maxTurns ?? 30;
   const maxChars = opts.maxChars ?? 12_000;
   const turns: TextTurn[] = [];
+  const today = opts.now ? todayISO(opts.now) : "";
+  let lastDay = "";
 
   for (const m of rows) {
     if (!visible(m)) continue;
@@ -70,6 +79,12 @@ export function buildHistory(rows: StoredMessage[], opts: { maxTurns?: number; m
     const role: TextTurn["role"] = m.direction === "in" ? "user" : "assistant";
     if (role === "assistant" && m.author === "leonardo") content = `[A equipe escreveu pessoalmente] ${content}`;
     if (role === "assistant" && m.author === "sistema") content = `[mensagem automática] ${content}`;
+    // Conversa de outro dia: sem a data, "hoje" e "a gasolina de hoje cedo" de dois dias atrás pareciam de agora.
+    if (today && m.createdAt) {
+      const day = todayISO(m.createdAt);
+      if (day !== lastDay && day < today) content = `[conversa de ${formatDateBR(day)}] ${content}`;
+      lastDay = day;
+    }
     const last = turns[turns.length - 1];
     if (last && last.role === role) last.content += `\n${content}`;
     else turns.push({ role, content });
