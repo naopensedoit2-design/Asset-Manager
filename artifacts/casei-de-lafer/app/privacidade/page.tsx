@@ -37,7 +37,7 @@ const SECTIONS: { id?: string; title: string; body: string[] }[] = [
   {
     title: "Com quem compartilhamos",
     body: [
-      "Somente com serviços necessários para o atendimento funcionar: Meta (WhatsApp), Anthropic (inteligência artificial da Margot), OpenAI (transcrição e leitura de áudios, quando usada), Vercel e Neon (hospedagem do site e do banco de dados), Google (agenda) e Cloudinary (imagens do site).",
+      "Somente com serviços necessários para o atendimento funcionar: Meta (WhatsApp), Anthropic (inteligência artificial da Margot), OpenAI (transcrição e leitura de áudios, quando usada), Vercel e Neon (hospedagem do site e do banco de dados; a Vercel também conta as visitas ao site, sem cookies e sem identificar quem visita), Google (agenda) e Cloudinary (imagens do site).",
       "Esses serviços tratam os dados apenas para executar o que pedimos, conforme as políticas de cada um.",
     ],
   },
