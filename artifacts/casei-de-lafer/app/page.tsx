@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./landing.css";
-import { Capa, Fato, Passagem } from "@/components/landing/Capa";
+import { Capa, Fato, Passagem, type FotoDaCapa } from "@/components/landing/Capa";
 import { BarraFixa, Convite, Rodape } from "@/components/landing/Convite";
 import { Carro, Momentos } from "@/components/landing/Momentos";
 import Movimento from "@/components/landing/Movimento";
@@ -40,9 +40,14 @@ export default async function Page() {
   const publicos = servicosPublicos(dados.servicos);
   const lista = momentos(publicos);
 
-  const reserva = fotos.capa?.url ?? TOPO_DE_RESERVA;
-  const desktop = dados.topo.desktop?.url ?? dados.topo.mobile?.url ?? reserva;
-  const mobile = dados.topo.mobile?.url ?? dados.topo.desktop?.url ?? reserva;
+  // Capa: a foto do topo do painel (se houver) e depois as fotos da galeria marcadas como capa, em carrossel.
+  const topoDesktop = dados.topo.desktop?.url ?? dados.topo.mobile?.url;
+  const topoMobile = dados.topo.mobile?.url ?? dados.topo.desktop?.url;
+  const fotosDaCapa: FotoDaCapa[] = [
+    ...(topoDesktop && topoMobile ? [{ tipo: "topo" as const, desktop: topoDesktop, mobile: topoMobile }] : []),
+    ...fotos.capas.map((foto) => ({ tipo: "galeria" as const, foto })),
+  ];
+  if (fotosDaCapa.length === 0) fotosDaCapa.push({ tipo: "topo", desktop: TOPO_DE_RESERVA, mobile: TOPO_DE_RESERVA });
 
   // A página só promete "crédito em cada foto" quando todas as fotos dos momentos têm crédito no painel.
   const fotosDosMomentos = lista.map((m) => (m.chave ? fotos[m.chave] : null)).filter((f): f is FotoDaPagina => f !== null);
@@ -54,8 +59,7 @@ export default async function Page() {
       <script dangerouslySetInnerHTML={{ __html: ANTES_DE_PINTAR }} />
       <main>
         <Capa
-          desktop={desktop}
-          mobile={mobile}
+          fotos={fotosDaCapa}
           principais={publicos.filter((s) => !s.adicional && s.aPartirDeCents !== null)}
           chatLigado={dados.chatLigado}
         />

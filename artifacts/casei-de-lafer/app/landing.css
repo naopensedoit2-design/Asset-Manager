@@ -281,3 +281,17 @@ html:has(.lafer)::-webkit-scrollbar-track { background: #12241B; }
 html:has(.lafer)::-webkit-scrollbar-thumb { background: #35523F; }
 html:has(.lafer)::-webkit-scrollbar-thumb:hover { background: #AEBDB1; }
 .lafer .rodape nav a, .lafer .fontes a { text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+
+/* Carrossel da capa: as fotos ficam umas sobre as outras e a ativa aparece por cima, com troca suave.
+   Sem JavaScript (ou com movimento reduzido) só a primeira tem a classe "ativa". */
+.lafer .capa-foto .slide { position: absolute; inset: 0; opacity: 0; transition: opacity .7s ease; }
+.lafer .capa-foto .slide.ativa { opacity: 1; }
+.lafer .capa-foto .slide:first-child { position: relative; height: 100%; }
+.lafer .capa-foto.carrossel .slide:first-child { position: absolute; }
+.lafer .capa-foto .slide img { animation: none; }
+.lafer .capa-foto .slide.ativa img { animation: lafer-respira 3.6s ease-out both; }
+.lafer .capa-foto:not(.carrossel) .slide.ativa img { animation-duration: 14s; }
+@media (prefers-reduced-motion: reduce) {
+  .lafer .capa-foto .slide { transition: none; }
+  .lafer .capa-foto .slide.ativa img { animation: none; }
+}

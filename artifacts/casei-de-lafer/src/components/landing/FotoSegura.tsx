@@ -9,11 +9,13 @@ interface Props {
   larguras: readonly number[];
   sizes: string;
   className?: string;
+  /** "eager" para a foto que aparece logo de cara (capa). */
+  carregar?: "lazy" | "eager";
 }
 
 // Foto do Cloudinary no tamanho e no formato certos. Se a versão otimizada não carregar (conta com transformação
 // bloqueada, por exemplo), volta sozinha para a foto original: nunca fica quadro vazio.
-export default function FotoSegura({ src, alt, larguras, sizes, className }: Props) {
+export default function FotoSegura({ src, alt, larguras, sizes, className, carregar = "lazy" }: Props) {
   const [original, setOriginal] = useState(false);
   const ref = useRef<HTMLImageElement>(null);
 
@@ -30,7 +32,8 @@ export default function FotoSegura({ src, alt, larguras, sizes, className }: Pro
       srcSet={original ? undefined : srcSet(src, larguras)}
       sizes={original ? undefined : sizes}
       alt={alt}
-      loading="lazy"
+      loading={carregar}
+      fetchPriority={carregar === "eager" ? "high" : undefined}
       decoding="async"
       onError={() => setOriginal(true)}
       className={className}
