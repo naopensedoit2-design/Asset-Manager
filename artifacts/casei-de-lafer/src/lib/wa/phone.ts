@@ -49,3 +49,14 @@ export function formatPhone(raw: string): string {
   }
   return d ? `+${d}` : "";
 }
+
+/**
+ * Link wa.me para o Leonardo mandar a mensagem pelo WhatsApp dele, quando o da Margot não pode
+ * (a pessoa nunca escreveu para a Margot, ou a conversa está fechada há mais de 24h). Nulo se o
+ * telefone não parecer um número.
+ */
+export function waMeLink(rawPhone: string, texto: string): string | null {
+  const [d] = phoneVariants(rawPhone);
+  if (!d || d.length < 10 || d.length > 15) return null;
+  return `https://wa.me/${d}?text=${encodeURIComponent(texto)}`;
+}
