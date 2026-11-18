@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Analytics } from "@vercel/analytics/next";
+import Estatisticas from "@/components/Estatisticas";
 import "./globals.css";
 import Providers from "./providers";
 
@@ -45,7 +45,7 @@ export default function RootLayout({
       </head>
       <body>
         <Providers>{children}</Providers>
-        <Analytics />
+        <Estatisticas />
       </body>
     </html>
   );
