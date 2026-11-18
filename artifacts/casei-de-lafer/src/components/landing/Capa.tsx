@@ -7,24 +7,35 @@ import FotoSegura from "./FotoSegura";
 import Pedido from "./Pedido";
 import TopoFoto from "./TopoFoto";
 
+/** Uma foto do carrossel da capa: a foto do topo (uma para celular e outra para computador) ou uma foto da galeria. */
+export type FotoDaCapa = { tipo: "topo"; desktop: string; mobile: string } | { tipo: "galeria"; foto: FotoDaPagina };
+
 interface CapaProps {
-  desktop: string;
-  mobile: string;
+  fotos: FotoDaCapa[];
   /** Serviços principais, com o valor-base de Regras. Vazio: a tabela de valores não aparece. */
   principais: ServicoPublico[];
   chatLigado: boolean;
 }
 
 // Primeira tela: a foto, o título e o pedido de data, que já funciona sem JavaScript.
-export function Capa({ desktop, mobile, principais, chatLigado }: CapaProps) {
+// Com mais de uma foto, Movimento.tsx troca a foto ativa a cada 3 s; sem JavaScript ou com movimento reduzido, fica a primeira.
+export function Capa({ fotos, principais, chatLigado }: CapaProps) {
   return (
     <section className="capa" aria-label="Abertura">
       <p className="marca entra">
         <b>{MARCA}</b>
         <span className="mono">{REGIAO}</span>
       </p>
-      <div className="capa-foto">
-        <TopoFoto desktop={desktop} mobile={mobile} alt={CAPA.alt} />
+      <div className={fotos.length > 1 ? "capa-foto carrossel" : "capa-foto"} data-carrossel aria-roledescription={fotos.length > 1 ? "carrossel" : undefined}>
+        {fotos.map((f, i) => (
+          <div key={f.tipo === "topo" ? "topo" : f.foto.id} className={i === 0 ? "slide ativa" : "slide"} aria-hidden={i === 0 ? undefined : true}>
+            {f.tipo === "topo" ? (
+              <TopoFoto desktop={f.desktop} mobile={f.mobile} alt={CAPA.alt} />
+            ) : (
+              <FotoSegura src={f.foto.url} alt={i === 0 ? f.foto.alt : ""} larguras={[640, 1080, 1600]} sizes="(min-width: 900px) 50vw, 100vw" carregar={i === 0 ? "eager" : "lazy"} />
+            )}
+          </div>
+        ))}
       </div>
       <div className="capa-txt g">
         <h1 className="entra e2">

@@ -6,6 +6,12 @@ import { atualizarPaginaInicial } from "@/lib/landing/revalidar";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
+// Todas as fotos da galeria, com todos os campos, para a página Site do painel (protegida pelo middleware).
+export async function GET() {
+  const images = await prisma.galleryImage.findMany({ orderBy: { createdAt: "desc" } });
+  return NextResponse.json(images);
+}
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();

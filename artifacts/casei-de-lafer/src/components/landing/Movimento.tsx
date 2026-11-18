@@ -22,6 +22,9 @@ function porExtenso(iso: string): string {
   return texto.charAt(0).toUpperCase() + texto.slice(1) + ".";
 }
 
+/** Tempo de cada foto da capa no carrossel. */
+const TROCA_DA_CAPA_MS = 3000;
+
 const limite = (n: number) => (n < 0 ? 0 : n > 1 ? 1 : n);
 
 // Todo o movimento da página inicial. Não desenha nada: só anima o que o servidor já entregou pronto.
@@ -110,6 +113,22 @@ export default function Movimento({ botao, botaoComData, whatsapp }: Props) {
       for (const el of alvos) el.classList.remove("dentro");
       barra?.classList.remove("visivel");
     });
+
+    // Carrossel da capa: troca a foto a cada 3 s, para quando a aba fica escondida. Com movimento reduzido, fica a primeira.
+    const slides = todos<HTMLElement>("[data-carrossel] .slide");
+    if (!reduz && slides.length > 1) {
+      let atual = 0;
+      const passo = () => {
+        if (document.hidden) return;
+        slides[atual]?.classList.remove("ativa");
+        slides[atual]?.setAttribute("aria-hidden", "true");
+        atual = (atual + 1) % slides.length;
+        slides[atual]?.classList.add("ativa");
+        slides[atual]?.removeAttribute("aria-hidden");
+      };
+      const relogio = window.setInterval(passo, TROCA_DA_CAPA_MS);
+      desfazer.push(() => window.clearInterval(relogio));
+    }
 
     if (!reduz) {
       // Movimento ligado à rolagem: a passagem do carro, as linhas do fato, o traço dos passos e a foto final.
