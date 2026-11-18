@@ -5,7 +5,8 @@ import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowDown, ArrowUp, CloudDownload, ExternalLink, ImagePlus, Trash2, Upload, X } from "lucide-react";
 import { ErrorNote, Loading, Panel } from "@/components/gestor/ui";
-import { CAPAS_MAXIMO, curar, lerLocal, type FotoDoPainel } from "@/lib/landing/curadoria";
+import { CAPAS_MAXIMO, creditoLimpo, curar, lerLocal, type FotoDoPainel } from "@/lib/landing/curadoria";
+import { fotografosConhecidos } from "@/lib/landing/fotografos";
 import { otimizada } from "@/lib/landing/imagem";
 import {
   LUGARES_UNICOS,
@@ -174,7 +175,8 @@ function CartaoDaGaleria({ foto, onSalvar, onApagar }: { foto: FotoDaGaleria; on
         </label>
         <label className="block text-sm text-text-secondary">
           Fotógrafo (crédito)
-          <input className={`${campo} mt-1`} value={credito} maxLength={60} onChange={(e) => setCredito(e.target.value)} placeholder="Nome ou @ de quem fotografou" />
+          <input className={`${campo} mt-1`} list="fotografos-da-galeria" value={credito} maxLength={80} onChange={(e) => setCredito(e.target.value)} placeholder="Nome, @ ou link do Instagram" />
+          {credito && creditoLimpo(credito) !== credito.trim() && <span className="block text-sm text-text-muted mt-1">Vai sair como: {creditoLimpo(credito) || "(sem crédito)"}</span>}
         </label>
         <label className="block text-sm text-text-secondary">
           Casal (só para você, não aparece no site)
@@ -442,6 +444,11 @@ export default function SitePage() {
             <Upload className="w-4 h-4" aria-hidden="true" /> {enviando ?? "Enviar do aparelho (até 20 por vez)"}
           </Botao>
         </div>
+        <datalist id="fotografos-da-galeria">
+          {fotografosConhecidos(noPainel).lista.map((n) => (
+            <option key={n} value={n} />
+          ))}
+        </datalist>
         {fotos.length > 0 && (
           <ul className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {fotos.map((f) => (

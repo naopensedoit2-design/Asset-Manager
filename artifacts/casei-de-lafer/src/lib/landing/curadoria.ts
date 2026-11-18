@@ -67,14 +67,18 @@ function lugarDe(texto: string): { lugar: Lugar | null; ordem: number } {
   return { lugar, ordem: lugar && partes?.[2] ? Number(partes[2]) : 0 };
 }
 
-function creditoDe(texto: string): string {
-  return texto
+/** O crédito como sai na página: sem "Foto:", sem quebra de linha e, se for o link do Instagram, só o @. */
+export function creditoLimpo(texto: string): string {
+  const limpo = texto
     .replace(/[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]+/gu, " ")
     .replace(/^\s*(foto|fotos|fotografia|cr[eé]dito)\s*:?\s*/i, "")
     .replace(/\s+/g, " ")
-    .trim()
-    .slice(0, CREDITO_MAXIMO);
+    .trim();
+  const insta = /^(?:https?:\/\/)?(?:www\.|m\.)?instagram\.com\/([A-Za-z0-9._]{1,30})\/?(?:[?#].*)?$/i.exec(limpo)?.[1];
+  return (insta ? `@${insta}` : limpo).slice(0, CREDITO_MAXIMO);
 }
+
+const creditoDe = creditoLimpo;
 
 /** Lê o campo "Local" do painel: "chegada", "chegada | Foto: Nome", "capa 2" ou só "Foto: Nome". Outro texto é ignorado. */
 export function lerLocal(local: string): { lugar: Lugar | null; credito: string; ordem: number } {
