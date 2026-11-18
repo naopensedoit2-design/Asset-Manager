@@ -42,9 +42,15 @@ export function serviceAccountEmail(): string | null {
   return readAccount()?.client_email ?? null;
 }
 
-let cachedToken: { value: string; expires: number } | null = null;
+const CALENDAR_SCOPE = "https://www.googleapis.com/auth/calendar";
+/** Um token por permissão: a Agenda pede "calendar"; o Drive (src/lib/google/drive.ts) pede só leitura. */
+const cachedTokens = new Map<string, { value: string; expires: number }>();
 
-async function accessToken(): Promise<string> {
+const accessToken = () => googleToken(CALENDAR_SCOPE);
+
+/** Token da conta de serviço para a permissão pedida. */
+export async function googleToken(scope: string): Promise<string> {
+  const cachedToken = cachedTokens.get(scope);
   if (cachedToken && cachedToken.expires > Date.now() + 60_000) return cachedToken.value;
   const acc = readAccount();
   if (!acc) throw new Error("Conta de serviço do Google não configurada.");
@@ -52,7 +58,7 @@ async function accessToken(): Promise<string> {
   const b64 = (o: object) => Buffer.from(JSON.stringify(o)).toString("base64url");
   const unsigned = `${b64({ alg: "RS256", typ: "JWT" })}.${b64({
     iss: acc.client_email,
-    scope: "https://www.googleapis.com/auth/calendar",
+    scope,
     aud: "https://oauth2.googleapis.com/token",
     iat: now,
     exp: now + 3600,
@@ -69,7 +75,7 @@ async function accessToken(): Promise<string> {
   });
   const json = (await res.json().catch(() => ({}))) as { access_token?: string; expires_in?: number; error_description?: string };
   if (!res.ok || !json.access_token) throw new Error(`Google recusou o acesso: ${json.error_description ?? res.status}`);
-  cachedToken = { value: json.access_token, expires: Date.now() + (json.expires_in ?? 3600) * 1000 };
+  cachedTokens.set(scope, { value: json.access_token, expires: Date.now() + (json.expires_in ?? 3600) * 1000 });
   return json.access_token;
 }
 

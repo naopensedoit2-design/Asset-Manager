@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDown, ArrowUp, ExternalLink, ImagePlus, Trash2, Upload, X } from "lucide-react";
+import { ArrowDown, ArrowUp, CloudDownload, ExternalLink, ImagePlus, Trash2, Upload, X } from "lucide-react";
 import { ErrorNote, Loading, Panel } from "@/components/gestor/ui";
 import { CAPAS_MAXIMO, curar, lerLocal, type FotoDoPainel } from "@/lib/landing/curadoria";
 import { otimizada } from "@/lib/landing/imagem";
@@ -21,6 +21,7 @@ import {
   type Mudanca,
 } from "@/lib/landing/painel-site";
 import BloqueiosDeData from "./BloqueiosDeData";
+import ImportarDrive from "./ImportarDrive";
 import NumeroReserva from "./NumeroReserva";
 
 // Site: o que aparece em eucaseidelafer.com, na ordem da página. Cada botão grava o campo "Local" da foto
@@ -202,6 +203,7 @@ type Escolha = { tipo: "capa" } | { tipo: "detalhe" } | { tipo: "lugar"; lugar: 
 export default function SitePage() {
   const queryClient = useQueryClient();
   const [escolha, setEscolha] = useState<Escolha | null>(null);
+  const [drive, setDrive] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
   const [enviando, setEnviando] = useState<string | null>(null);
   const arquivo = useRef<HTMLInputElement>(null);
@@ -290,7 +292,7 @@ export default function SitePage() {
           <h1 className="font-serif text-3xl text-text-primary">Site</h1>
           <p className="text-sm text-text-muted mt-1 max-w-2xl">
             As fotos de eucaseidelafer.com, na mesma ordem da página. Toda mudança aparece no site na hora. As fotos ficam aqui, na galeria do
-            painel: o site não lê o Google Drive.
+            painel; o botão Importar do Google Drive, na Galeria, copia as do Drive para cá.
           </p>
         </div>
         <a href="/" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 min-h-11 px-4 rounded border border-border-subtle text-sm text-text-secondary hover:text-text-primary">
@@ -432,9 +434,14 @@ export default function SitePage() {
           site. O casal serve só para o site não repetir o mesmo casal em sequência.
         </p>
         <input ref={arquivo} type="file" accept="image/*" multiple className="hidden" onChange={enviarFotos} />
-        <Botao onClick={() => arquivo.current?.click()} disabled={Boolean(enviando)}>
-          <Upload className="w-4 h-4" aria-hidden="true" /> {enviando ?? "Enviar fotos (até 20 por vez)"}
-        </Botao>
+        <div className="flex flex-wrap gap-2">
+          <Botao onClick={() => setDrive(true)}>
+            <CloudDownload className="w-4 h-4" aria-hidden="true" /> Importar do Google Drive
+          </Botao>
+          <Botao onClick={() => arquivo.current?.click()} disabled={Boolean(enviando)}>
+            <Upload className="w-4 h-4" aria-hidden="true" /> {enviando ?? "Enviar do aparelho (até 20 por vez)"}
+          </Botao>
+        </div>
         {fotos.length > 0 && (
           <ul className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {fotos.map((f) => (
@@ -444,6 +451,7 @@ export default function SitePage() {
         )}
       </Panel>
 
+      {drive && <ImportarDrive onFechar={() => setDrive(false)} onImportou={() => void atualizar()} />}
       {escolha && <Escolher fotos={fotos} titulo={tituloDaEscolha} onEscolher={escolher} onFechar={() => setEscolha(null)} />}
     </main>
   );
