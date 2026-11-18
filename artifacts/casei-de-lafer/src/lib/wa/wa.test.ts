@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import { isValidSignature, signBody } from "./signature.ts";
-import { canonicalPhone, formatPhone, phoneVariants, samePhone } from "./phone.ts";
+import { canonicalPhone, formatPhone, phoneVariants, samePhone, waMeLink } from "./phone.ts";
 import { parseWebhook } from "./parse.ts";
 import { buttonTitle, isAffirmative, isNegative, isTrivial, oneLine, ownerReplyText, splitText, toWhatsApp } from "./format.ts";
 import { buildHistory, describe } from "./history.ts";
@@ -400,4 +400,11 @@ test("histórico da secretária marca a conversa de dias anteriores, e só na vi
   assert.equal(tarde[0].content, "oi");
   // Sem `now` (atendimento de clientes), nada muda.
   assert.equal(buildHistory(rows)[0].content, "registra 50 de gasolina");
+});
+
+test("waMeLink: link do WhatsApp do dono com o texto pronto", () => {
+  assert.equal(waMeLink("(51) 98888-7777", "Olá, tudo bem?"), "https://wa.me/5551988887777?text=Ol%C3%A1%2C%20tudo%20bem%3F");
+  assert.equal(waMeLink("5551988887777", "Oi"), "https://wa.me/5551988887777?text=Oi");
+  assert.equal(waMeLink("123", "Oi"), null);
+  assert.equal(waMeLink("", "Oi"), null);
 });
