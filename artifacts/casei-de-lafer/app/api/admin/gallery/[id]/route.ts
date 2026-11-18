@@ -24,10 +24,17 @@ export async function PATCH(
   context: { params: Promise<{ id: string }> },
 ) {
   const { id } = await context.params;
-  const { coupleTag, location } = await request.json();
+  const corpo = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+  // Só os três campos de texto, cada um limitado; o que não vier fica como está.
+  const texto = (v: unknown, max: number) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, max) : undefined);
+  const data = {
+    alt: texto(corpo.alt, 200),
+    coupleTag: texto(corpo.coupleTag, 80),
+    location: texto(corpo.location, 120),
+  };
   const updated = await prisma.galleryImage.update({
     where: { id: parseInt(id) },
-    data: { coupleTag, location },
+    data,
   });
   atualizarPaginaInicial();
   return NextResponse.json(updated);
