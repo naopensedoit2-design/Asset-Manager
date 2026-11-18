@@ -23,5 +23,5 @@ export const MORE: NavItem[] = [
   { key: "conexoes", label: "Conexões", hint: "WhatsApp, Agenda, Instagram, e-mail e o que roda sozinho", href: "/admin/conexoes", icon: Plug },
   { key: "regras", label: "Margot e regras", hint: "Preços, prazos e como a Margot atende", href: "/admin/regras", icon: Bot },
   { key: "painel", label: "Painel completo", hint: "Indicadores, funil e calendário", href: "/admin/dashboard", icon: LayoutDashboard },
-  { key: "site", label: "Site", hint: "Fotos, datas e textos do site público", href: "/admin/dashboard?aba=site", icon: Globe },
+  { key: "site", label: "Site", hint: "Fotos da página, capa em carrossel, créditos e datas bloqueadas", href: "/admin/site", icon: Globe },
 ];

@@ -277,7 +277,7 @@ export function fotosConnection(i: ConexoesInput["fotos"]): Connection {
     state: "ok",
     headline: "Configurado",
     detail: "Você envia e organiza as fotos do site pelo painel.",
-    link: { label: "Abrir Site", href: "/admin/dashboard?aba=site" },
+    link: { label: "Abrir Site", href: "/admin/site" },
   });
 }
 
