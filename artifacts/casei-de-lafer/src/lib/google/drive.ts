@@ -1,7 +1,9 @@
 // Fotos do Google Drive para a galeria do site, pela mesma conta de serviço da Agenda (só leitura).
 // O dono compartilha UMA pasta com o e-mail da conta, como Leitor; as subpastas são os casais.
-// Regras puras em drive-regras.ts.
+// Pastas que outra pessoa (um fotógrafo, por exemplo) compartilhar direto com o e-mail da conta também aparecem.
+// Regras puras em drive-regras.ts; sugestão de fotógrafo em src/lib/landing/fotografos.ts.
 
+import { fotografosConhecidos } from "@/lib/landing/fotografos";
 import { prisma } from "@/lib/prisma";
 import { uploadBuffer } from "@/lib/storage";
 import { googleToken, serviceAccountEmail } from "./calendar";
@@ -35,11 +37,11 @@ async function drive<T>(caminho: string): Promise<T> {
   return json as T;
 }
 
-async function filhos(pastaId: string): Promise<Arquivo[]> {
+async function buscar(consulta: string): Promise<Arquivo[]> {
   const out: Arquivo[] = [];
   let pagina = "";
   do {
-    const q = encodeURIComponent(`'${pastaId}' in parents and trashed = false`);
+    const q = encodeURIComponent(consulta);
     const campos = encodeURIComponent("nextPageToken, files(id, name, mimeType, thumbnailLink, size)");
     const r = await drive<{ files: Arquivo[]; nextPageToken?: string }>(
       `/files?q=${q}&fields=${campos}&pageSize=200&orderBy=name&supportsAllDrives=true&includeItemsFromAllDrives=true${pagina ? `&pageToken=${pagina}` : ""}`,
@@ -49,6 +51,8 @@ async function filhos(pastaId: string): Promise<Arquivo[]> {
   } while (pagina && out.length < 2000);
   return out;
 }
+
+const filhos = (pastaId: string) => buscar(`'${pastaId}' in parents and trashed = false`);
 
 export async function pastaEscolhida(): Promise<string | null> {
   const linha = await prisma.setting.findUnique({ where: { key: CHAVE_PASTA } }).catch(() => null);
@@ -68,12 +72,17 @@ export interface FotoDoDrive {
 export interface PastaDoDrive {
   id: string;
   nome: string;
+  /** Pasta que alguém compartilhou direto com o e-mail do site (fora da pasta escolhida). */
+  compartilhada: boolean;
+  /** Fotógrafo que o painel sugere para estas fotos: o que já foi usado neste casal. */
+  credito: string;
   fotos: FotoDoDrive[];
 }
 
-/** A pasta escolhida, com as fotos dela e de cada subpasta (um nível: as pastas dos casais). */
+/** A pasta escolhida e as pastas compartilhadas direto com o site, com as fotos delas e de cada subpasta (um nível). */
 export async function listarFotos(): Promise<
-  { pronto: false; motivo: string; email: string | null; pasta: string | null } | { pronto: true; email: string | null; pasta: string; nome: string; pastas: PastaDoDrive[] }
+  | { pronto: false; motivo: string; email: string | null; pasta: string | null }
+  | { pronto: true; email: string | null; pasta: string; nome: string; pastas: PastaDoDrive[]; fotografos: string[] }
 > {
   const email = serviceAccountEmail();
   const pasta = await pastaEscolhida();
@@ -81,35 +90,54 @@ export async function listarFotos(): Promise<
   if (!pasta) return { pronto: false, motivo: "Cole o link da pasta do Drive abaixo e toque em Salvar.", email, pasta };
   try {
     const raiz = await drive<{ id: string; name: string }>(`/files/${pasta}?fields=id,name&supportsAllDrives=true`);
-    const publicIds = (await prisma.galleryImage.findMany({ select: { publicId: true } })).map((g) => g.publicId);
-    const ja = idsJaImportados(publicIds);
+    const galeria = await prisma.galleryImage.findMany({ select: { publicId: true, location: true, coupleTag: true } });
+    const ja = idsJaImportados(galeria.map((g) => g.publicId));
+    const conhecidos = fotografosConhecidos(galeria.map((g) => ({ local: g.location, casal: g.coupleTag })));
     const foto = (a: Arquivo): FotoDoDrive => ({ id: a.id, nome: a.name, importada: ja.has(a.id) });
-    const itens = await filhos(pasta);
-    const soltas = itens.filter((a) => ehImagem(a.mimeType)).map(foto);
-    const pastas: PastaDoDrive[] = [];
-    for (const sub of itens.filter((a) => a.mimeType === PASTA)) {
-      const fotos = (await filhos(sub.id)).filter((a) => ehImagem(a.mimeType)).map(foto);
-      if (fotos.length) pastas.push({ id: sub.id, nome: sub.name, fotos });
-    }
-    if (soltas.length) pastas.unshift({ id: raiz.id, nome: raiz.name, fotos: soltas });
-    return { pronto: true, email, pasta, nome: raiz.name, pastas };
+    const secao = (id: string, nome: string, compartilhada: boolean, fotos: FotoDoDrive[]): PastaDoDrive => ({ id, nome, compartilhada, credito: conhecidos.doCasal(nome), fotos });
+
+    // Uma pasta de origem: as fotos soltas nela (casal = nome dela, menos na pasta escolhida) e uma seção por subpasta.
+    const daOrigem = async (id: string, nome: string, compartilhada: boolean) => {
+      const itens = await filhos(id);
+      const out: PastaDoDrive[] = [];
+      const soltas = itens.filter((a) => ehImagem(a.mimeType)).map(foto);
+      if (soltas.length) out.push(secao(id, nome, compartilhada, soltas));
+      for (const sub of itens.filter((a) => a.mimeType === PASTA)) {
+        const fotos = (await filhos(sub.id)).filter((a) => ehImagem(a.mimeType)).map(foto);
+        if (fotos.length) out.push(secao(sub.id, sub.name, compartilhada, fotos));
+      }
+      return out;
+    };
+
+    const pastas = await daOrigem(raiz.id, raiz.name, false);
+    const outras = (await buscar(`sharedWithMe = true and mimeType = '${PASTA}' and trashed = false`).catch((): Arquivo[] => [])).filter((a) => a.id !== pasta).slice(0, 30);
+    for (const o of outras) pastas.push(...(await daOrigem(o.id, o.name, true)));
+    return { pronto: true, email, pasta, nome: raiz.name, pastas, fotografos: conhecidos.lista };
   } catch (e) {
     return { pronto: false, motivo: e instanceof ErroDoDrive ? e.message : "Não consegui falar com o Google Drive agora.", email, pasta };
   }
 }
 
-/** Só arquivos dentro da pasta escolhida (ou de uma subpasta dela) podem ser lidos pelo painel. */
+/**
+ * Só arquivos dentro da pasta escolhida, de uma pasta compartilhada direto com o site ou de uma subpasta delas
+ * podem ser lidos pelo painel. Devolve também o casal (nome da pasta onde a foto está).
+ */
 async function arquivoPermitido(fileId: string): Promise<Arquivo & { pastaNome: string }> {
   const pasta = await pastaEscolhida();
   if (!pasta) throw new ErroDoDrive("Escolha a pasta do Drive primeiro.");
   const a = await drive<Arquivo>(`/files/${encodeURIComponent(fileId)}?fields=id,name,mimeType,thumbnailLink,parents,size&supportsAllDrives=true`);
   if (!ehImagem(a.mimeType)) throw new ErroDoDrive("Este arquivo não é uma foto.");
-  const pai = a.parents?.[0];
-  if (!pai) throw new ErroDoDrive("Foto fora da pasta escolhida.");
-  if (pai === pasta) return { ...a, pastaNome: "" };
-  const p = await drive<{ id: string; name: string; parents?: string[] }>(`/files/${pai}?fields=id,name,parents&supportsAllDrives=true`);
-  if (!p.parents?.includes(pasta)) throw new ErroDoDrive("Foto fora da pasta escolhida.");
-  return { ...a, pastaNome: p.name };
+  const fora = () => new ErroDoDrive("Foto fora das pastas do site.");
+  const paiId = a.parents?.[0];
+  if (!paiId) throw fora();
+  if (paiId === pasta) return { ...a, pastaNome: "" };
+  type Pasta = { id: string; name: string; parents?: string[]; sharedWithMeTime?: string };
+  const ler = (id: string) => drive<Pasta>(`/files/${encodeURIComponent(id)}?fields=id,name,parents,sharedWithMeTime&supportsAllDrives=true`);
+  const pai = await ler(paiId);
+  if (pai.parents?.includes(pasta) || pai.sharedWithMeTime) return { ...a, pastaNome: pai.name };
+  const avoId = pai.parents?.[0];
+  if (avoId && (await ler(avoId).catch(() => null))?.sharedWithMeTime) return { ...a, pastaNome: pai.name };
+  throw fora();
 }
 
 async function baixar(a: Arquivo, lado: number): Promise<{ bytes: Buffer; tipo: string }> {
