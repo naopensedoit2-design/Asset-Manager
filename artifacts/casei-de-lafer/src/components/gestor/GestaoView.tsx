@@ -301,7 +301,8 @@ function MonthCalendar({ today }: { today: string }) {
     });
 
   const days = data?.dias ?? [];
-  const googleDays = days.filter((d) => d.origem === "google");
+  // O que ocupa o mês, em lista (no computador fica ao lado do calendário, no celular abaixo dele).
+  const ocupados = days.filter((d) => d.status !== "livre");
   const lead = days.length ? new Date(`${days[0].data}T12:00:00Z`).getUTCDay() : 0;
 
   return (
@@ -321,6 +322,8 @@ function MonthCalendar({ today }: { today: string }) {
         </div>
       }
     >
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,28rem)_minmax(0,1fr)] lg:items-start">
+      <div>
       <div className="grid grid-cols-7 gap-1 text-center max-w-md">
         {WEEKDAYS.map((w, i) => (
           <span key={i} className="text-xs text-text-muted py-1">
@@ -370,25 +373,42 @@ function MonthCalendar({ today }: { today: string }) {
         <span className="flex items-center gap-1.5"><i className="w-3 h-3 rounded-sm bg-text-primary/10" /> Bloqueio manual</span>
         <span className="flex items-center gap-1.5"><i className="w-3 h-3 rounded-sm border border-dashed border-info" /> Google Agenda, sem reserva</span>
       </div>
-      {googleDays.length > 0 && (
-        <ul className="mt-4 space-y-1.5 text-sm" aria-label="Compromissos da Google Agenda neste mês">
-          {googleDays.map((d) => (
-            <li key={d.data} className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-              <span className="w-12 shrink-0 tabular-nums text-text-secondary">{formatDateBR(d.data).slice(0, 5)}</span>
-              <span className="min-w-0 text-text-primary">{d.google!.titulo}</span>
-              {d.google!.casamento && <Chip tone="info">casamento</Chip>}
-              {d.google!.casamento && d.google!.id && (
-                <Link
-                  href={d.google!.pedido ? `/admin/pedidos/${d.google!.pedido}` : `/admin/pedidos/novo?google=${encodeURIComponent(d.google!.id)}`}
-                  className="inline-flex min-h-9 items-center text-gold underline underline-offset-4"
-                >
-                  {d.google!.pedido ? `Pedido #${d.google!.pedido}` : "Criar pedido"}
-                </Link>
-              )}
-            </li>
-          ))}
-        </ul>
-      )}
+      </div>
+      <div className="min-w-0 lg:border-l lg:border-border-subtle lg:pl-6">
+        <h3 className="text-sm font-semibold text-text-primary mb-2">Neste mês</h3>
+        {ocupados.length === 0 ? (
+          <p className="text-sm text-text-muted">Nenhuma data ocupada em {MONTHS[cursor.m - 1].toLowerCase()}.</p>
+        ) : (
+          <ul className="space-y-2 text-sm" aria-label="Datas ocupadas neste mês">
+            {ocupados.map((d) => (
+              <li key={d.data} className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                <span className="w-12 shrink-0 tabular-nums text-text-secondary">{formatDateBR(d.data).slice(0, 5)}</span>
+                {d.google ? (
+                  <>
+                    <span className="min-w-0 text-text-primary">{d.google.titulo}</span>
+                    {d.google.casamento && <Chip tone="info">casamento</Chip>}
+                    {d.google.casamento && d.google.id && (
+                      <Link
+                        href={d.google.pedido ? `/admin/pedidos/${d.google.pedido}` : `/admin/pedidos/novo?google=${encodeURIComponent(d.google.id)}`}
+                        className="inline-flex min-h-9 items-center text-gold underline underline-offset-4"
+                      >
+                        {d.google.pedido ? `Pedido #${d.google.pedido}` : "Criar pedido"}
+                      </Link>
+                    )}
+                  </>
+                ) : d.orderId ? (
+                  <Link href={`/admin/pedidos/${d.orderId}`} className="inline-flex min-h-9 items-center text-gold underline underline-offset-4">
+                    {d.status === "provisoria" ? `Reserva sem sinal · Pedido #${d.orderId}` : `Confirmado · Pedido #${d.orderId}`}
+                  </Link>
+                ) : (
+                  <span className="text-text-secondary">Bloqueio manual</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      </div>
     </Panel>
   );
 }
