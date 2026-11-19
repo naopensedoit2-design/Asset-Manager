@@ -1,5 +1,5 @@
 // Resumo do dia que a Margot manda ao Leonardo pela manhã (rotina diária da Vercel, 7h).
-// Só manda quando há algo para ver: evento perto, alerta ou conversa esperando.
+// Vai todo dia (o dono conta com ele como relatório das conversas); sem nada pendente, diz "nada pendente".
 
 import { prisma } from "@/lib/prisma";
 import * as gestor from "@/lib/gestor/service";
@@ -9,6 +9,7 @@ import { linkButtonMessage } from "./client";
 import { notifyOwner } from "./notify";
 import { countByKind, monthStart, quotaReport } from "./quota";
 import { contactLabel } from "./store";
+import { conversasLinha, resumoParte, SILENT_TYPES } from "./resumo";
 
 export async function dailySummary(now = new Date()) {
   const today = todayISO(now);
@@ -16,8 +17,9 @@ export async function dailySummary(now = new Date()) {
   const d = await gestor.getDashboard(now);
   const waiting = await prisma.waContact.findMany({
     where: { isOwner: false, ignoredAt: null, lastInboundAt: { gte: new Date(now.getTime() - 3 * 86_400_000) } },
-    include: { messages: { where: { type: { not: "reaction" } }, orderBy: { id: "desc" }, take: 1 } },
+    include: { messages: { where: { type: { notIn: SILENT_TYPES } }, orderBy: { id: "desc" }, take: 1 } },
   });
+  // Aviso de sistema do WhatsApp (ex.: troca de número) não é cliente esperando resposta.
   const unanswered = await Promise.all(waiting.filter((c) => c.messages[0]?.direction === "in").map((c) => contactLabel(c)));
 
   // Margot desligada em Regras: o resumo lembra, para ela não ficar parada sem ninguém perceber.
@@ -31,11 +33,12 @@ export async function dailySummary(now = new Date()) {
   });
   // Captação: leads novos, pedidos novos e datas fechadas nas últimas 24 h, e lembretes enviados.
   const since = new Date(now.getTime() - 86_400_000);
-  const [newLeads, newOrders, closed, reminders] = await Promise.all([
+  const [newLeads, newOrders, closed, reminders, wroteToday] = await Promise.all([
     prisma.waContact.count({ where: { isOwner: false, ignoredAt: null, createdAt: { gte: since } } }),
     prisma.order.count({ where: { createdAt: { gte: since } } }),
     prisma.orderHistory.count({ where: { toStatus: "confirmado", createdAt: { gte: since } } }),
     prisma.waMessage.count({ where: { kind: "lembrete", direction: "out", createdAt: { gte: since } } }),
+    prisma.waContact.count({ where: { isOwner: false, ignoredAt: null, lastInboundAt: { gte: since } } }),
   ]);
   const quota = quotaReport(countByKind(sent.map((r) => ({ type: r.type, n: r._count._all }))));
 
@@ -50,7 +53,9 @@ export async function dailySummary(now = new Date()) {
   if (todays.length) lines.push(`\n*Hoje:* ${todays.map(describe).join("; ")}`);
   if (tomorrows.length) lines.push(`*Amanhã:* ${tomorrows.map(describe).join("; ")}`);
   if (alerts.length) lines.push(`\n*Atenção*\n${alerts.map((a) => `• ${a.title}`).join("\n")}`);
-  if (unanswered.length) lines.push(`\n*Esperando resposta no WhatsApp:* ${unanswered.slice(0, 5).join(", ")}`);
+  const waitingToday = waiting.filter((c) => c.messages[0]?.direction === "in" && c.lastInboundAt && c.lastInboundAt >= since).length;
+  lines.push(`\n${conversasLinha({ escreveram: wroteToday, esperando: waitingToday })}`);
+  if (unanswered.length) lines.push(`*Esperando resposta no WhatsApp:* ${unanswered.slice(0, 5).join(", ")}`);
   if (newLeads || newOrders || closed || reminders) {
     lines.push(
       `\n*Captação (24 h):* ${[
@@ -78,7 +83,8 @@ export async function dailySummary(now = new Date()) {
     quota.part,
   ].filter(Boolean);
 
-  return { text: lines.join("\n"), line: `resumo do dia: ${parts.join(", ")}`, worthSending: parts.length > 0 };
+  if (!parts.length) lines.push("\n✅ Nada pendente hoje.");
+  return { text: lines.join("\n"), line: resumoParte(parts), worthSending: true };
 }
 
 /** Chamado pela rotina diária. Não manda nada se o WhatsApp ou o número do dono não estiverem configurados. */
@@ -88,7 +94,6 @@ export async function sendDailySummary(now = new Date()) {
   if (!settings.ownerPhone) return { enviado: false, motivo: "Seu WhatsApp não está em Regras" };
   if (!settings.ownerDailySummary) return { enviado: false, motivo: "Resumo diário desligado em Regras" };
   const s = await dailySummary(now);
-  if (!s.worthSending) return { enviado: false, motivo: "Nada para avisar hoje" };
   const site = gestor.siteUrl();
   const r = await notifyOwner({
     text: s.text,
