@@ -62,6 +62,9 @@ import { formatPhone, phoneVariants, waMeLink } from "./phone";
 import { sendText, sendVoice } from "./send";
 import { contactForClientPhone, contactLabel, isPaused, PAUSED_FOREVER, saveOutbound, updateOutbound, windowOpen, type WaContact, type WaMessage } from "./store";
 import { speechReady, voiceReady } from "./voice";
+import { LEMBRETE_BOTAO, prometeBotao, SEM_BOTAO } from "./promessa";
+import { SILENT_TYPES } from "./resumo";
+import { describeRoutine, parseRoutine, ROUTINE_KEY } from "@/lib/admin/routine";
 
 const PERIOD = { type: "string", description: "AAAA-MM-DD" };
 
@@ -71,7 +74,8 @@ const fold = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCas
 const TOOLS: ToolDef[] = [
   {
     name: "resumo",
-    description: "Resumo do momento: eventos dos próximos dias, alertas (pagamentos, reservas, orçamentos sem resposta), conversas esperando e números do mês.",
+    description:
+      "Resumo do momento: eventos dos próximos dias, alertas (pagamentos, reservas, orçamentos sem resposta), conversas esperando, números do mês e a situação da rotina diária (quando rodou e se o resumo do dia foi enviado, e por quê).",
     input_schema: { type: "object", properties: {} },
   },
   {
@@ -505,6 +509,7 @@ Direta, prática e simpática, como uma secretária de confiança. Português do
 • Prioridade das informações: o que está em documento (contrato, comprovante, PDF, foto) e o que o Leonardo afirma valem mais que a tabela de preços, o sistema ou o seu palpite. Se ele disser "foi 400, não 380", use 400 sem discutir. Só aponte diferença quando ela existir entre documentos, e pergunte qual vale.
 • Datas: use exatamente o dia, mês e ano que ele disse. Nunca troque o ano por conta própria (ex.: data no passado não vira o ano seguinte). Data que já passou é evento realizado: use registrar_evento_passado. Data sem ano ("22/01"): se um comprovante, contrato ou mensagem da conversa trouxer o ano, use esse ano (ex.: Pix de 10/03/2026 para um evento em 12/03 indica 12/03/2026, evento já realizado); sem nenhuma pista, pergunte o ano antes de propor. Não presuma o próximo ano.
 • Se você mandou um botão errado, diga para tocar em Cancelar nele antes de mandar o certo.
+• Resumo do dia / "relatório" que não chegou: chame resumo e repita o que diz rotina_diaria (quando rodou, se o resumo saiu e o motivo). Nunca diga que não tem acesso à programação. Se o motivo for algo que ele resolve (ex.: "Resumo diário desligado em Regras"), diga onde ligar; se a rotina parou de rodar, ofereça anotar uma pendência para o Claude.
 • O WhatsApp do pedido pode ser da cerimonialista: nesse caso passe contato "cerimonialista" em criar_pedido.
 • De onde vêm as conversas e quanto cada anúncio rende ("qual anúncio trouxe mais gente", "quantos fecharam por anúncio"): use anuncios_origem. Ela só diz conversas, pedidos e fechamentos por anúncio; o gasto de cada um está no gerenciador de anúncios, então não invente custo.
 • Desconto ou valor diferente da tabela ("o valor é o do PDF", "dá R$ 55 de desconto"): use ajustar_valor_pedido com o total final (ou o desconto). Com sinal já recebido, o saldo em aberto é recalculado.
@@ -523,6 +528,8 @@ interface State {
   usage: CallUsage[];
   /** Avisos com botão que vão depois da resposta (confirmações). */
   after: (() => Promise<unknown>)[];
+  /** Alguma ferramenta respondeu "aguardando_confirmacao" (botão novo ou botão já mandado que ainda espera). */
+  proposed?: boolean;
 }
 
 // ─── Ferramentas ─────────────────────────────────────────────
@@ -565,7 +572,7 @@ async function waitingConversations() {
     where: { isOwner: false, ignoredAt: null, lastMessageAt: { gte: new Date(Date.now() - 7 * 86_400_000) } },
     orderBy: { lastMessageAt: "desc" },
     take: 15,
-    include: { messages: { where: { type: { not: "reaction" } }, orderBy: { id: "desc" }, take: 1 } },
+    include: { messages: { where: { type: { notIn: SILENT_TYPES } }, orderBy: { id: "desc" }, take: 1 } },
   });
   return Promise.all(contacts.map(async (c) => {
     const last = c.messages[0];
@@ -581,6 +588,13 @@ async function waitingConversations() {
   }));
 }
 
+/** runTool, anotando quando um botão de confirmação foi preparado (ou já estava esperando). */
+async function runToolMarked(name: string, input: any, s: State): Promise<unknown> {
+  const out = await runTool(name, input, s);
+  if (out && typeof out === "object" && (out as { aguardando_confirmacao?: unknown }).aguardando_confirmacao === true) s.proposed = true;
+  return out;
+}
+
 async function runTool(name: string, input: any, s: State): Promise<unknown> {
   try {
     const today = todayISO();
@@ -589,8 +603,10 @@ async function runTool(name: string, input: any, s: State): Promise<unknown> {
       const d = await gestor.getDashboard();
       const soon = d.upcoming.filter((o) => o.eventDate && o.eventDate <= addDays(today, 14)).map(compactOrder);
       const conversas = (await waitingConversations()).filter((c) => c.esperando_resposta);
+      const rotina = await prisma.setting.findUnique({ where: { key: ROUTINE_KEY } });
       return {
         hoje: formatDateBR(today),
+        rotina_diaria: describeRoutine(parseRoutine(rotina?.value), new Date(), !!process.env["CRON_SECRET"]),
         proximos_eventos: soon,
         alertas: d.alerts.slice(0, 12).map((a) => `${a.severity === "urgente" ? "URGENTE: " : ""}${a.title} — ${a.detail}${a.orderId ? ` (pedido #${a.orderId})` : ""}`),
         conversas_esperando: conversas.map((c) => `${c.nome}: ${c.ultima}${c.margot_pausada ? " (Margot pausada)" : ""}`),
@@ -1445,13 +1461,27 @@ export async function respondToOwner(owner: WaContact, pending: WaMessage[]): Pr
       system: systemBlocks(FIXED, comRecados),
       tools: TOOLS,
       messages,
-      runTool: (name, input) => runTool(name, input, s),
+      runTool: (name, input) => runToolMarked(name, input, s),
       usage: s.usage,
       // Com o dono há folga: pedidos de análise precisam de mais espaço que uma resposta a cliente.
       maxRounds: 12,
       maxTokens: 4000,
     });
-    const text = ownerReplyText(result);
+    let text = ownerReplyText(result);
+    // Prometeu "é só tocar em Confirmar" sem chamar a ferramenta: uma segunda chance, e se ainda assim não sair, ele é avisado.
+    if (!s.proposed && prometeBotao(text)) {
+      const again = await runAgent({
+        system: systemBlocks(FIXED, comRecados),
+        tools: TOOLS,
+        messages: [...messages, { role: "assistant", content: result.text }, { role: "user", content: LEMBRETE_BOTAO }],
+        runTool: (name, input) => runToolMarked(name, input, s),
+        usage: s.usage,
+        maxRounds: 6,
+        maxTokens: 4000,
+      });
+      text = ownerReplyText(again);
+      if (!s.proposed && prometeBotao(text)) text = `${text}\n\n${SEM_BOTAO}`;
+    }
     // Quando vem confirmação logo depois, a resposta é curta e o botão de áudio só atrapalharia.
     await replyToOwner(s.owner, text, s.after.length === 0);
     for (const job of s.after) await job();
