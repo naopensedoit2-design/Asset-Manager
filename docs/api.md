@@ -139,4 +139,4 @@ novo → orcamento_enviado → aguardando_resposta → reservado → confirmado 
 
 ## Rotina diária
 
-`GET /api/cron/diario` (Vercel Cron, todo dia às 07:00 de Brasília, com `Authorization: Bearer <CRON_SECRET>`): libera reservas provisórias vencidas sem sinal e marca pagamentos vencidos como atrasados.
+`GET /api/cron/diario` (Vercel Cron, todo dia às 07:00 de Brasília, com `Authorization: Bearer <CRON_SECRET>`): libera reservas provisórias vencidas sem sinal e marca pagamentos vencidos como atrasados. O agendamento fica em `artifacts/casei-de-lafer/vercel.json`: o projeto da Vercel usa essa pasta como raiz, então o `vercel.json` da raiz do repositório não é lido (por isso a rotina nunca tinha rodado até 19/11/2026).
