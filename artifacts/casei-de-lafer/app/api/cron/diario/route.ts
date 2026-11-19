@@ -8,7 +8,16 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export const GET = cronRoute(async () => {
-  const rotina = await gestor.runDailyRoutine();
+  console.log("[cron] rotina diária começou");
+  // Se a parte principal falhar, o motivo fica gravado (Conexões, a Margot e ?rotina=1 mostram):
+  // a Vercel do plano grátis guarda só 1 h de log e, antes, uma falha aqui não deixava rastro nenhum.
+  let rotina: Awaited<ReturnType<typeof gestor.runDailyRoutine>>;
+  try {
+    rotina = await gestor.runDailyRoutine();
+  } catch (e) {
+    await recordRoutine({ enviado: false, motivo: `a rotina falhou antes do resumo: ${((e as Error).message || "erro").slice(0, 200)}` }).catch(() => {});
+    throw e;
+  }
   // O resumo no WhatsApp nunca derruba a rotina principal.
   const whatsapp = await sendDailySummary().catch((e) => {
     console.error("[cron] resumo no WhatsApp", e);
