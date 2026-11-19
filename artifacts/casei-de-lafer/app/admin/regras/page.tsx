@@ -515,7 +515,7 @@ const GROUPS: { id: string; title: string; note?: string; fields: FieldSpec[] }[
     fields: [
       { key: "ownerPhone", kind: "text", hint: "Com DDD. É o número que recebe os avisos e fala com a Margot no modo secretária." },
       { key: "margotWhatsapp", kind: "bool", hint: "Desligado: as mensagens dos clientes só chegam para você." },
-      { key: "ownerDailySummary", kind: "bool", hint: "Só quando há algo para ver: evento perto, alerta ou conversa esperando." },
+      { key: "ownerDailySummary", kind: "bool", hint: "Todo dia: eventos perto, alertas, conversas das últimas 24 h e o que está esperando resposta. Sem nada pendente, diz \"Nada pendente hoje\"." },
     ],
   },
   {

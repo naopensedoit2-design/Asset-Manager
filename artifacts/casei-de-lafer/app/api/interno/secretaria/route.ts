@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { linha, leituraPermitida } from "@/lib/wa/leitura";
 import { listarPendencias } from "@/lib/wa/pendencias-service";
+import { describeRoutine, parseRoutine, ROUTINE_KEY } from "@/lib/admin/routine";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +10,8 @@ export const dynamic = "force-dynamic";
  * Conversa do dono com a Margot (modo secretária), para o Claude analisar e melhorar a Margot.
  * Só pelo endereço único do deploy (VERCEL_URL, atrás da Vercel Authentication) e com LEITURA_SECRETARIA=1. Somente leitura.
  * ?dias=1..31 (padrão 2); ?lista=1 lista as conversas do período; ?contato=ID lê a conversa de um cliente;
- * ?pendencias=1 lista as pendências da Margot (abertas e concluídas há até 30 dias).
+ * ?pendencias=1 lista as pendências da Margot (abertas e concluídas há até 30 dias);
+ * ?rotina=1 mostra a última execução da rotina diária (quando rodou e se o resumo do dia saiu).
  */
 export async function GET(req: NextRequest) {
   // Os dois cabeçalhos de endereço, quando existem, têm de ser o endereço único deste deploy.
@@ -25,6 +27,16 @@ export async function GET(req: NextRequest) {
   // ?pendencias=1: pedidos de melhoria que o dono ditou à Margot (para a rotina da manhã do Claude).
   if (q.get("pendencias") === "1") {
     return NextResponse.json({ ok: true, data: { pendencias: await listarPendencias() } }, { headers });
+  }
+
+  // ?rotina=1: para conferir se o resumo das 7h saiu, já que a Vercel do plano grátis guarda só 1 h de log.
+  if (q.get("rotina") === "1") {
+    const row = await prisma.setting.findUnique({ where: { key: ROUTINE_KEY } });
+    const record = parseRoutine(row?.value);
+    return NextResponse.json(
+      { ok: true, data: { rotina: record, descricao: describeRoutine(record, new Date(), !!process.env.CRON_SECRET) } },
+      { headers },
+    );
   }
 
   // ?lista=1: conversas com movimento no período (para achar a de um cliente). ?contato=ID: a conversa desse contato.

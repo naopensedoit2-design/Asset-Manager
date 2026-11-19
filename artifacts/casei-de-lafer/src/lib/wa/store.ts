@@ -6,6 +6,7 @@ import { getSettings } from "@/lib/gestor/service";
 import { canonicalPhone, formatPhone, phoneVariants, samePhone } from "./phone";
 import type { InboundMessage, StatusUpdate } from "./parse";
 import { triageInbound } from "./triage";
+import { SILENT_TYPES } from "./resumo";
 
 export type { WaContact, WaMessage };
 
@@ -113,7 +114,7 @@ export async function saveInbound(m: InboundMessage, owner: string): Promise<{ c
         status: "recebida",
         // Reações, mensagens de sistema e conversas ignoradas não pedem resposta. Tipo que o WhatsApp não entrega
         // ("unsupported") pede: process.ts avisa a pessoa para reenviar.
-        handledAt: triage.ignored || ["reaction", "system", "request_welcome", "ephemeral"].includes(m.type) ? new Date() : null,
+        handledAt: triage.ignored || SILENT_TYPES.includes(m.type) ? new Date() : null,
         action: m.buttonId ? JSON.stringify({ button: m.buttonId.slice(0, 256) }) : "",
         createdAt: at,
       },
