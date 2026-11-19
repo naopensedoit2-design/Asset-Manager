@@ -39,3 +39,29 @@ export function parseRoutine(raw: string | null | undefined): RoutineRecord | nu
     return null;
   }
 }
+
+const TZ = "America/Sao_Paulo";
+const dia = (d: Date) => new Intl.DateTimeFormat("pt-BR", { timeZone: TZ, day: "2-digit", month: "2-digit", year: "numeric" }).format(d);
+const hora = (d: Date) => new Intl.DateTimeFormat("pt-BR", { timeZone: TZ, hour: "2-digit", minute: "2-digit" }).format(d);
+
+/**
+ * O que a Margot diz ao dono quando ele pergunta pelo resumo do dia ("por que não recebi o relatório?").
+ * Antes ela respondia que não tinha acesso à programação; agora lê o registro da última execução.
+ */
+export function describeRoutine(record: RoutineRecord | null, now: Date, cronSecret = true): string {
+  const agenda = "A rotina diária roda todo dia entre 7h e 8h (horário de Brasília; a Vercel do plano grátis escolhe o minuto) e manda o resumo do dia no WhatsApp do Leonardo.";
+  if (!cronSecret) return `${agenda} ⚠️ Ela está desligada: falta a variável CRON_SECRET na Vercel.`;
+  if (!record) return `${agenda} Não há registro de nenhuma execução: ou ela nunca rodou, ou o registro foi apagado. Vale conferir em Conexões no painel.`;
+  const at = new Date(record.at);
+  const quando = dia(at) === dia(now) ? `hoje às ${hora(at)}` : `${dia(at)} às ${hora(at)}`;
+  const resultado =
+    record.resumoEnviado === true
+      ? record.detalhe === "aviso modelo (conversa fechada)"
+        ? "o resumo foi avisado pelo modelo de aviso (a conversa de 24 h estava fechada: ele precisa tocar no aviso para ver o texto)"
+        : "o resumo foi enviado"
+      : record.resumoEnviado === false
+        ? `o resumo NÃO foi enviado (motivo: ${record.detalhe ?? "não registrado"})`
+        : "sem informação sobre o envio";
+  const atrasada = now.getTime() - at.getTime() > 26 * 3_600_000;
+  return `${agenda} Última execução: ${quando}; ${resultado}.${atrasada ? " ⚠️ Faz mais de um dia que ela não roda: algo está errado com o agendamento na Vercel." : ""}`;
+}
