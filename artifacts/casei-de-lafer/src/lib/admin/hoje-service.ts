@@ -11,7 +11,7 @@ import { waMissing } from "@/lib/wa/config";
 import { bookings } from "@/lib/google/bookings";
 import { googleAgenda } from "@/lib/google/calendar";
 import { buildQueue, buildStops, type HojeData, type PendingApproval, type WaitingConversation } from "./hoje";
-import { buildRoutineRecord, parseRoutine, ROUTINE_KEY, type SummaryResult } from "./routine";
+import { buildRoutineRecord, parseRoutine, ROUTINE_KEY, ROUTINE_REJECT_KEY, type SummaryResult } from "./routine";
 
 /** Confirmação pedida pela Margot vale por 3 dias (mesma regra de resolveAction). */
 const APPROVAL_DAYS = 3;
@@ -37,6 +37,12 @@ export async function pendingApprovals(now = new Date()): Promise<PendingApprova
 export async function recordRoutine(summary: SummaryResult, now = new Date()): Promise<void> {
   const value = JSON.stringify(buildRoutineRecord(summary, now));
   await prisma.setting.upsert({ where: { key: ROUTINE_KEY }, create: { key: ROUTINE_KEY, value }, update: { value } });
+}
+
+/** Guarda a última chamada da Vercel recusada (sem a senha), numa linha à parte do registro da execução. */
+export async function recordRoutineReject(motivo: string, now = new Date()): Promise<void> {
+  const value = JSON.stringify({ at: now.toISOString(), motivo: motivo.slice(0, 200) });
+  await prisma.setting.upsert({ where: { key: ROUTINE_REJECT_KEY }, create: { key: ROUTINE_REJECT_KEY, value }, update: { value } });
 }
 
 export async function getHoje(now = new Date()): Promise<HojeData> {

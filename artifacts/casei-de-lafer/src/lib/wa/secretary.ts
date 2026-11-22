@@ -64,7 +64,7 @@ import { contactForClientPhone, contactLabel, isPaused, PAUSED_FOREVER, saveOutb
 import { speechReady, voiceReady } from "./voice";
 import { LEMBRETE_BOTAO, prometeBotao, SEM_BOTAO } from "./promessa";
 import { SILENT_TYPES } from "./resumo";
-import { describeRoutine, parseRoutine, ROUTINE_KEY } from "@/lib/admin/routine";
+import { describeRoutine, parseReject, parseRoutine, ROUTINE_KEY, ROUTINE_REJECT_KEY } from "@/lib/admin/routine";
 
 const PERIOD = { type: "string", description: "AAAA-MM-DD" };
 
@@ -603,10 +603,13 @@ async function runTool(name: string, input: any, s: State): Promise<unknown> {
       const d = await gestor.getDashboard();
       const soon = d.upcoming.filter((o) => o.eventDate && o.eventDate <= addDays(today, 14)).map(compactOrder);
       const conversas = (await waitingConversations()).filter((c) => c.esperando_resposta);
-      const rotina = await prisma.setting.findUnique({ where: { key: ROUTINE_KEY } });
+      const [rotina, recusa] = await Promise.all([
+        prisma.setting.findUnique({ where: { key: ROUTINE_KEY } }),
+        prisma.setting.findUnique({ where: { key: ROUTINE_REJECT_KEY } }),
+      ]);
       return {
         hoje: formatDateBR(today),
-        rotina_diaria: describeRoutine(parseRoutine(rotina?.value), new Date(), !!process.env["CRON_SECRET"]),
+        rotina_diaria: describeRoutine(parseRoutine(rotina?.value), new Date(), !!process.env["CRON_SECRET"]?.trim(), parseReject(recusa?.value)),
         proximos_eventos: soon,
         alertas: d.alerts.slice(0, 12).map((a) => `${a.severity === "urgente" ? "URGENTE: " : ""}${a.title} — ${a.detail}${a.orderId ? ` (pedido #${a.orderId})` : ""}`),
         conversas_esperando: conversas.map((c) => `${c.nome}: ${c.ultima}${c.margot_pausada ? " (Margot pausada)" : ""}`),

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { linha, leituraPermitida } from "@/lib/wa/leitura";
 import { listarPendencias } from "@/lib/wa/pendencias-service";
-import { describeRoutine, parseRoutine, ROUTINE_KEY } from "@/lib/admin/routine";
+import { describeRoutine, parseReject, parseRoutine, ROUTINE_KEY, ROUTINE_REJECT_KEY } from "@/lib/admin/routine";
 
 export const dynamic = "force-dynamic";
 
@@ -31,10 +31,14 @@ export async function GET(req: NextRequest) {
 
   // ?rotina=1: para conferir se o resumo das 7h saiu, já que a Vercel do plano grátis guarda só 1 h de log.
   if (q.get("rotina") === "1") {
-    const row = await prisma.setting.findUnique({ where: { key: ROUTINE_KEY } });
+    const [row, rej] = await Promise.all([
+      prisma.setting.findUnique({ where: { key: ROUTINE_KEY } }),
+      prisma.setting.findUnique({ where: { key: ROUTINE_REJECT_KEY } }),
+    ]);
     const record = parseRoutine(row?.value);
+    const recusa = parseReject(rej?.value);
     return NextResponse.json(
-      { ok: true, data: { rotina: record, descricao: describeRoutine(record, new Date(), !!process.env.CRON_SECRET) } },
+      { ok: true, data: { rotina: record, ultimaRecusa: recusa, descricao: describeRoutine(record, new Date(), !!process.env.CRON_SECRET?.trim(), recusa) } },
       { headers },
     );
   }
