@@ -1,6 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { RuleError } from "./rules";
+import { cronAuth } from "@/lib/admin/routine";
 
 // Formato único de resposta: { ok: true, data } ou { ok: false, erro: { codigo, mensagem } }.
 
@@ -59,12 +60,27 @@ export function agentRoute<C>(handler: Handler<C>): Handler<C> {
   });
 }
 
-/** Rotas de cron da Vercel: exigem Authorization: Bearer <CRON_SECRET>. */
-export function cronRoute<C>(handler: Handler<C>): Handler<C> {
+/**
+ * Rotas de cron da Vercel: exigem Authorization: Bearer <CRON_SECRET> (os dois lados aparados).
+ * `aoRecusar` é chamado só quando a recusa vem de uma chamada da própria Vercel (user-agent vercel-cron),
+ * para registrar o motivo sem deixar qualquer visitante encher o registro.
+ */
+export function cronRoute<C>(handler: Handler<C>, aoRecusar?: (motivo: string) => Promise<void>): Handler<C> {
   return route(async (req, ctx) => {
-    const expected = process.env["CRON_SECRET"];
-    if (!expected) return fail("cron_desativado", "Defina CRON_SECRET para ativar a rotina diária.", 503);
-    if (!safeEqual(bearer(req), expected)) return fail("nao_autorizado", "Token inválido ou ausente.", 401);
+    const expected = (process.env["CRON_SECRET"] ?? "").trim();
+    const check = cronAuth(req.headers.get("authorization"), expected);
+    const tokenOk = check.ok && safeEqual(bearer(req), expected);
+    if (!tokenOk) {
+      const motivo = check.ok ? "a senha da chamada não confere com o CRON_SECRET" : check.motivo;
+      const status = check.ok ? 401 : check.status;
+      if (aoRecusar && /vercel-cron/i.test(req.headers.get("user-agent") ?? "")) {
+        console.error(`[cron] chamada da Vercel recusada: ${motivo}`);
+        await aoRecusar(motivo).catch(() => {});
+      }
+      return status === 503
+        ? fail("cron_desativado", "Defina CRON_SECRET para ativar a rotina diária.", 503)
+        : fail("nao_autorizado", "Token inválido ou ausente.", 401);
+    }
     return handler(req, ctx);
   });
 }

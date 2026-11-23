@@ -140,3 +140,7 @@ novo → orcamento_enviado → aguardando_resposta → reservado → confirmado 
 ## Rotina diária
 
 `GET /api/cron/diario` (Vercel Cron, todo dia às 07:00 de Brasília, com `Authorization: Bearer <CRON_SECRET>`): libera reservas provisórias vencidas sem sinal e marca pagamentos vencidos como atrasados.
+
+O agendamento fica em `artifacts/casei-de-lafer/vercel.json`: a raiz do projeto na Vercel é essa pasta (por isso o `outputDirectory` ali é `.next`), e o `vercel.json` da raiz do repositório não registra o cron.
+
+O `CRON_SECRET` é aparado dos dois lados (espaço ou quebra de linha colados junto na Vercel não travam mais a rotina). Quando uma chamada da própria Vercel (`user-agent` `vercel-cron`) é recusada, o motivo fica em `Setting` `rotinaDiariaRecusa` (sem a senha), e a Margot e `?rotina=1` da leitura interna mostram (`ultimaRecusa`).
