@@ -96,6 +96,11 @@ export interface AgentRun {
   maxTokens?: number;
   /** Relógio usado no carimbo de data e hora (só os testes passam este valor). */
   now?: Date;
+  /**
+   * Consultado depois de cada rodada de ferramentas: true encerra sem chamar o modelo de novo (ex.: a conversa foi
+   * marcada como engano e quem chamou manda a mensagem padrão). Economiza uma chamada paga.
+   */
+  stop?: () => boolean;
 }
 
 export interface AgentResult {
@@ -141,6 +146,7 @@ export async function runAgent(run: AgentRun): Promise<AgentResult> {
       results.push({ type: "tool_result", tool_use_id: use.id, content: JSON.stringify(output) });
     }
     messages.push({ role: "user", content: results });
+    if (run.stop?.()) return { text: spoken, exhausted: false, truncated: false };
   }
   return { text: "", exhausted: true, truncated: false };
 }

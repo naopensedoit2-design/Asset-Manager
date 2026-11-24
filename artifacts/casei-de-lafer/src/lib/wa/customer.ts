@@ -28,6 +28,7 @@ import { attachMedia, mediaBlocks, visibleMedia } from "./media";
 import { toWhatsApp, truncate } from "./format";
 import { buildHistory } from "./history";
 import { AVISO_PREFIX, deveAvisar, lerUltimoAviso } from "./aviso";
+import { ENGANO_TEXTO } from "./engano";
 import { notifyOwner } from "./notify";
 import { descreverRecados } from "./recados";
 import { recadosDaCliente } from "./recados-service";
@@ -78,7 +79,7 @@ const WA_TOOLS: ToolDef[] = [
   {
     name: "marcar_engano",
     description:
-      "Marca a conversa como mensagem por engano (número errado ou assunto sem relação com casamento, ensaio ou carro). A Margot para de responder e não manda lembrete; se a pessoa voltar falando de casamento, a conversa volta sozinha.",
+      "Marca a conversa como mensagem por engano (número errado ou assunto sem relação com casamento, ensaio ou carro). O sistema manda à pessoa a mensagem padrão de número errado (não escreva resposta), a Margot para de responder e não manda lembrete; se a pessoa voltar falando de casamento, a conversa volta sozinha.",
     input_schema: {
       type: "object",
       properties: { motivo: { type: "string", description: "Em poucas palavras, ex.: 'perguntou de progressiva'" } },
@@ -110,6 +111,8 @@ interface State {
   settings: Settings;
   media: WaMessage[];
   usage: CallUsage[];
+  /** marcar_engano deu certo nesta rodada: a pessoa recebe a mensagem padrão (engano.ts), não o texto do modelo. */
+  engano?: boolean;
 }
 
 // ─── Contexto da conversa ────────────────────────────────────
@@ -338,7 +341,8 @@ async function runTool(name: string, input: any, s: State): Promise<unknown> {
     if (name === "marcar_engano") {
       if (s.orderId) return { erro: "Esta conversa tem pedido: não é engano. Responda normalmente." };
       await prisma.waContact.update({ where: { id: s.contact.id }, data: { ignoredAt: new Date(), ignoredReason: "engano", unread: 0 } });
-      return { ok: true, instrucao: "Conversa encerrada. Se ainda não respondeu, responda uma vez, curto, sem perguntas." };
+      s.engano = true;
+      return { ok: true, instrucao: "Conversa encerrada. O sistema já envia a mensagem padrão de número errado; não escreva nada." };
     }
 
     if (name === "encaminhar_para_equipe") {
@@ -518,7 +522,13 @@ export async function respondToClient(contact: WaContact, pending: WaMessage[]):
       messages,
       runTool: (name, input) => runTool(name, input, s),
       usage: s.usage,
+      stop: () => s.engano === true,
     });
+    if (s.engano) {
+      // Número errado: texto padrão aprovado pelo dono, sem aviso a ele (engano.ts).
+      await sendText(s.contact, ENGANO_TEXTO, { author: "margot", kind: "engano" });
+      return;
+    }
     const text = result.exhausted
       ? "Vou pedir para nossa equipe continuar com você por aqui, tudo bem? Ela já foi avisada."
       : toWhatsApp(result.text);
@@ -532,11 +542,18 @@ export async function respondToClient(contact: WaContact, pending: WaMessage[]):
     }
   } catch (e) {
     console.error("[whatsapp] Margot", e);
-    await sendText(
-      s.contact,
-      "Desculpe, tive um probleminha para responder agora. Já avisei nossa equipe e ela te responde por aqui em breve.",
-      { author: "sistema", kind: "erro" },
-    );
+    // Erro que se repete (ex.: chave da API recusada) não pode virar uma desculpa a cada mensagem da pessoa.
+    const desculpou = await prisma.waMessage.findFirst({
+      where: { contactId: s.contact.id, kind: "erro", createdAt: { gte: new Date(Date.now() - 12 * 3_600_000) } },
+      select: { id: true },
+    });
+    if (!desculpou) {
+      await sendText(
+        s.contact,
+        "Desculpe, tive um probleminha para responder agora. Já avisei nossa equipe e ela te responde por aqui em breve.",
+        { author: "sistema", kind: "erro" },
+      );
+    }
     await forwardToOwner(s.contact, meaningful, `a Margot teve um erro: ${(e as Error).message.slice(0, 120)}`);
   } finally {
     await recordUsage(s.usage, "whatsapp", contact.waId).catch((e) => console.error("[whatsapp] uso", e));
