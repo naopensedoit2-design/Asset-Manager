@@ -22,6 +22,7 @@ import { runAgent, systemBlocks, type ToolDef } from "@/lib/margot/claude";
 import { appendOrderNote, checkDate, registerOrder, toolError } from "@/lib/margot/orders";
 import { buildSystemPrompt } from "@/lib/margot/prompt";
 import { overMonthlyLimit, recordUsage, type CallUsage } from "@/lib/margot/usage";
+import { deveAvisarSemIA, motivoFalhaIA, RESERVA_TEXTO_FIXO, responderPelaReserva, respostaReservaSegura } from "@/lib/margot/reserva";
 import { proposeAction } from "./actions";
 import { downloadMedia, linkButtonMessage, uploadMedia, type Header } from "./client";
 import { attachMedia, mediaBlocks, visibleMedia } from "./media";
@@ -393,7 +394,7 @@ async function forwardToOwner(contact: WaContact, pending: WaMessage[], reason: 
   await prisma.waContact.update({ where: { id: contact.id }, data: { notifiedAt: new Date() } });
 }
 
-/** Resposta automática simples quando a Margot está sem IA (no máximo uma a cada 12h por conversa). */
+/** Resposta automática simples (modelo terminou sem texto): no máximo uma a cada 12h por conversa. */
 async function fallbackReply(contact: WaContact) {
   const recent = await prisma.waMessage.findFirst({
     where: { contactId: contact.id, kind: "resposta_automatica", createdAt: { gte: new Date(Date.now() - 12 * 3_600_000) } },
@@ -404,6 +405,51 @@ async function fallbackReply(contact: WaContact) {
     "Olá! Recebemos sua mensagem. Nossa equipe responde por aqui assim que possível. 💍",
     { author: "sistema", kind: "resposta_automatica" },
   );
+}
+
+const SEM_IA_CHAVE = "margotSemIA";
+
+/** Avisa o dono que a Margot está sem IA e por quê: uma vez por motivo, e de novo a cada 3h enquanto durar. */
+async function avisarSemIA(motivo: string) {
+  const salvo = await prisma.setting.findUnique({ where: { key: SEM_IA_CHAVE } }).catch(() => null);
+  let ultimo: { at: number; motivo: string } | null = null;
+  try {
+    ultimo = salvo?.value ? JSON.parse(salvo.value) : null;
+  } catch {
+    ultimo = null;
+  }
+  if (!deveAvisarSemIA(ultimo, Date.now(), motivo)) return;
+  const valor = JSON.stringify({ at: Date.now(), motivo });
+  await prisma.setting.upsert({ where: { key: SEM_IA_CHAVE }, create: { key: SEM_IA_CHAVE, value: valor }, update: { value: valor } });
+  const reserva = process.env["MARGOT_FALLBACK_API_KEY"] || process.env["VOICE_FALLBACK_API_KEY"];
+  const body = `⚠️ A Margot está sem IA: ${motivo}.
+${reserva ? "Enquanto isso, a reserva (Groq) acolhe os clientes e diz que nossa equipe responde em breve, sem falar de valores nem datas." : "Sem reserva configurada: os clientes recebem uma mensagem fixa dizendo que nossa equipe responde em breve."}
+Cada conversa nova também chega para você.`;
+  await notifyOwner({ text: body, summary: `a Margot está sem IA: ${motivo}` });
+}
+
+/**
+ * A API do Claude falhou (ou está sem chave ou no limite do mês): a reserva acolhe a pessoa, o dono sabe o motivo
+ * e recebe a conversa. A pessoa recebe no máximo uma resposta da reserva a cada 30 min por conversa.
+ */
+async function semIA(contact: WaContact, pending: WaMessage[], erro: string) {
+  const motivo = motivoFalhaIA(erro);
+  console.error(`[whatsapp] Margot sem IA: ${motivo}`);
+  const recente = await prisma.waMessage.findFirst({
+    where: { contactId: contact.id, kind: "reserva", createdAt: { gte: new Date(Date.now() - 30 * 60_000) } },
+    select: { id: true },
+  });
+  if (!recente) {
+    const jaConversaram = await prisma.waMessage.count({
+      where: { contactId: contact.id, direction: "out", status: { not: "falhou" }, author: { in: ["margot", "leonardo"] } },
+    });
+    const fala = pending.map((m) => m.text || "").filter(Boolean).join("\n");
+    const resposta = await responderPelaReserva(fala, jaConversaram === 0);
+    const texto = resposta && respostaReservaSegura(resposta) ? toWhatsApp(resposta) : RESERVA_TEXTO_FIXO;
+    await sendText(contact, texto, { author: "sistema", kind: "reserva" });
+  }
+  await avisarSemIA(motivo).catch((e) => console.error("[whatsapp] aviso sem IA", e));
+  await forwardToOwner(contact, pending, `a Margot está sem IA (${motivo}); a reserva acolheu a pessoa`);
 }
 
 /**
@@ -437,9 +483,12 @@ export async function respondToClient(contact: WaContact, pending: WaMessage[]):
     await forwardToOwner(contact, meaningful, "a Margot está desligada no WhatsApp, em Regras");
     return;
   }
-  if (!process.env["ANTHROPIC_API_KEY"] || (await overMonthlyLimit(settings.margotLimitUsd))) {
-    await fallbackReply(contact);
-    await forwardToOwner(contact, meaningful, "a Margot está sem IA agora: sem chave ou limite do mês");
+  if (!process.env["ANTHROPIC_API_KEY"]) {
+    await semIA(contact, meaningful, "sem chave");
+    return;
+  }
+  if (await overMonthlyLimit(settings.margotLimitUsd)) {
+    await semIA(contact, meaningful, "limite do mês");
     return;
   }
   const lastHour = await prisma.waMessage.count({
@@ -542,19 +591,8 @@ export async function respondToClient(contact: WaContact, pending: WaMessage[]):
     }
   } catch (e) {
     console.error("[whatsapp] Margot", e);
-    // Erro que se repete (ex.: chave da API recusada) não pode virar uma desculpa a cada mensagem da pessoa.
-    const desculpou = await prisma.waMessage.findFirst({
-      where: { contactId: s.contact.id, kind: "erro", createdAt: { gte: new Date(Date.now() - 12 * 3_600_000) } },
-      select: { id: true },
-    });
-    if (!desculpou) {
-      await sendText(
-        s.contact,
-        "Desculpe, tive um probleminha para responder agora. Já avisei nossa equipe e ela te responde por aqui em breve.",
-        { author: "sistema", kind: "erro" },
-      );
-    }
-    await forwardToOwner(s.contact, meaningful, `a Margot teve um erro: ${(e as Error).message.slice(0, 120)}`);
+    // Erro da API (chave recusada, sem crédito, fora do ar): a reserva acolhe e o dono sabe o motivo.
+    await semIA(s.contact, meaningful, (e as Error).message ?? String(e));
   } finally {
     await recordUsage(s.usage, "whatsapp", contact.waId).catch((e) => console.error("[whatsapp] uso", e));
   }
