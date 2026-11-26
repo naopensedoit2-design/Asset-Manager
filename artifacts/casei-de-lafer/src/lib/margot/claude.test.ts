@@ -59,3 +59,28 @@ test("resposta direta, sem ferramenta, continua igual", async () => {
     assert.equal((await run()).text, "Olá!");
   });
 });
+
+test("stop depois da ferramenta: encerra sem chamar o modelo de novo", async () => {
+  let chamadas = 0;
+  const realFetch = globalThis.fetch;
+  process.env["ANTHROPIC_API_KEY"] ??= "chave-de-teste";
+  globalThis.fetch = (async () => {
+    chamadas++;
+    return new Response(JSON.stringify({ usage: {}, ...chamaFerramenta() }), { status: 200 });
+  }) as unknown as typeof fetch;
+  try {
+    const r = await runAgent({
+      system: "instruções",
+      tools: [],
+      messages: [{ role: "user", content: "oi" }],
+      runTool: async () => ({ ok: true }),
+      usage: [],
+      stop: () => true,
+    });
+    assert.equal(chamadas, 1);
+    assert.equal(r.text, "");
+    assert.equal(r.exhausted, false);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
