@@ -8,6 +8,7 @@
 import { prisma } from "@/lib/prisma";
 import { explainError, send, templateMessage, textMessage, WaApiError, type OutMessage } from "./client";
 import { waCanSend, waConfig } from "./config";
+import { comHoraDoAviso } from "./fila";
 import { oneLine } from "./format";
 import { ownerContact, saveOutbound, updateOutbound, windowOpen, type WaContact, type WaMessage } from "./store";
 
@@ -144,6 +145,8 @@ export async function flushOwnerQueue(owner: WaContact): Promise<number> {
     } catch {
       message = textMessage(row.text);
     }
+    // Aviso que esperou a janela abrir chega com a hora em que aconteceu.
+    message = comHoraDoAviso(message, row.createdAt, new Date());
     const r = await trySend(owner, row.id, message, row.text);
     if (r === "janela") break;
     if (r === "enviada") sent++;
