@@ -9,6 +9,7 @@ import { linkButtonMessage } from "./client";
 import { notifyOwner } from "./notify";
 import { countByKind, monthStart, quotaReport } from "./quota";
 import { contactLabel } from "./store";
+import { esperaResposta } from "./espera";
 import { conversasLinha, resumoParte, SILENT_TYPES } from "./resumo";
 
 export async function dailySummary(now = new Date()) {
@@ -19,8 +20,9 @@ export async function dailySummary(now = new Date()) {
     where: { isOwner: false, ignoredAt: null, lastInboundAt: { gte: new Date(now.getTime() - 3 * 86_400_000) } },
     include: { messages: { where: { type: { notIn: SILENT_TYPES } }, orderBy: { id: "desc" }, take: 1 } },
   });
-  // Aviso de sistema do WhatsApp (ex.: troca de número) não é cliente esperando resposta.
-  const unanswered = await Promise.all(waiting.filter((c) => c.messages[0]?.direction === "in").map((c) => contactLabel(c)));
+  // Aviso de sistema do WhatsApp (ex.: troca de número) não é cliente esperando resposta. Quem só recebeu o
+  // acolhimento automático (reserva da Margot sem IA, resposta automática) ainda espera a equipe.
+  const unanswered = await Promise.all(waiting.filter((c) => esperaResposta(c.messages[0])).map((c) => contactLabel(c)));
 
   // Margot desligada em Regras: o resumo lembra, para ela não ficar parada sem ninguém perceber.
   const settings = await gestor.getSettings();
@@ -53,7 +55,7 @@ export async function dailySummary(now = new Date()) {
   if (todays.length) lines.push(`\n*Hoje:* ${todays.map(describe).join("; ")}`);
   if (tomorrows.length) lines.push(`*Amanhã:* ${tomorrows.map(describe).join("; ")}`);
   if (alerts.length) lines.push(`\n*Atenção*\n${alerts.map((a) => `• ${a.title}`).join("\n")}`);
-  const waitingToday = waiting.filter((c) => c.messages[0]?.direction === "in" && c.lastInboundAt && c.lastInboundAt >= since).length;
+  const waitingToday = waiting.filter((c) => esperaResposta(c.messages[0]) && c.lastInboundAt && c.lastInboundAt >= since).length;
   lines.push(`\n${conversasLinha({ escreveram: wroteToday, esperando: waitingToday })}`);
   if (unanswered.length) lines.push(`*Esperando resposta no WhatsApp:* ${unanswered.slice(0, 5).join(", ")}`);
   if (newLeads || newOrders || closed || reminders) {

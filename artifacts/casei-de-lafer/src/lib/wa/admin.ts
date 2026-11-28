@@ -13,6 +13,7 @@ import { formatPhone, phoneVariants } from "./phone";
 import { sendText } from "./send";
 import { isPaused, ownerPhone, PAUSED_FOREVER, windowOpen, type WaContact } from "./store";
 import { NOTICE_TYPES } from "./view";
+import { esperaResposta, soAcolhimento } from "./espera";
 import { voiceReady } from "./voice";
 
 /** Ao responder pelo painel, a Margot fica quieta nesta conversa por este tempo. */
@@ -91,7 +92,9 @@ export async function listConversations(filter: { orderId?: number; ignored?: bo
               at: last.createdAt.toISOString(),
             }
           : null,
-        waiting: last?.direction === "in" && !c.isOwner,
+        // Só o acolhimento automático (reserva da Margot sem IA, resposta automática) ainda espera a equipe.
+        waiting: esperaResposta(last) && !c.isOwner,
+        onlyAutoReply: soAcolhimento(last) && !c.isOwner,
       };
     }),
   );

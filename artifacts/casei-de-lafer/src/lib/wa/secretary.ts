@@ -64,6 +64,7 @@ import { contactForClientPhone, contactLabel, isPaused, PAUSED_FOREVER, saveOutb
 import { speechReady, voiceReady } from "./voice";
 import { LEMBRETE_BOTAO, prometeBotao, SEM_BOTAO } from "./promessa";
 import { SILENT_TYPES } from "./resumo";
+import { esperaResposta, estadoIA, parseFalhaIA, soAcolhimento } from "./espera";
 import { describeRoutine, parseReject, parseRoutine, ROUTINE_KEY, ROUTINE_REJECT_KEY } from "@/lib/admin/routine";
 
 const PERIOD = { type: "string", description: "AAAA-MM-DD" };
@@ -567,6 +568,11 @@ function compactOrder(o: gestor.OrderView) {
   };
 }
 
+/** Data e hora curtas no fuso de São Paulo (dd/mm/aaaa hh:mm). */
+function quandoBR(d: Date): string {
+  return d.toLocaleString("pt-BR", { timeZone: TIMEZONE, dateStyle: "short", timeStyle: "short" });
+}
+
 async function waitingConversations() {
   const contacts = await prisma.waContact.findMany({
     where: { isOwner: false, ignoredAt: null, lastMessageAt: { gte: new Date(Date.now() - 7 * 86_400_000) } },
@@ -581,7 +587,10 @@ async function waitingConversations() {
       telefone: formatPhone(c.waId),
       pedido: c.orderId,
       ultima: last ? `${last.direction === "in" ? "cliente" : last.author}: ${truncate(last.text || `[${last.type}]`, 120)}` : "",
-      esperando_resposta: last?.direction === "in",
+      ultima_em: last ? quandoBR(last.createdAt) : "",
+      // A reserva (Margot sem IA) e a resposta automática só prometem retorno: a pessoa ainda espera a equipe.
+      esperando_resposta: esperaResposta(last),
+      so_resposta_automatica: soAcolhimento(last),
       margot_pausada: isPaused(c),
       janela_aberta: windowOpen(c),
     };
@@ -603,16 +612,21 @@ async function runTool(name: string, input: any, s: State): Promise<unknown> {
       const d = await gestor.getDashboard();
       const soon = d.upcoming.filter((o) => o.eventDate && o.eventDate <= addDays(today, 14)).map(compactOrder);
       const conversas = (await waitingConversations()).filter((c) => c.esperando_resposta);
-      const [rotina, recusa] = await Promise.all([
+      const [rotina, recusa, semIA] = await Promise.all([
         prisma.setting.findUnique({ where: { key: ROUTINE_KEY } }),
         prisma.setting.findUnique({ where: { key: ROUTINE_REJECT_KEY } }),
+        prisma.setting.findUnique({ where: { key: "margotSemIA" } }),
       ]);
       return {
         hoje: formatDateBR(today),
         rotina_diaria: describeRoutine(parseRoutine(rotina?.value), new Date(), !!process.env["CRON_SECRET"]?.trim(), parseReject(recusa?.value)),
         proximos_eventos: soon,
         alertas: d.alerts.slice(0, 12).map((a) => `${a.severity === "urgente" ? "URGENTE: " : ""}${a.title} — ${a.detail}${a.orderId ? ` (pedido #${a.orderId})` : ""}`),
-        conversas_esperando: conversas.map((c) => `${c.nome}: ${c.ultima}${c.margot_pausada ? " (Margot pausada)" : ""}`),
+        ia: estadoIA(parseFalhaIA(semIA?.value), quandoBR),
+        conversas_esperando: conversas.map(
+          (c) =>
+            `${c.nome} (${c.ultima_em}): ${c.ultima}${c.so_resposta_automatica ? " (só recebeu a resposta automática; falta a resposta da equipe)" : ""}${c.margot_pausada ? " (Margot pausada)" : ""}`,
+        ),
         mes: {
           pedidos: d.kpis.pedidosMes,
           recebido: formatBRL(d.kpis.recebidoMesCents),
